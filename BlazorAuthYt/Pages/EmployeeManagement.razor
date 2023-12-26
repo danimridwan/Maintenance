@@ -1,0 +1,110 @@
+﻿@page "/employee-management"
+@using BlazorAuthYt.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity;
+@using System.Security.Claims
+
+@inject DataContext DataContext
+@inject UserManager<IdentityUser> UserManager
+@inject SignInManager<IdentityUser> SignInManager
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<AuthorizeView>
+    <Authorized>
+        <h3>Employee Management</h3>
+
+        @if (IsAdmin)
+        {
+            <h4>Create Employee</h4>
+            <EmployeeForm OnSubmit="@CreateEmployee" />
+
+            <h4>Manage Employees</h4>
+            <EmployeeList Employees="@Employees" OnEdit="@EditEmployee" OnSoftDelete="@SoftDeleteEmployee" />
+        }
+
+        @if (IsManager)
+        {
+            <h4>Manage Employees</h4>
+            <EmployeeList Employees="@Employees" OnEdit="@EditEmployee" />
+        }
+
+        @if (IsEmployee)
+        {
+            <h4>Your Information</h4>
+            <EmployeeInfo Employee="@CurrentEmployee" />
+        }
+
+        @code {
+        private ClaimsPrincipal User;
+        //private ClaimsPrincipal User => HttpContextAccessor.HttpContext.User;
+
+        private List<Employee> Employees { get; set; }
+        private Employee CurrentEmployee { get; set; }
+
+        private bool IsAdmin => User.IsInRole("Admin");
+        private bool IsManager => User.IsInRole("Manager");
+        private bool IsEmployee => User.IsInRole("Employee");
+
+        protected override async Task OnInitializedAsync()
+        {
+            var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            User = authenticationState.User;
+            await LoadData();
+        }
+
+        private async Task LoadData()
+        {
+            // Load Employees based on user role
+            if (IsAdmin)
+            {
+                Employees = await DataContext.Employees.ToListAsync();
+            }
+            else if (IsManager)
+            {
+                Employees = await DataContext.Employees.ToListAsync();
+            }
+            else if (IsEmployee)
+            {
+                // Load only the information of the logged-in employee
+                var userId = UserManager.GetUserId(User);
+                CurrentEmployee = await DataContext.Employees.FirstOrDefaultAsync(e => e.UserID == userId);
+            }
+        }
+
+        private async Task CreateEmployee(Employee newEmployee)
+        {
+            // Validation and creation logic
+            DataContext.Employees.Add(newEmployee);
+            await DataContext.SaveChangesAsync();
+
+            // Reload data after creating the employee
+            await LoadData();
+        }
+
+        private async Task EditEmployee(Employee editedEmployee)
+        {
+            // Validation and update logic
+            DataContext.Employees.Update(editedEmployee);
+            await DataContext.SaveChangesAsync();
+
+            // Reload data after updating the employee
+            await LoadData();
+        }
+
+        private async Task SoftDeleteEmployee(Employee deletedEmployee)
+        {
+            // Soft delete logic (set a flag for soft deletion)
+            deletedEmployee.IsDeleted = true;
+            DataContext.Employees.Update(deletedEmployee);
+            await DataContext.SaveChangesAsync();
+
+            // Reload data after soft deleting the employee
+            await LoadData();
+        }
+        }
+    </Authorized>
+    <NotAuthorized>
+        <p>You are not authorized to view this content.</p>
+    </NotAuthorized>
+</AuthorizeView>

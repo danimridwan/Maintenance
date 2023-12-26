@@ -1,0 +1,60 @@
+﻿@page "/DesignationList"
+
+@using BlazorAuthYt.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+@if (Designations != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Designation Name</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var designation in Designations)
+            {
+                <tr>
+                    <td>@designation.ID</td>
+                    <td>@designation.DesignationName</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditDesignation(designation)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteDesignation(designation)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No designations found.</p>
+}
+
+@code {
+    private List<Designation> Designations { get; set; } = new List<Designation>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Designations = await DataContext.Designations.ToListAsync();
+    }
+
+    private void EditDesignation(Designation designation)
+    {
+        NavigationManager.NavigateTo($"/EditDesignation/{designation.ID}");
+    }
+
+    private void DeleteDesignation(Designation designation)
+    {
+        NavigationManager.NavigateTo($"/DeleteDesignation/{designation.ID}");
+    }
+}

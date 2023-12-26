@@ -1,0 +1,56 @@
+﻿@page "/NewEmployee"
+
+@using BlazorAuthYt.Data
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<EditForm Model="NewEmployee" OnValidSubmit="CreateEmployee">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label for="Name">Name:</label>
+        <InputText id="Name" @bind-Value="NewEmployee.Name" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.Name)" />
+    </div>
+    <div class="form-group">
+        <label for="Email">Email:</label>
+        <InputText id="Email" @bind-Value="NewEmployee.Email" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.Email)" />
+    </div>
+    <div class="form-group">
+        <label for="DesignationID">Designation ID:</label>
+        <InputNumber id="DesignationID" @bind-Value="NewEmployee.DesignationID" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.DesignationID)" />
+    </div>
+    <div class="form-group">
+        <label for="BasicSalary">Basic Salary:</label>
+        <InputNumber id="BasicSalary" @bind-Value="NewEmployee.BasicSalary" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.BasicSalary)" />
+    </div>
+    <div class="form-group">
+        <label for="PresentAddress">Present Address:</label>
+        <InputText id="PresentAddress" @bind-Value="NewEmployee.PresentAddress" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.PresentAddress)" />
+    </div>
+    <div class="form-group">
+        <label for="PermanentAddress">Permanent Address:</label>
+        <InputText id="PermanentAddress" @bind-Value="NewEmployee.PermanentAddress" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.PermanentAddress)" />
+    </div><br />
+
+    <button type="submit" class="btn btn-primary">Create Employee</button>
+</EditForm>
+
+@code {
+    private Employee NewEmployee { get; set; } = new Employee();
+
+    private async Task CreateEmployee()
+    {
+        DataContext.Employees.Add(NewEmployee);
+        await DataContext.SaveChangesAsync();
+        NewEmployee = new Employee(); 
+
+        // Navigate to the EmployeeList page
+        NavigationManager.NavigateTo("/EmployeeList");
+    }
+}
+

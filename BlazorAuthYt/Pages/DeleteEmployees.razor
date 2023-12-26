@@ -1,0 +1,33 @@
+﻿@page "/DeleteEmployee/{employeeId}"
+
+@using BlazorAuthYt.Data
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+<h3>Delete Employee</h3>
+
+<p>Are you sure you want to delete the employee with ID: @employeeId?</p>
+
+<button type="button" class="btn btn-danger" @onclick="DeleteEmployee">Delete</button>
+<button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+
+@code {
+    [Parameter]
+    public string employeeId { get; set; }
+
+    private async Task DeleteEmployee()
+    {
+        var employeeToDelete = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        if (employeeToDelete != null)
+        {
+            DataContext.Employees.Remove(employeeToDelete);
+            await DataContext.SaveChangesAsync();
+            NavigationManager.NavigateTo("/EmployeeList");
+        }
+    }
+
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/EmployeeList");
+    }
+}

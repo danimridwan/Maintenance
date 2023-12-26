@@ -1,0 +1,72 @@
+﻿@page "/EmployeeList"
+
+@using BlazorAuthYt.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+@if (Employees != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Designation ID</th>
+                <th>Basic Salary</th>
+                <th>Present Address</th>
+                <th>Permanent Address</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in Employees)
+            {
+                <tr>
+                    <td>@employee.UserID</td>
+                    <td>@employee.Name</td>
+                    <td>@employee.Email</td>
+                    <td>@employee.DesignationID</td>
+                    <td>@employee.BasicSalary</td>
+                    <td>@employee.PresentAddress</td>
+                    <td>@employee.PermanentAddress</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditEmployee(employee)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => SoftDeleteEmployee(employee)">Soft Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+else
+{
+    <p>No employees found.</p>
+}
+
+@code {
+    private List<Employee> Employees { get; set; } = new List<Employee>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Employees = await DataContext.Employees.ToListAsync();
+    }
+
+    private void EditEmployee(Employee employee)
+    {
+        NavigationManager.NavigateTo($"/EditEmployee/{employee.UserID}");
+    }
+
+
+    private void SoftDeleteEmployee(Employee employee)
+    {
+        NavigationManager.NavigateTo($"/DeleteEmployee/{employee.UserID}");
+    }
+}
