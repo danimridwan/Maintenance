@@ -1,0 +1,37 @@
+﻿@page "/DeleteDesignation/{designationId}"
+
+@using MaintenanceWebApp.Data
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+<h3>Delete Designation</h3>
+
+<p>Are you sure you want to delete the designation: <strong>@designation?.DesignationName</strong>?</p>
+<div>
+    <button class="btn btn-danger" @onclick="Delete">Yes, Delete</button>
+    <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+</div>
+
+@code {
+    private Designation designation;
+    [Parameter]
+    public string designationId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        designation = await DataContext.Designations.FindAsync(int.Parse(designationId));
+    }
+
+    private async Task Delete()
+    {
+        DataContext.Designations.Remove(designation);
+        await DataContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/DesignationList");
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/DesignationList");
+    }
+}

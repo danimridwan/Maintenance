@@ -1,0 +1,37 @@
+﻿@page "/EditDesignation/{designationId}"
+
+@using MaintenanceWebApp.Data
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+<h3>Edit Designation</h3>
+
+<EditForm Model="designation" OnValidSubmit="UpdateDesignation">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label for="DesignationName">Designation Name:</label>
+        <InputText id="DesignationName" @bind-Value="designation.DesignationName" class="form-control" />
+        <ValidationMessage For="@(() => designation.DesignationName)" />
+    </div><br />
+    <button type="submit" class="btn btn-primary">Update Designation</button>
+</EditForm>
+
+@code {
+    private Designation designation;
+    [Parameter]
+    public string designationId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        designation = await DataContext.Designations.FindAsync(int.Parse(designationId));
+    }
+
+    private async Task UpdateDesignation()
+    {
+        DataContext.Designations.Update(designation);
+        await DataContext.SaveChangesAsync();
+
+        // Navigate back to the DesignationList page after updating
+        NavigationManager.NavigateTo("/DesignationList");
+    }
+}

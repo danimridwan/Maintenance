@@ -1,0 +1,29 @@
+﻿@page "/NewDesignation"
+
+@using MaintenanceWebApp.Data
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<EditForm Model="NewDesignation" OnValidSubmit="CreateDesignation">
+    <DataAnnotationsValidator />
+    <div class="form-group">
+        <label for="DesignationName">Designation Name:</label>
+        <InputText id="DesignationName" @bind-Value="NewDesignation.DesignationName" class="form-control" />
+        <ValidationMessage For="@(() => NewDesignation.DesignationName)" />
+    </div><br />
+    <button type="submit" class="btn btn-primary">Create Designation</button>
+</EditForm>
+
+@code {
+    private Designation NewDesignation { get; set; } = new Designation();
+
+    private async Task CreateDesignation()
+    {
+        DataContext.Designations.Add(NewDesignation);
+        await DataContext.SaveChangesAsync();
+        NewDesignation = new Designation();
+
+        // Navigate to the EmployeeList page
+        NavigationManager.NavigateTo("/DesignationList");
+    }
+}
