@@ -1,0 +1,107 @@
+﻿@page "/AddMaintenanceTask"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<h3>Form Permintaan Pekerjaan Maintenance</h3>
+<EditForm Model="NewTask" OnValidSubmit="CreateTask">
+    <DataAnnotationsValidator />
+    <div class="form-group row">
+        <label for="Requestor" class="col-sm-2 col-form-label">Pemohon</label>
+        <InputText id="Requestor" @bind-Value="NewTask.Requestor" class="col-sm-10" />
+        <ValidationMessage For="@(() => NewTask.Requestor)" />
+    </div>
+    <div class="form-group row">
+        <label for="Division" class="col-sm-2 col-form-label">Divisi</label>
+        <InputSelect id="Requestor" @bind-Value="NewTask.Division" class="col-sm-10">
+            <option value=""></option>
+            <option value="Formalities">Formalities</option>
+            <option value="HSE">HSE</option>
+            <option value="HRD & GA">HRD & GA</option>
+            <option value="Operation">Operation</option>
+            <option value="Security">Security</option>
+        </InputSelect>
+        <ValidationMessage For="@(() => NewTask.Division)" />
+    </div>
+    <div class="form-group row">
+        <label for="WorkType" class="col-sm-2 col-form-label">Jenis Pekerjaan</label>
+        <InputSelect id="WorkType" @bind-Value="NewTask.WorkType" class="col-sm-10">
+            <option value=""></option>
+            <option value="Perbaikan">Perbaikan</option>
+            <option value="Modifikasi">Modifikasi</option>
+            <option value="Pemasangan Baru">Pemasangan Baru</option>
+            <option value="Verifikasi / Testing">Verifikasi / Testing</option>
+        </InputSelect>
+        <ValidationMessage For="@(() => NewTask.Division)" />
+    </div>
+    <div class="form-group row">
+        <label for="Photo" class="col-sm-2 col-form-label">Gambar Kondisi Awal</label>
+        <InputFile id="Photo" class="col-sm-10" accept=".jpg,.jpeg,.png"></InputFile>
+    </div>
+    <div class="form-group row">
+        <label for="SupportingDocument" class="col-sm-2 col-form-label">Dokumen Pendukung</label>
+        <InputFile id="SupportingDocument" class="col-sm-10" accept=".docx,.doc,.pdf,.xls,.xlsx" OnChange="OnInputSuppDocChangeAsync"></InputFile>
+    </div>
+    <div class="form-group row">
+        <label for="UserID" class="col-sm-2 col-form-label">Assign to</label>
+        <InputSelect id="Requestor" @bind-Value="NewTask.UserID" class="col-sm-10">
+            <option value=""></option>
+            @foreach (var emp in Employees)
+            {
+                <option value="@emp.UserID">@emp.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="form-group row">
+        <label for="Notes" class="col-sm-2 col-form-label">Deskripsi Pekerjaan</label>
+        <InputTextArea id="Notes" @bind-Value="@NewTask.Notes" class="col-sm-10" rows="6">
+        </InputTextArea>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Task</button>
+</EditForm>
+
+@code {
+    private MaintenanceTask NewTask { get; set; } = new MaintenanceTask();
+    private List<Employee> Employees { get; set; } = new List<Employee>();
+
+    private async Task CreateTask()
+    {
+        DataContext.MaintenanceTasks.Add(NewTask);
+        await DataContext.SaveChangesAsync();
+        NewTask = new MaintenanceTask();
+
+        // Navigate to the EmployeeList page
+        NavigationManager.NavigateTo("/MaintenanceTaskList");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Employees = await DataContext.Employees.ToListAsync();
+    }
+
+    private async Task OnInputSuppDocChangeAsync(InputFileChangeEventArgs e)
+    {
+        var allowedExtensions = new List<string> { ".jpg", ".jpeg", ".png" };
+        var fileExtension = Path.GetExtension(e.File.Name);
+
+        if (!allowedExtensions.Contains(fileExtension.ToLower()))
+        {
+            // Display an error message to the user or prevent the upload
+            await Task.Run(() => { }); // Replace with your error handling logic
+            return;
+        }
+
+        // Proceed with the upload
+        var buffer = new byte[e.File.Size];
+        await e.File.OpenReadStream().ReadAsync(buffer);
+        // Do something with the file data (e.g., save it to a database or file system)
+        await Task.Run(() => { }); // Replace with your file saving logic
+    }
+}
