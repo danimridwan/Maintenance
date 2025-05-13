@@ -1,16 +1,35 @@
 ﻿@inherits LayoutComponentBase
 
-<PageTitle>RPU - Maintenance App</PageTitle>
+<PageTitle>RPU Maintenance Web</PageTitle>
 
 <div class="page">
-    <div class="sidebar">
+    <div id="sidebar" class="sidebar">
         <NavMenu />
     </div>
 
     <main>
         <div class="top-row px-4">
-            <a href="https://docs.microsoft.com/aspnet/" target="_blank">About</a>
-            <a href="/logout">Logout</a>
+
+
+            <div class="dropdown">
+                <button class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="oi oi-bell" aria-hidden="true"></span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+                    <a class="dropdown-item" href="#">Action</a>
+                    <a class="dropdown-item" href="#">Another action</a>
+                    <a class="dropdown-item" href="#">Something else here</a>
+                </div>
+            </div>
+
+            <div class="dropdown">
+                <button class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="oi oi-menu" aria-hidden="true"></span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
+                    <a class="dropdown-item" href="/logout">Logout</a>
+                </div>
+            </div>
         </div>
 
         <article class="content px-4">

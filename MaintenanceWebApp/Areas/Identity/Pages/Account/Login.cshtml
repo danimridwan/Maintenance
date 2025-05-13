@@ -2,27 +2,37 @@
 @model MaintenanceWebApp.Areas.Identity.Pages.Account.LoginModel
 
 <title>Login</title>
-<div class="row" style="margin:50px">
-    <div class="offset-4 col-md-4">
-        <section>
-            <form id="account" method="post">
-                <h2 class="text-center">Maintenance</h2>
+<div class="login">
+    <div class="card login-form row">
+        <div class="col-md-12">
+            <section>
+                <div class="row">
+                    <div class="login-logo col-lg-3">
+                        <img style="width: 100%;" src="~/RPULogo.png" alt="RPU Logo">
+                    </div>
+                    <div class="login-title col-lg-9">
+                        <h4><b>Inventory Management Website</b></h4>
+                        <h5>PT. Redeco Petrolin Utama</h5>
+                    </div>
+                </div>
                 <hr />
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                <div class="form-floating" style="margin:10px">
-                    <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true">
-                    <label asp-for="Input.Email" class="form-label"></label>
-                    <span asp-validation-for="Input.Email" class="text-danger"></span>
-                </div>
-                <div class="form-floating" style="margin:10px">
-                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true">
-                    <label asp-for="Input.Password" class="form-label"></label>
-                    <span asp-validation-for="Input.Password" class="text-danger"></span>
-                </div>
-                <div style="margin:10px">
-                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
-                </div>
-            </form>
-        </section>
+                <form id="account" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="form-floating" style="margin:10px">
+                        <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true">
+                        <label asp-for="Input.Email" class="form-label"></label>
+                        <span asp-validation-for="Input.Email" class="text-danger"></span>
+                    </div>
+                    <div class="form-floating" style="margin:10px">
+                        <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true">
+                        <label asp-for="Input.Password" class="form-label"></label>
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+                    </div>
+                    <div style="margin:0px 10px; margin-top: 30px;">
+                        <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                    </div>
+                </form>
+            </section>
+        </div>
     </div>
 </div>

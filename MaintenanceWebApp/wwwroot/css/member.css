@@ -1,0 +1,27 @@
+﻿html, body {
+    background-color: #102A54;
+    height: 100%;
+    width: 100%;
+}
+
+.login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.login-logo {
+    align-content: center;
+}
+
+.login-title {
+    align-content: center;
+    justify-content: center;
+}
+
+.login-form {
+    width: 45%;
+    margin: 100px;
+    padding: 40px 25px;
+}
