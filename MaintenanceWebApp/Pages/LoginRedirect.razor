@@ -4,6 +4,12 @@
 @code {
     protected override void OnInitialized()
     {
-        _navigationManager.NavigateTo("/login");
+        
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        base.OnAfterRender(firstRender);
+        _navigationManager.NavigateTo("/login", true);
     }
 }
