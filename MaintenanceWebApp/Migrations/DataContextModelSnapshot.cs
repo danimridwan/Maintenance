@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace BlazorAuthYt.Migrations
+namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
     partial class DataContextModelSnapshot : ModelSnapshot
@@ -22,34 +22,11 @@ namespace BlazorAuthYt.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("MaintenanceWebApp.Data.Designation", b =>
-                {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
-
-                    b.Property<string>("DesignationName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("ID");
-
-                    b.ToTable("Designations");
-                });
-
             modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
                 {
                     b.Property<string>("UserID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<decimal>("BasicSalary")
-                        .HasColumnType("decimal(10, 2)");
-
-                    b.Property<int>("DesignationID")
-                        .HasColumnType("int");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -58,21 +35,15 @@ namespace BlazorAuthYt.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("JobTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PermanentAddress")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PresentAddress")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("UserID");
-
-                    b.HasIndex("DesignationID");
 
                     b.ToTable("Employees");
                 });
@@ -323,17 +294,6 @@ namespace BlazorAuthYt.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
-                {
-                    b.HasOne("MaintenanceWebApp.Data.Designation", "Designation")
-                        .WithMany()
-                        .HasForeignKey("DesignationID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Designation");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.MaintenanceTask", b =>

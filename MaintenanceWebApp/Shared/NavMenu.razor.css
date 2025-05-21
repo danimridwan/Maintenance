@@ -24,6 +24,10 @@
     top: -2px;
 }
 
+.nav-link :hover {
+    cursor: pointer;
+}
+
 .nav-item {
     font-size: 0.9rem;
     padding-bottom: 0.5rem;
@@ -59,11 +63,6 @@
 @media (min-width: 641px) {
     .navbar-toggler {
         display: none;
-    }
-
-    .collapse {
-        /* Never collapse the sidebar for wide screens */
-        display: block;
     }
     
     .nav-scrollable {

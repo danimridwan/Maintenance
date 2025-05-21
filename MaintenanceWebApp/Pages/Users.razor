@@ -30,8 +30,6 @@
                 <td>@user.UserID</td>
                 <td>@user.Name</td>
                 <td>@user.Email</td>
-                <td>@user.Designation.DesignationName</td>
-                <td>@user.BasicSalary</td>
                 <td>
                     @if (IsUserAdmin())
                     {
@@ -51,8 +49,8 @@
 </table>
 
 @code {
-    private List<Employee> users;
-    private List<Employee> filteredUsers;
+    private List<MaintenanceWebApp.Data.Employee> users;
+    private List<MaintenanceWebApp.Data.Employee> filteredUsers;
     private string searchTerm = "";
     private AuthenticationState authenticationState; 
 
@@ -80,15 +78,15 @@
         return authenticationState?.User?.IsInRole(role) ?? false;
     }
 
-    private void UpdateUser(Employee user)
+    private void UpdateUser(MaintenanceWebApp.Data.Employee user)
     {
     }
 
-    private void EditUser(Employee user)
+    private void EditUser(MaintenanceWebApp.Data.Employee user)
     {
     }
 
-    private void DeleteUser(Employee user)
+    private void DeleteUser(MaintenanceWebApp.Data.Employee user)
     {
     }
 }

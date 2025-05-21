@@ -15,26 +15,6 @@
         <label for="Email">Email:</label>
         <InputText id="Email" @bind-Value="NewEmployee.Email" class="form-control" />
         <ValidationMessage For="@(() => NewEmployee.Email)" />
-    </div>
-    <div class="form-group">
-        <label for="DesignationID">Designation ID:</label>
-        <InputNumber id="DesignationID" @bind-Value="NewEmployee.DesignationID" class="form-control" />
-        <ValidationMessage For="@(() => NewEmployee.DesignationID)" />
-    </div>
-    <div class="form-group">
-        <label for="BasicSalary">Basic Salary:</label>
-        <InputNumber id="BasicSalary" @bind-Value="NewEmployee.BasicSalary" class="form-control" />
-        <ValidationMessage For="@(() => NewEmployee.BasicSalary)" />
-    </div>
-    <div class="form-group">
-        <label for="PresentAddress">Present Address:</label>
-        <InputText id="PresentAddress" @bind-Value="NewEmployee.PresentAddress" class="form-control" />
-        <ValidationMessage For="@(() => NewEmployee.PresentAddress)" />
-    </div>
-    <div class="form-group">
-        <label for="PermanentAddress">Permanent Address:</label>
-        <InputText id="PermanentAddress" @bind-Value="NewEmployee.PermanentAddress" class="form-control" />
-        <ValidationMessage For="@(() => NewEmployee.PermanentAddress)" />
     </div><br />
 
     <button type="submit" class="btn btn-primary">Create Employee</button>
