@@ -1,0 +1,108 @@
+﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.Contracts;
+
+namespace MaintenanceWebApp.Data
+{
+    public abstract class Inventory
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public string InventoryID { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public string Location { get; set; }
+
+        public string Material { get; set; }
+
+        public string Brand { get; set; }
+
+        public string Type { get; set; } //discriminator
+
+        public Tank Tank { get; set; }
+
+        //public int TankId { get; set; } //foreign key
+
+        public byte[] Photo { get; set; }
+
+        public string Description { get; set; }
+    }
+
+    public class BreatherValve : Inventory
+    {
+        public int Mmh20Plus { get; set; }
+
+        public int Mmh20Minus { get; set; }
+
+        public int BreatherValveDiameter { get; set; }
+    }
+
+    public class PRValveTank : Inventory
+    {
+        public int PRVValveTankDesignedPressure { get; set; }
+
+        public int PRValveTankDiameter { get; set; }
+    }
+
+    public class PRValvePump : Inventory
+    {
+        public int PRVValvePumpDesignedPressure { get; set; }
+
+        public int PRValvePumpDiameter { get; set; }
+    }
+
+    public class PCValveTank : Inventory
+    {
+        public int PCValveTankDesignedPressure { get; set; }
+
+        public int PCValveTankDiameter { get; set; }
+    }
+
+    public class Valve : Inventory
+    {
+        public string Pipeline { get; set; }
+
+        public int ValveDiameter { get; set; }
+
+        public string Layer { get; set; }
+
+        public int TotalUnit { get; set; }
+    }
+
+    public class Pump : Inventory
+    {
+        public string PumpTag { get; set; }
+
+        public string Year { get; set; }
+
+        public string PumpCapacity { get; set; }
+
+        public string Power { get; set; }
+
+        public string ExplotionProofCode { get; set; }
+    }
+
+    public class FlowMeter : Inventory
+    {
+        public string FLowMeterTag { get; set; }
+
+        public int FlowMeterTemperatureDesigned { get; set; }
+
+        public int FlowMeterPressureDesigned { get; set; }
+
+        public int FlowMeterRate { get; set; }
+    }
+
+    public class Panel : Inventory
+    {
+        public string Capacity { get; set; }
+    }
+
+    public class IT : Inventory
+    {
+        public string DeviceModel { get; set; }
+    }
+}
