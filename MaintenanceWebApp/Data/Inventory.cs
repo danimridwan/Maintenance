@@ -22,9 +22,9 @@ namespace MaintenanceWebApp.Data
 
         public string Type { get; set; } = null;//discriminator
 
-        public Tank Tank { get; set; }
+        public virtual Tank Tank { get; set; }
 
-        //public int TankId { get; set; } //foreign key
+        public int? TankId { get; set; } //foreign key
 
         public byte[] Photo { get; set; } = null;
 
