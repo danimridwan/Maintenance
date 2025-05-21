@@ -1,0 +1,107 @@
+﻿@page "/PumpAdd"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<h3>Pump</h3>
+<EditForm Model="NewPump" OnValidSubmit="CreatePump">
+    <DataAnnotationsValidator />
+    <div class="card">
+        <div class="card-header bg-light mb-3 border-primary">
+            General Information
+        </div>
+        <div class="card-body">
+            <div class="form-group row">
+                <div class="col-sm-6">
+                    <label for="Name" class="col-sm-2 col-form-label">Name <span class="required">*</span></label>
+                    <InputText id="Name" @bind-Value="NewPump.Name" class="form-control col-sm-10" />
+                </div>
+                <div class="col-sm-6">
+                    <label for="Location" class="col-sm-2 col-form-label">Location</label>
+                    <InputText id="Location" @bind-Value="NewPump.Location" class="form-control col-sm-10" />
+                </div>
+                <div class="col-sm-6">
+                    <label for="Material" class="col-sm-2 col-form-label">Material</label>
+                    <InputText id="Material" @bind-Value="NewPump.Material" class="form-control col-sm-10" />
+                </div>
+                <div class="col-sm-6">
+                    <label for="Brand" class="col-sm-2 col-form-label">Brand</label>
+                    <InputText id="Brand" @bind-Value="NewPump.Brand" class="form-control col-sm-10" />
+                </div>
+                <div class="col-sm-6">
+                    <label for="Type" class="col-sm-2 col-form-label">Type</label>
+                    <InputText id="Type" @bind-Value="NewPump.Type" class="form-control col-sm-10" />
+                </div>
+                <div class="col-sm-6">
+                    <label for="Tank" class="col-sm-2 col-form-label">Tank</label>
+                    <InputSelect id="Requestor" @bind-Value="NewPump.Tank" class="form-control col-sm-10">
+                        <option value="">Select Tank..</option>
+                        @foreach (var t in Tanks)
+                        {
+                            <option value="@t.TankID">@t.TankNo</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => NewPump.Tank)" />
+                </div>
+                <div class="col-sm-12">
+                    <label for="Photo" class="col-sm-2 col-form-label">Photo</label>
+                    <InputFile id="Photo" class="form-control col-sm-10" accept=".jpg,.jpeg,.png" OnChange="OnInputDocChangeAsync"></InputFile>
+                </div>
+                <div class="col-sm-12">
+                    <label for="Description" class="col-sm-2 col-form-label">Description</label>
+                    <InputTextArea id="Description" @bind-Value="@NewPump.Description" class="form-control col-sm-10" rows="4">
+                    </InputTextArea>
+                </div>
+            </div>  
+        </div>
+    </div>
+    <br />
+    <button type="submit" class="btn btn-primary">Add New Pump</button>
+</EditForm>
+
+@code{
+    private Pump NewPump { get; set; } = new Pump();
+    private List<Employee> Employees { get; set; } = new List<Employee>();
+    private List<Tank> Tanks { get; set; } = new List<Tank>(); 
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Tanks = await DataContext.Tanks.ToListAsync();
+    }
+
+    private async Task CreatePump()
+    {
+        DataContext.Pumps.Add(NewPump);
+        await DataContext.SaveChangesAsync();
+        NewPump = new Pump();
+
+        // Navigate to the Pump List page
+        NavigationManager.NavigateTo("/Pump");
+    }
+
+    private async Task OnInputDocChangeAsync(InputFileChangeEventArgs e)
+    {
+        var allowedExtensions = new List<string> { ".jpg", ".jpeg", ".png" };
+        var fileExtension = Path.GetExtension(e.File.Name);
+
+        if (!allowedExtensions.Contains(fileExtension.ToLower()))
+        {
+            // Display an error message to the user or prevent the upload
+            await Task.Run(() => { }); // Replace with your error handling logic
+            return;
+        }
+
+        // Proceed with the upload
+        var buffer = new byte[e.File.Size];
+        await e.File.OpenReadStream().ReadAsync(buffer);
+        // Do something with the file data (e.g., save it to a database or file system)
+        await Task.Run(() => { }); // Replace with your file saving logic
+    }
+}

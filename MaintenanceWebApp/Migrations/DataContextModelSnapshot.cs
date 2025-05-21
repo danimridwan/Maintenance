@@ -517,17 +517,6 @@ namespace MaintenanceWebApp.Migrations
                     b.HasDiscriminator().HasValue("Valve");
                 });
 
-            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
-                {
-                    b.HasOne("MaintenanceWebApp.Data.Designation", "Designation")
-                        .WithMany()
-                        .HasForeignKey("DesignationID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Designation");
-                });
-
             modelBuilder.Entity("MaintenanceWebApp.Data.Inventory", b =>
                 {
                     b.HasOne("MaintenanceWebApp.Data.Tank", "Tank")

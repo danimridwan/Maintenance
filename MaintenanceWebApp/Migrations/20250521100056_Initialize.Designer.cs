@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250521044253_UpdateTableEmployee")]
-    partial class UpdateTableEmployee
+    [Migration("20250521100056_Initialize")]
+    partial class Initialize
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -49,6 +49,58 @@ namespace MaintenanceWebApp.Migrations
                     b.HasKey("UserID");
 
                     b.ToTable("Employees");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Inventory", b =>
+                {
+                    b.Property<string>("InventoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Brand")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Material")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("Photo")
+                        .IsRequired()
+                        .HasColumnType("varbinary(max)");
+
+                    b.Property<int>("TankID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("InventoryID");
+
+                    b.HasIndex("TankID");
+
+                    b.ToTable("Inventories");
+
+                    b.HasDiscriminator<string>("Discriminator").HasValue("Inventory");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.MaintenanceTask", b =>
@@ -99,6 +151,30 @@ namespace MaintenanceWebApp.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("MaintenanceTasks");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Tank", b =>
+                {
+                    b.Property<int>("TankID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TankID"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InternalCoating")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TankNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TankID");
+
+                    b.ToTable("Tanks");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -297,6 +373,162 @@ namespace MaintenanceWebApp.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.BreatherValve", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<int>("BreatherValveDiameter")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Mmh20Minus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Mmh20Plus")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("BreatherValve");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.FlowMeter", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("FLowMeterTag")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("FlowMeterPressureDesigned")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FlowMeterRate")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FlowMeterTemperatureDesigned")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("FlowMeter");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.IT", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("DeviceModel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasDiscriminator().HasValue("IT");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.PCValveTank", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<int>("PCValveTankDesignedPressure")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PCValveTankDiameter")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("PCValveTank");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.PRValvePump", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<int>("PRVValvePumpDesignedPressure")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PRValvePumpDiameter")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("PRValvePump");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.PRValveTank", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<int>("PRVValveTankDesignedPressure")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PRValveTankDiameter")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("PRValveTank");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Panel", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("Capacity")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasDiscriminator().HasValue("Panel");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Pump", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("ExplotionProofCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Power")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PumpCapacity")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PumpTag")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Year")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasDiscriminator().HasValue("Pump");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Valve", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("Layer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Pipeline")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TotalUnit")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ValveDiameter")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("Valve");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Inventory", b =>
+                {
+                    b.HasOne("MaintenanceWebApp.Data.Tank", "Tank")
+                        .WithMany()
+                        .HasForeignKey("TankID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tank");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.MaintenanceTask", b =>

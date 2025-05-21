@@ -14,19 +14,19 @@ namespace MaintenanceWebApp.Data
         [Required]
         public string Name { get; set; }
 
-        public string Location { get; set; }
+        public string Location { get; set; } = null;
 
-        public string Material { get; set; }
+        public string Material { get; set; } = null;
 
-        public string Brand { get; set; }
+        public string Brand { get; set; } = null;
 
-        public string Type { get; set; } //discriminator
+        public string Type { get; set; } = null;//discriminator
 
         public Tank Tank { get; set; }
 
         //public int TankId { get; set; } //foreign key
 
-        public byte[] Photo { get; set; }
+        public byte[] Photo { get; set; } = null;
 
         public string Description { get; set; }
     }
