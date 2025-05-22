@@ -1,0 +1,86 @@
+﻿@page "/Pump"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <div class="col-6">
+        <h3>Pump</h3>
+    </div>
+    <div class="col-6">
+        <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddPump()">New Pump</button>
+    </div>
+</div>
+
+@if (Pumps.Count != 0)
+{
+    <table class="table table-striped">
+        <thead>
+            <tr class="table-dark">
+                <th class="visually-hidden">ID</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Material</th>
+                <th>Brand</th>
+                <th>Type</th>
+                <th>Tank</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Pumps)
+            {
+                <tr>
+                    <td>@p.InventoryID</td>
+                    <td>@p.Name</td>
+                    <td>@p.Location</td>
+                    <td>@p.Material</td>
+                    <td>@p.Brand</td>
+                    <td>@p.Type</td>
+                    <td>@p.TankId</td>
+                    <td>@p.Description</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditPump(p)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => SoftDeletePump(p)">Soft Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No Pumps Found.</p>
+}
+
+@code {
+    private List<Pump> Pumps { get; set; } = new List<Pump>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Pumps = await DataContext.Pumps.ToListAsync();
+    }
+
+    private void AddPump()
+    {
+        NavigationManager.NavigateTo($"/PumpAdd/");
+    }
+
+    private void EditPump(Pump pump)
+    {
+        NavigationManager.NavigateTo($"/EditPump/{pump.InventoryID}");
+    }
+
+
+    private void SoftDeletePump(Pump pump)
+    {
+        NavigationManager.NavigateTo($"/DeletePump/{pump.InventoryID}");
+    }
+}
