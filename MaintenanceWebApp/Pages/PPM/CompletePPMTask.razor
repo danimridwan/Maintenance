@@ -1,0 +1,75 @@
+﻿@page "/CompletePPMTask/{PPMId}"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<h3>Form Pelaksanaan Pekerjaan Maintenance</h3><hr>
+
+<EditForm Model="ppm" OnValidSubmit="UpdatePPM">
+    <DataAnnotationsValidator />
+    <InputHidden value="ppm.Status" />
+    <ValidationMessage For="@(() => ppm.Status)" />
+    <div class="form-group row">
+        <label for="CompletePhoto" class="col-sm-2 col-form-label">Gambar Kondisi Akhir</label>
+        <div class="col-sm-10">
+            <InputFile id="CompletePhoto" class="form-control" @bind-Value="ppm.CompletePhoto" accept=".jpg,.jpeg,.png"></InputFile>
+            <ValidationMessage For="@(() => ppm.CompletePhoto)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="TargetCompletion" class="col-sm-2 col-form-label">Sesuai pada target?</label>
+        <div class="col-sm-10">
+            <InputSelect id="TargetCompletion" @bind-Value="ppm.TargetCompletion" class="form-control">
+                <option value="true">Ya</option>
+                <option value="false">Tidak</option>
+            </InputSelect>
+            <ValidationMessage For="@(() => ppm.Division)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Evaluation" class="col-sm-2 col-form-label">Evaluasi</label>
+        <div class="col-sm-10">
+            <InputTextArea id="Evaluation" @bind-Value="ppm.Evaluation" class="form-control"></InputTextArea>
+            <ValidationMessage For="@(() => ppm.Evaluation)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="RequestorNotes" class="col-sm-2 col-form-label">Catatan (Diisi oleh departemen pemohon)</label>
+        <div class="col-sm-10">
+            <InputTextArea id="RequestorNotes" @bind-Value="ppm.RequestorNotes" class="form-control"></InputTextArea>
+            <ValidationMessage For="@(() => ppm.RequestorNotes)" />
+        </div>
+    </div>
+    <button style="margin: 20px 0px; float: right;" type="submit" class="btn btn-primary">Simpan</button>
+</EditForm>
+
+@code {
+    private PPMTask ppm;
+    [Parameter]
+    public string PPMId { get; set; }
+
+    private List<Employee> Employees { get; set; } = new List<Employee>();
+
+    private async Task LoadData()
+    {
+        Employees = await DataContext.Employees.ToListAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        ppm = await DataContext.PPMTasks.FindAsync(PPMId);
+        ppm.Status = StatusEnum.Completed;
+        await LoadData();
+    }
+
+    private async Task UpdatePPM()
+    {
+        DataContext.PPMTasks.Update(ppm);
+        await DataContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/PPMList");
+    }
+}

@@ -1,0 +1,160 @@
+﻿@page "/EditPPMTask/{PPMId}"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<h3>Edit PPM</h3><hr>
+
+<EditForm Model="ppm" OnValidSubmit="UpdatePPM">
+    <DataAnnotationsValidator />
+    <InputHidden value="ppm.Status" />
+    <ValidationMessage For="@(() => ppm.Status)" />
+    <div class="form-group row">
+        <label for="TaskId" class="col-sm-2 col-form-label">PPM ID</label>
+        <div class="col-sm-10">
+            <InputText readonly id="TaskId" @bind-Value="ppm.TaskID" class="form-control" />
+            <ValidationMessage For="@(() => ppm.TaskID)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="RequestDate" class="col-sm-2 col-form-label">Tanggal Request</label>
+        <div class="col-sm-10">
+            <InputDate readonly id="RequestDate" @bind-Value="ppm.RequestDate" class="form-control" />
+            <ValidationMessage For="@(() => ppm.RequestDate)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Requestor" class="col-sm-2 col-form-label">Requestor</label>
+        <div class="col-sm-10">
+            <InputText id="Requestor" @bind-Value="ppm.Requestor" class="form-control" />
+            <ValidationMessage For="@(() => ppm.Requestor)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Division" class="col-sm-2 col-form-label">Divisi</label>
+        <div class="col-sm-10">
+            <InputSelect id="Requestor" @bind-Value="ppm.Division" class="form-control">
+                <option value="@ppm.Division">@ppm.Division</option>
+                <option value="Formalities">Formalities</option>
+                <option value="HSE">HSE</option>
+                <option value="HRD & GA">HRD & GA</option>
+                <option value="Operation">Operation</option>
+                <option value="Security">Security</option>
+            </InputSelect>
+            <ValidationMessage For="@(() => ppm.Division)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="JobDesc" class="col-sm-2 col-form-label">Deskripsi Pekerjaan</label>
+        <div class="col-sm-10">
+            <InputTextArea id="JobDesc" @bind-Value="@ppm.JobDesc" class="form-control" rows="6">
+            </InputTextArea>
+            <ValidationMessage For="@(() => ppm.JobDesc)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="WorkType" class="col-sm-2 col-form-label">Jenis Pekerjaan</label>
+        <div class="col-sm-10">
+            <InputSelect id="WorkType" @bind-Value="ppm.WorkType" class="form-control">
+                <option value="@ppm.WorkType">@ppm.WorkType</option>
+                <option value="Perbaikan">Perbaikan</option>
+                <option value="Modifikasi">Modifikasi</option>
+                <option value="Pemasangan Baru">Pemasangan Baru</option>
+                <option value="Verifikasi / Testing">Verifikasi / Testing</option>
+            </InputSelect>
+            <ValidationMessage For="@(() => ppm.Division)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Photo" class="col-sm-2 col-form-label">Foto Kondisi Awal</label>
+        <div class="col-sm-10">
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="SupportingDocument" class="col-sm-2 col-form-label">Dokumen Pendukung</label>
+        <div class="col-sm-10">
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Notes" class="col-sm-2 col-form-label">Catatan</label>
+        <div class="col-sm-10">
+            <InputText id="Notes" @bind-Value="ppm.Notes" class="form-control" />
+            <ValidationMessage For="@(() => ppm.Notes)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="TargetDate" class="col-sm-2 col-form-label">Target Penyelesaian</label>
+        <div class="col-sm-10">
+            <InputDate id="TargetDate" @bind-Value="@ppm.TargetDate" class="form-control" rows="6"></InputDate>
+            <ValidationMessage For="@(() => ppm.TargetDate)" />
+        </div>
+    </div>
+
+    <!-- Button trigger modal -->
+    <button style="margin: 20px 0px; float: right;" type="button" class="btn btn-primary" data-toggle="modal" data-target="#assign">
+        Assign
+    </button>
+
+    <!-- Modal -->
+    <div class="modal fade" id="assign" tabindex="-1" role="dialog" aria-labelledby="assignLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignLabel">Assign Technician</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label for="UserID" class="col-sm-4 col-form-label">Assign to</label>
+                        <div class="col-sm-8">
+                            <InputSelect id="UserID" @bind-Value="ppm.UserID" class="form-control">
+                                <option value=""></option>
+                                @foreach (var emp in Employees)
+                                {
+                                    <option value="@emp.UserID">@emp.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => ppm.UserID)" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private PPMTask ppm;
+    [Parameter]
+    public string PPMId { get; set; }
+
+    private List<Employee> Employees { get; set; } = new List<Employee>();
+
+    private async Task LoadData()
+    {
+        Employees = await DataContext.Employees.ToListAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        ppm = await DataContext.PPMTasks.FindAsync(PPMId);
+        ppm.Status = StatusEnum.InProgress;
+        await LoadData();
+    }
+
+    private async Task UpdatePPM()
+    {
+        DataContext.PPMTasks.Update(ppm);
+        await DataContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/PPMList");
+    }
+}

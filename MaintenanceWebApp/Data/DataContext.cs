@@ -9,6 +9,7 @@ namespace MaintenanceWebApp.Data
         // so that Entity Framework Core can create database tables for them.
         public DbSet<Employee> Employees { get; set; }
         public DbSet<MaintenanceTask> MaintenanceTasks { get; set; }
+        public DbSet<PPMTask> PPMTasks { get; set; }
         //Inventory
         public DbSet<Tank> Tanks { get; set; }
         public DbSet<Inventory> Inventories { get; set; }

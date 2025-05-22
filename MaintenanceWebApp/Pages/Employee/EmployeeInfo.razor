@@ -1,17 +1,25 @@
-﻿@using MaintenanceWebApp.Data
+﻿@page "/EmployeeInfo/{employeeId}"
+
+@using MaintenanceWebApp.Data
 @inject DataContext DataContext
 
-@if (Employee != null)
-{
-    <div>
-        <h4>Your Information</h4>
-        <p>ID: @Employee.UserID</p>
-        <p>Name: @Employee.Name</p>
-        <p>Email: @Employee.Email</p>
-    </div>
-}
+
+<div>
+    <h4>Employee Information</h4><hr>
+    <p>ID: @employee.UserID</p>
+    <p>Name: @employee.Name</p>
+    <p>Email: @employee.Email</p>
+    <p>Role: @employee.JobTitle</p>
+</div>
 
 @code {
+    private Employee employee;
     [Parameter]
-    public Employee Employee { get; set; }
+    public string employeeId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        employee = await DataContext.Employees.FindAsync(employeeId);
+    }
 }
