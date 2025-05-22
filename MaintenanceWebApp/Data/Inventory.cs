@@ -11,7 +11,6 @@ namespace MaintenanceWebApp.Data
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string InventoryID { get; set; }
 
-        [Required]
         public string Name { get; set; }
 
         public string Location { get; set; } = null;
@@ -24,9 +23,9 @@ namespace MaintenanceWebApp.Data
 
         public virtual Tank Tank { get; set; }
 
-        public int? TankId { get; set; } //foreign key
+        public int? TankId { get; set; } = null;//foreign key
 
-        public byte[] Photo { get; set; } = null;
+        public byte[]? Photo { get; set; } = null;
 
         public string Description { get; set; }
     }
