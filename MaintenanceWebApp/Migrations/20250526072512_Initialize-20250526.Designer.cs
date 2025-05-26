@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250522045402_UpdatePPMTaskEmployee")]
-    partial class UpdatePPMTaskEmployee
+    [Migration("20250526072512_Initialize-20250526")]
+    partial class Initialize20250526
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -82,10 +82,9 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("Photo")
-                        .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<int>("TankID")
+                    b.Property<int?>("TankId")
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
@@ -94,7 +93,7 @@ namespace MaintenanceWebApp.Migrations
 
                     b.HasKey("InventoryID");
 
-                    b.HasIndex("TankID");
+                    b.HasIndex("TankId");
 
                     b.ToTable("Inventories");
 
@@ -595,9 +594,7 @@ namespace MaintenanceWebApp.Migrations
                 {
                     b.HasOne("MaintenanceWebApp.Data.Tank", "Tank")
                         .WithMany()
-                        .HasForeignKey("TankID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TankId");
 
                     b.Navigation("Tank");
                 });

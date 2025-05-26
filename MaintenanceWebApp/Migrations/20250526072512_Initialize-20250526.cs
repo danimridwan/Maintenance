@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MaintenanceWebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialize : Migration
+    public partial class Initialize20250526 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -214,18 +214,50 @@ namespace MaintenanceWebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PPMTasks",
+                columns: table => new
+                {
+                    TaskID = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Requestor = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Division = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    JobDesc = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RequestDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TargetDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    Photo = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CompletePhoto = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    SupportingDocument = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RequestorNotes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TargetCompletion = table.Column<bool>(type: "bit", nullable: false),
+                    Evaluation = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    WorkType = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PPMTasks", x => x.TaskID);
+                    table.ForeignKey(
+                        name: "FK_PPMTasks_Employees_UserID",
+                        column: x => x.UserID,
+                        principalTable: "Employees",
+                        principalColumn: "UserID");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Inventories",
                 columns: table => new
                 {
                     InventoryID = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Material = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Type = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TankID = table.Column<int>(type: "int", nullable: true),
+                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Material = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TankId = table.Column<int>(type: "int", nullable: true),
                     Photo = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Discriminator = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Mmh20Plus = table.Column<int>(type: "int", nullable: true),
                     Mmh20Minus = table.Column<int>(type: "int", nullable: true),
@@ -256,11 +288,10 @@ namespace MaintenanceWebApp.Migrations
                 {
                     table.PrimaryKey("PK_Inventories", x => x.InventoryID);
                     table.ForeignKey(
-                        name: "FK_Inventories_Tanks_TankID",
-                        column: x => x.TankID,
+                        name: "FK_Inventories_Tanks_TankId",
+                        column: x => x.TankId,
                         principalTable: "Tanks",
-                        principalColumn: "TankID",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "TankID");
                 });
 
             migrationBuilder.CreateIndex(
@@ -303,13 +334,18 @@ namespace MaintenanceWebApp.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Inventories_TankID",
+                name: "IX_Inventories_TankId",
                 table: "Inventories",
-                column: "TankID");
+                column: "TankId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MaintenanceTasks_UserID",
                 table: "MaintenanceTasks",
+                column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PPMTasks_UserID",
+                table: "PPMTasks",
                 column: "UserID");
         }
 
@@ -336,6 +372,9 @@ namespace MaintenanceWebApp.Migrations
 
             migrationBuilder.DropTable(
                 name: "MaintenanceTasks");
+
+            migrationBuilder.DropTable(
+                name: "PPMTasks");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

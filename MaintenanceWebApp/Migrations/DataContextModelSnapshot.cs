@@ -79,10 +79,9 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("Photo")
-                        .IsRequired()
                         .HasColumnType("varbinary(max)");
 
-                    b.Property<int>("TankID")
+                    b.Property<int?>("TankId")
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
@@ -91,7 +90,7 @@ namespace MaintenanceWebApp.Migrations
 
                     b.HasKey("InventoryID");
 
-                    b.HasIndex("TankID");
+                    b.HasIndex("TankId");
 
                     b.ToTable("Inventories");
 
@@ -592,9 +591,7 @@ namespace MaintenanceWebApp.Migrations
                 {
                     b.HasOne("MaintenanceWebApp.Data.Tank", "Tank")
                         .WithMany()
-                        .HasForeignKey("TankID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("TankId");
 
                     b.Navigation("Tank");
                 });
