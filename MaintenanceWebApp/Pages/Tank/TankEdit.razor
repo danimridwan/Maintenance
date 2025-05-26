@@ -1,0 +1,56 @@
+﻿@page "/TankEdit/{tankId}"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+
+<h3>Edit Tank</h3>
+
+<EditForm Model="tank" OnValidSubmit="UpdateTank">
+    <DataAnnotationsValidator />
+    <div class="form-group row">
+        <label for="TankNo" class="col-sm-2 col-form-label">Tank No</label>
+        <div class="col-sm-10">
+            <InputText id="TankNo" @bind-Value="tank.TankNo" class="form-control" />
+            <ValidationMessage For="@(() => tank.TankNo)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="Capacity" class="col-sm-2 col-form-label">Capacity (MT)</label>
+        <div class="col-sm-10">
+            <InputNumber id="Capacity" @bind-Value="tank.Capacity" class="form-control" />
+            <ValidationMessage For="@(() => tank.Capacity)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="InternalCoating" class="col-sm-2 col-form-label">Internal Coating</label>
+        <div class="col-sm-10">
+            <InputText id="InternalCoating" @bind-Value="tank.InternalCoating" class="form-control" />
+            <ValidationMessage For="@(() => tank.InternalCoating)" />
+        </div>
+    </div>
+    <br />
+    <button type="submit" class="btn btn-primary">Update Tank</button>
+</EditForm>
+
+@code{
+
+    private Tank tank;
+    [Parameter]
+    public string tankId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        tank = await DataContext.Tanks.FindAsync(int.Parse(tankId));
+    }
+
+    private async Task UpdateTank()
+    {
+        DataContext.Tanks.Update(tank);
+        await DataContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/Tank");
+    }
+}
