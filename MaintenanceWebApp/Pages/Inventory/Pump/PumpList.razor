@@ -1,4 +1,4 @@
-﻿@page "/Pump"
+﻿@page "/PumpList"
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
@@ -12,38 +12,33 @@
     <div class="col-6">
         <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddPump()">New Pump</button>
     </div>
-</div>
+</div><br>
 
 @if (Pumps.Count != 0)
 {
     <table class="table table-striped">
         <thead>
             <tr class="table-dark">
-                <th class="visually-hidden">ID</th>
                 <th>Name</th>
-                <th>Location</th>
-                <th>Material</th>
                 <th>Brand</th>
                 <th>Type</th>
+                <th>Location</th>
                 <th>Tank</th>
-                <th>Description</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
             @foreach (var p in Pumps)
             {
                 <tr>
-                    <td>@p.InventoryID</td>
-                    <td>@p.Name</td>
-                    <td>@p.Location</td>
-                    <td>@p.Material</td>
+                    <td><a style="text-decoration: none;" href="#" @onclick="() => PumpInfo(p)">@p.Name</a></td>
                     <td>@p.Brand</td>
                     <td>@p.Type</td>
-                    <td>@p.TankId</td>
-                    <td>@p.Description</td>
+                    <td>@p.Location</td>
+                    <td>@p.Tank</td>
                     <td>
                         <button class="btn btn-warning" @onclick="() => EditPump(p)">Edit</button>
-                        <button class="btn btn-danger" @onclick="() => SoftDeletePump(p)">Soft Delete</button>
+                        <button class="btn btn-danger" @onclick="() => DeletePump(p)">Delete</button>
                     </td>
                 </tr>
             }
@@ -73,13 +68,17 @@ else
         NavigationManager.NavigateTo($"/PumpAdd/");
     }
 
+    private void PumpInfo(Pump pump)
+    {
+        NavigationManager.NavigateTo($"/PumpInfo/{pump.InventoryID}");
+    }
+
     private void EditPump(Pump pump)
     {
         NavigationManager.NavigateTo($"/EditPump/{pump.InventoryID}");
     }
 
-
-    private void SoftDeletePump(Pump pump)
+    private void DeletePump(Pump pump)
     {
         NavigationManager.NavigateTo($"/DeletePump/{pump.InventoryID}");
     }

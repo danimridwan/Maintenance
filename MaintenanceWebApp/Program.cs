@@ -13,8 +13,8 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
 // Retrieves the connection string named "Default" from the application's configuration.
-var cs = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(cs));
+builder.Services.AddDbContextFactory<DataContext>(options =>
+options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {

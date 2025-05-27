@@ -1,0 +1,182 @@
+﻿@page "/EditPump/{PumpId}"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbContextFactory
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+@inject IJSRuntime jsRuntime
+
+<h3>Edit PPM</h3><hr>
+
+<EditForm Model="pump" OnValidSubmit="UpdatePump">
+    <DataAnnotationsValidator />
+
+    <div class="card">
+        <div class="card-header bg-light border-primary">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a id="headerGeneral" class="nav-link active">General Information</a>
+                </li>
+                <li class="nav-item">
+                    <a id="headerSpecific" class="nav-link disabled">Pump Information</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            @if (CurrentStep == 1)
+            {
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label for="Name" class="col-sm-2 col-form-label">Name <span class="required">*</span></label>
+                        <InputText id="Name" @bind-Value="pump.Name" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.Name)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="Location" class="col-sm-2 col-form-label">Location</label>
+                        <InputText id="Location" @bind-Value="pump.Location" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.Location)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="Material" class="col-sm-2 col-form-label">Material</label>
+                        <InputText id="Material" @bind-Value="pump.Material" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.Material)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="Brand" class="col-sm-2 col-form-label">Brand</label>
+                        <InputText id="Brand" @bind-Value="pump.Brand" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.Brand)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="Type" class="col-sm-2 col-form-label">Type</label>
+                        <InputText id="Type" @bind-Value="pump.Type" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.Type)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="Tank" class="col-sm-2 col-form-label">Tank</label>
+                        <InputSelect id="Tank" @bind-Value="pump.Tank" class="form-control col-sm-10">
+                            <option value=""></option>
+                            @foreach (var t in Tanks)
+                            {
+                                <option value="@t.TankID">@t.TankNo</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => pump.Tank)" />
+                    </div>
+                    <div class="col-sm-12">
+                        <label for="Photo" class="col-sm-2 col-form-label">Photo</label>
+                        <InputFile id="Photo" class="form-control col-sm-10" accept=".jpg,.jpeg,.png" OnChange="OnInputDocChangeAsync"></InputFile>
+                        <ValidationMessage For="@(() => pump.Photo)" />
+                    </div>
+                    <div class="col-sm-12">
+                        <label for="Description" class="col-sm-2 col-form-label">Description</label>
+                        <InputTextArea id="Description" @bind-Value="@pump.Description" class="form-control col-sm-10" rows="4"></InputTextArea>
+                        <ValidationMessage For="@(() => pump.Description)" />
+                    </div>
+                </div>
+            }
+            else if (CurrentStep == 2)
+            {
+                <div class="form-group row">
+                    <div class="col-sm-6">
+                        <label for="PumpTag" class="col-sm-3 col-form-label">Pump Tag</label>
+                        <InputText id="PumpTag" @bind-Value="pump.PumpTag" class="form-control col-sm-9" />
+                        <ValidationMessage For="@(() => pump.PumpTag)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="PumpYear" class="col-sm-3 col-form-label">Pump Year</label>
+                        <InputText id="PumpYear" @bind-Value="pump.Year" class="form-control col-sm-9" />
+                        <ValidationMessage For="@(() => pump.Year)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="PumpCapacity" class="col-sm-3 col-form-label">Pump Capacity</label>
+                        <InputText id="PumpCapacity" @bind-Value="pump.PumpCapacity" class="form-control col-sm-9" />
+                        <ValidationMessage For="@(() => pump.PumpCapacity)" />
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="PumpPower" class="col-sm-3 col-form-label">Power</label>
+                        <InputText id="PumpPower" @bind-Value="pump.Power" class="form-control col-sm-9" />
+                        <ValidationMessage For="@(() => pump.Power)" />
+                    </div>
+                    <div class="col-sm-12">
+                        <label for="ExplotionProofCode" class="col-sm-2 col-form-label">ExplotionProofCode</label>
+                        <InputText id="ExplotionProofCode" @bind-Value="@pump.ExplotionProofCode" class="form-control col-sm-10" />
+                        <ValidationMessage For="@(() => pump.ExplotionProofCode)" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <br />
+
+    <div style="float: right;">
+        <div id="btnNext" style="display:block;">
+            <button type="button" class="btn btn-primary" @onclick="NextStep">Next</button>
+        </div>
+        <div style="display:none;" id="btnPreviousSubmit">
+            <button id="btnPrevious" type="button" class="btn btn-secondary" @onclick="PreviousStep">Previous</button>
+            <button id="btnSubmit" type="submit" class="btn btn-primary" @onclick="UpdatePump">Simpan</button>
+        </div>
+    </div>
+
+</EditForm>
+
+@code {
+    private Pump pump;
+    [Parameter]
+    public string PumpId { get; set; }
+    private int CurrentStep { get; set; } = 1;
+
+    private List<Tank> Tanks { get; set; } = new List<Tank>();
+
+    private async Task LoadData()
+    {
+        await using var db = await DbContextFactory.CreateDbContextAsync();
+        Tanks = await db.Tanks.ToListAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        pump = await DataContext.Pumps.FindAsync(PumpId);
+        await LoadData();
+    }
+
+    private void NextStep()
+    {
+        jsRuntime.InvokeAsync<object>("nextHeader");
+        CurrentStep++;
+    }
+    private void PreviousStep()
+    {
+        jsRuntime.InvokeAsync<object>("previousHeader");
+        CurrentStep--;
+    }
+
+    private async Task UpdatePump()
+    {
+        await using var db = await DbContextFactory.CreateDbContextAsync();
+        DataContext.Pumps.Update(pump);
+        await db.SaveChangesAsync();
+
+        NavigationManager.NavigateTo("/PumpList");
+    }
+
+    private async Task OnInputDocChangeAsync(InputFileChangeEventArgs e)
+    {
+        var allowedExtensions = new List<string> { ".jpg", ".jpeg", ".png" };
+        var fileExtension = Path.GetExtension(e.File.Name);
+
+        if (!allowedExtensions.Contains(fileExtension.ToLower()))
+        {
+            // Display an error message to the user or prevent the upload
+            await Task.Run(() => { }); // Replace with your error handling logic
+            return;
+        }
+        // Proceed with the upload
+        var buffer = new byte[e.File.Size];
+        await e.File.OpenReadStream().ReadAsync(buffer);
+        // Do something with the file data (e.g., save it to a database or file system)
+        await Task.Run(() => { }); // Replace with your file saving logic
+    }
+}
