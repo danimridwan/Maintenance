@@ -1,0 +1,98 @@
+﻿@page "/Tank"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+
+<div class="row">
+    <div class="col-6">
+        <h3>Tank</h3>
+    </div>
+    <div class="col-6">
+        <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddTank()">New Tank</button>
+    </div>
+</div>
+<br />
+@if (Tanks.Count != 0)
+{
+    <div class="form-group">
+        <input class="form-control" type="text" placeholder="Search.." @bind="Filter" @bind:event="oninput" />
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr class="table-dark">
+                @* <th class="visually-hidden">ID</th> *@
+                <th class="text-center">Tank No</th>
+                <th class="text-center">Capacity</th>
+                <th class="text-center">Internal Coating</th>
+                <th class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var t in Tanks)
+            {
+                if (!FilteringData(t))
+                    continue;
+                <tr>
+                    @* <td>@t.TankID</td> *@
+                    <td class="text-center">@t.TankNo</td>
+                    <td class="text-center">@t.Capacity</td>
+                    <td class="text-center">@t.InternalCoating</td>
+                    <td class="text-center">
+                        <button class="btn btn-info" @onclick="() => EditTank(t)"><span class="oi oi-pencil"></span></button>
+                        <button class="btn btn-danger" @onclick="() => SoftDeleteTank(t)"><span class="oi oi-trash"></span></button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No Tanks Found.</p>
+}
+
+@code {
+    private List<Tank> Tanks { get; set; } = new List<Tank>();
+    public string Filter { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        Tanks = await DataContext.Tanks.ToListAsync();
+    }
+
+    private void AddTank()
+    {
+        NavigationManager.NavigateTo($"/TankAdd/");
+    }
+
+    private void EditTank(Tank tank)
+    {
+        NavigationManager.NavigateTo($"/TankEdit/{tank.TankID}");
+    }
+
+
+    private void SoftDeleteTank(Tank tank)
+    {
+        NavigationManager.NavigateTo($"/TankDelete/{tank.TankID}");
+    }
+
+    public bool FilteringData(Tank tank)
+    {
+        Filter = Filter.ToLower();
+
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+
+        if (tank.TankNo.ToString().ToLower().Contains(Filter) || tank.Capacity.ToString().ToLower().Contains(Filter) || tank.InternalCoating.ToString().ToLower().Contains(Filter))
+            return true;
+
+        return false;
+    }
+}
