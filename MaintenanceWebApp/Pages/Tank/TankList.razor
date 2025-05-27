@@ -13,9 +13,12 @@
         <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddTank()">New Tank</button>
     </div>
 </div>
-
+<br />
 @if (Tanks.Count != 0)
 {
+    <div class="form-group">
+        <input class="form-control" type="text" placeholder="Search.." @bind="Filter" @bind:event="oninput" />
+    </div>
     <table class="table table-striped">
         <thead>
             <tr class="table-dark">
@@ -29,6 +32,8 @@
         <tbody>
             @foreach (var t in Tanks)
             {
+                if (!FilteringData(t))
+                    continue;
                 <tr>
                     @* <td>@t.TankID</td> *@
                     <td class="text-center">@t.TankNo</td>
@@ -50,6 +55,7 @@ else
 
 @code {
     private List<Tank> Tanks { get; set; } = new List<Tank>();
+    public string Filter { get; set; } = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -75,5 +81,18 @@ else
     private void SoftDeleteTank(Tank tank)
     {
         NavigationManager.NavigateTo($"/TankDelete/{tank.TankID}");
+    }
+
+    public bool FilteringData(Tank tank)
+    {
+        Filter = Filter.ToLower();
+
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+
+        if (tank.TankNo.ToString().ToLower().Contains(Filter) || tank.Capacity.ToString().ToLower().Contains(Filter) || tank.InternalCoating.ToString().ToLower().Contains(Filter))
+            return true;
+
+        return false;
     }
 }
