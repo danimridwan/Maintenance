@@ -4,12 +4,17 @@
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
 
-<h3>Delete PPM</h3>
+<div class="card">
+
+<div class="card-body">
+<h3>Delete Pump</h3><hr />
 
 <p>Anda yakin ingin menghapus Pump dengan ID: @PumpId ?</p>
-
 <button type="button" class="btn btn-danger" @onclick="PumpDelete">Delete</button>
 <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+</div>
+
+</div>
 
 @code {
     [Parameter]

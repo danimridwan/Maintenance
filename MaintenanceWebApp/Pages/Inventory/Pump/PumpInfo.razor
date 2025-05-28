@@ -5,9 +5,6 @@
 @inject DataContext DataContext
 @inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
 
-<h3>Pump Information</h3>
-<hr>
-
 <div class="card">
 	<div class="card-header bg-light border-primary">
 		General Information
@@ -17,52 +14,52 @@
 
 			<div class="col-sm-6">
 
-				<table>
+				<table width="100%">
 					<tr>
-						<td>Name</td>
+						<td class="td-first">Name</td>
 						<td> : </td>
-						<td>@pump.Name</td>
+						<td class="td-last">@pump.Name</td>
 					</tr>
 					<tr>
-						<td>Location</td>
+						<td class="td-first">Location</td>
 						<td> : </td>
-						<td>@pump.Location</td>
+						<td class="td-last">pump.Location</td>
 					</tr>
 					<tr>
-						<td>Photo</td>
+						<td class="td-first">Photo</td>
 						<td> : </td>
-						<td>@pump.Photo</td>
+						<td class="td-last">@pump.Photo</td>
 					</tr>
 					<tr>
-						<td>Description</td>
+						<td class="td-first">Description</td>
 						<td> : </td>
-						<td>@pump.Description</td>
+						<td class="td-last">@pump.Description</td>
 					</tr>
 				</table>
 
 			</div>
 
 			<div class="col-sm-6">
-				<table>
+				<table width="100%">
 					<tr>
-						<td>Material</td>
+						<td class="td-first">Material</td>
 						<td> : </td>
-						<td>@pump.Material</td>
+						<td class="td-last">@pump.Material</td>
 					</tr>
 					<tr>
-						<td>Brand</td>
+						<td class="td-first">Brand</td>
 						<td> : </td>
-						<td>@pump.Brand</td>
+						<td class="td-last">@pump.Brand</td>
 					</tr>
 					<tr>
-						<td>Type</td
+						<td class="td-first">Type</td
 						<td> : </td>
-						<td>@pump.Type</td>
+						<td class="td-last">@pump.Type</td>
 					</tr>
 					<tr>
-						<td>Tank</td>
+						<td class="td-first">Tank</td>
 						<td> : </td>
-						<td>@pump.Tank</td>
+						<td class="td-last">@pump.Tank</td>
 					</tr>
 				</table>
 			</div>
@@ -78,37 +75,39 @@
 
 			<div class="col-sm-6">
 
-				<table>
+				<table width="100%">
 					<tr>
-						<td>Pump Tag</td>
+						<td class="td-first">Pump Tag</td>
 						<td> : </td>
-						<td>@pump.PumpTag</td>
+						<td class="td-last">@pump.PumpTag</td>
 					</tr>
 					<tr>
-						<td>Year</td>
+						<td class="td-first">Year</td>
 						<td> : </td>
-						<td>@pump.Year</td>
+						<td class="td-last">@pump.Year</td>
+					</tr>
+					<tr>
+						<td class="td-first">Explotion Proof Code</td>
+						<td> : </td>
+						<td class="td-last">@pump.ExplotionProofCode</td>
 					</tr>
 				</table>
 
 			</div>
 
 			<div class="col-sm-6">
-				<table>
+				<table width="100%">
 					<tr>
-						<td>Pump Capacity</td>
+						<td class="td-first">Pump Capacity</td>
 						<td> : </td>
-						<td>@pump.PumpCapacity</td>
+						<td class="td-last">@pump.PumpCapacity</td>
 					</tr>
 					<tr>
-						<td>Power</td>
+						<td class="td-first">Power</td>
 						<td> : </td>
-						<td>@pump.Power</td>
+						<td class="td-last">@pump.Power</td>
 					</tr>
 				</table>
-			</div>
-			<div class="col-sm-12 my-3">
-				<label>ExplotionProofCode : @pump.ExplotionProofCode</label>
 			</div>
 		</div>
 	</div>

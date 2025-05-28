@@ -6,52 +6,69 @@
 @inject NavigationManager NavigationManager
 
 <div class="row">
-    <div class="col-6">
-        <h3>Pump</h3>
+    <div class=" col-sm-12">
+        <input class="form-control" type="text" placeholder="Search.." @bind="Filter" @bind:event="oninput" />
     </div>
-    <div class="col-6">
-        <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddPump()">New Pump</button>
-    </div>
-</div><br>
+</div><br />
 
-@if (Pumps.Count != 0)
-{
-    <table class="table table-striped">
-        <thead>
-            <tr class="table-dark">
-                <th>Name</th>
-                <th>Brand</th>
-                <th>Type</th>
-                <th>Location</th>
-                <th>Tank</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in Pumps)
-            {
-                <tr>
-                    <td><a style="text-decoration: none;" href="#" @onclick="() => PumpInfo(p)">@p.Name</a></td>
-                    <td>@p.Brand</td>
-                    <td>@p.Type</td>
-                    <td>@p.Location</td>
-                    <td>@p.Tank</td>
-                    <td>
-                        <button class="btn btn-warning" @onclick="() => EditPump(p)">Edit</button>
-                        <button class="btn btn-danger" @onclick="() => DeletePump(p)">Delete</button>
-                    </td>
+<div class="card">
+    @if (Pumps.Count != 0)
+    {
+        <div class="row px-3">
+            <div class=" col-sm-5 form-group">
+                <h5 class="display-6">Pump</h5>
+                <label style="font-size: smaller;">@TotalCount Records</label>
+            </div>
+            <div class="col-sm-4"></div>
+            <div style="align-content: center;" class="col-sm-3">
+                <button class="btn btn-primary float-end" @onclick="() => AddPump()">Add Pump</button>
+            </div>
+        </div>
+        <table width="100%" class="table my-0">
+            <tbody>
+                <tr style="border-top-width: 1px;" class="">
+                    <th style="padding-left: 20px; font-weight: 500;" width="30%">Name</th>
+                    <th style="font-weight: 500;" class="text-center" width="12%">Brand</th>
+                    <th style="font-weight: 500;" class="text-center" width="12%">Type</th>
+                    <th style="font-weight: 500;" class="text-center" width="12%">Location</th>
+                    <th style="font-weight: 500;" class="text-center" width="12%">Tank</th>
+                    <th style="font-weight: 500;" class="text-center" width="22%">Action</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-}
-else
-{
-    <p>No Pumps Found.</p>
-}
+                @foreach (var p in Pumps)
+                {
+                    if (!FilteringData(p))
+                        continue;
+                    <tr>
+                        <td style="align-content: center; padding-left: 20px;"><a style="text-decoration: none;" href="#" @onclick="() => PumpInfo(p)">@p.Name</a></td>
+                        <td style="align-content: center;" class="text-center">@p.Brand</td>
+                        <td style="align-content: center;" class="text-center">@p.Type</td>
+                        <td style="align-content: center;" class="text-center">@p.Location</td>
+                        <td style="align-content: center;" class="text-center">@p.Tank</td>
+                        <td style="align-content: center;" class="text-center">
+                            <button class="btn btn-success" @onclick="() => EditPump(p)"><span class="oi oi-pencil"></span></button>
+                            <button class="btn btn-danger" @onclick="() => DeletePump(p)"><span class="oi oi-trash"></span></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="row mx-2 my-2">
+            <div class="col-sm-12">
+                <b>Pagination Tab Here.</b>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p>No Pumps Found.</p>
+    }
+</div>
 
 @code {
     private List<Pump> Pumps { get; set; } = new List<Pump>();
+    public string Filter { get; set; } = string.Empty;
+    private int TotalCount => Pumps.Count;
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,5 +98,18 @@ else
     private void DeletePump(Pump pump)
     {
         NavigationManager.NavigateTo($"/DeletePump/{pump.InventoryID}");
+    }
+
+    public bool FilteringData(Pump pump)
+    {
+        Filter = Filter.ToLower();
+
+        if (string.IsNullOrEmpty(Filter))
+            return true;
+
+        if (pump.Name.ToString().ToLower().Contains(Filter) || pump.Brand.ToString().ToLower().Contains(Filter) || pump.Type.ToString().ToLower().Contains(Filter) || pump.Location.ToString().ToLower().Contains(Filter))
+            return true;
+
+        return false;
     }
 }

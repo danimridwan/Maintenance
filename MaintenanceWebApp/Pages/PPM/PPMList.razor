@@ -39,7 +39,7 @@
                     <td class="text-center">@ppmTask.Division</td>
                     <td class="text-center">@ppmTask.WorkType</td>
                     <td>
-                        <center>
+                        
                             @if (ppmTask.Status == StatusEnum.Request)
                             {
                                 <div class="btn btn-danger">@ppmTask.Status</div>
@@ -56,7 +56,7 @@
                             {
                                 <div class="btn btn-info">@ppmTask.Status</div>
                             }
-                        </center>
+                        
                     </td>
                     <td class="text-center">
                         @if (ppmTask.Status == StatusEnum.Request)
