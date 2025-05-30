@@ -2,6 +2,7 @@
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
 
@@ -14,48 +15,46 @@
     </div>
 </div>
 <br />
-@if (Tanks.Count != 0)
+<div class="page-size-chooser">
+    Items per page:
+    <select @bind="@Pagination.ItemsPerPage">
+        <option>5</option>
+        <option>10</option>
+        <option>20</option>
+        <option>50</option>
+    </select>
+</div>
+<br />
+@if (totalRow > 0)
 {
-    <div class="form-group">
-        <input class="form-control" type="text" placeholder="Search.." @bind="Filter" @bind:event="oninput" />
-    </div>
-    <table class="table table-striped">
-        <thead>
-            <tr class="table-dark">
-                @* <th class="visually-hidden">ID</th> *@
-                <th class="text-center">Tank No</th>
-                <th class="text-center">Capacity</th>
-                <th class="text-center">Internal Coating</th>
-                <th class="text-center">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var t in Tanks)
-            {
-                if (!FilteringData(t))
-                    continue;
-                <tr>
-                    @* <td>@t.TankID</td> *@
-                    <td class="text-center">@t.TankNo</td>
-                    <td class="text-center">@t.Capacity</td>
-                    <td class="text-center">@t.InternalCoating</td>
-                    <td class="text-center">
-                        <button class="btn btn-info" @onclick="() => EditTank(t)"><span class="oi oi-pencil"></span></button>
-                        <button class="btn btn-danger" @onclick="() => SoftDeleteTank(t)"><span class="oi oi-trash"></span></button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <QuickGrid Items="FilteredItems" Virtualize="true" Pagination="@Pagination" Class="table table-striped table-hover text-center table-bordered">
+        <PropertyColumn Property="@(tank => tank.TankNo)" Title="TankNo" Sortable="true">
+            <ColumnOptions>
+                <div class="search-box">
+                    <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Tank no..." />
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+        <PropertyColumn Property="@(tank => tank.Capacity)" Title="Capacity (MT)" Sortable="true" />
+        <PropertyColumn Property="@(tank => tank.InternalCoating)" Title="Internal Coating" Sortable="true" />
+        <TemplateColumn Title="Actions">
+            <button @onclick="@(() => EditTank(context))" class="btn btn-warning"><span class="oi oi-pencil"></span></button>
+            <button @onclick="@(() => SoftDeleteTank(context))" class="btn btn-danger"><span class="oi oi-trash"></span></button>
+        </TemplateColumn>
+    </QuickGrid>
+
+    <Paginator State="@Pagination" />
 }
-else
-{
+else{
     <p>No Tanks Found.</p>
 }
 
 @code {
-    private List<Tank> Tanks { get; set; } = new List<Tank>();
-    public string Filter { get; set; } = string.Empty;
+    IQueryable<Tank>? pagedTanks;
+    int totalRow = 0;
+    List<Tank> Tanks => DataContext.Tanks.ToList();
+    PaginationState Pagination = new PaginationState { ItemsPerPage = 5 };
+    string nameFilter = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,7 +63,8 @@ else
 
     private async Task LoadData()
     {
-        Tanks = await DataContext.Tanks.ToListAsync();
+        pagedTanks = Tanks.AsQueryable();
+        totalRow = pagedTanks.Count();
     }
 
     private void AddTank()
@@ -83,16 +83,18 @@ else
         NavigationManager.NavigateTo($"/TankDelete/{tank.TankID}");
     }
 
-    public bool FilteringData(Tank tank)
+    IQueryable<Tank> FilteredItems
     {
-        Filter = Filter.ToLower();
+        get
+        {
+            string x = null;
+            var result = pagedTanks;
 
-        if (string.IsNullOrEmpty(Filter))
-            return true;
-
-        if (tank.TankNo.ToString().ToLower().Contains(Filter) || tank.Capacity.ToString().ToLower().Contains(Filter) || tank.InternalCoating.ToString().ToLower().Contains(Filter))
-            return true;
-
-        return false;
+            if (!string.IsNullOrEmpty(nameFilter))
+            {
+                result = result.Where(c => c.TankNo.Contains(nameFilter, StringComparison.CurrentCultureIgnoreCase));
+            }
+            return result;
+        }
     }
 }
