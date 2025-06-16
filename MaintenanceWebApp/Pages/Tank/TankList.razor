@@ -6,6 +6,7 @@
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
 
+
 <div class="row">
     <div class="col-6">
         <h3>Tank</h3>
@@ -27,22 +28,23 @@
 <br />
 @if (totalRow > 0)
 {
-    <QuickGrid Items="FilteredItems" Virtualize="true" Pagination="@Pagination" Class="table table-striped table-hover text-center table-bordered">
-        <PropertyColumn Property="@(tank => tank.TankNo)" Title="TankNo" Sortable="true">
-            <ColumnOptions>
-                <div class="search-box">
-                    <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Tank no..." />
-                </div>
-            </ColumnOptions>
-        </PropertyColumn>
-        <PropertyColumn Property="@(tank => tank.Capacity)" Title="Capacity (MT)" Sortable="true" />
-        <PropertyColumn Property="@(tank => tank.InternalCoating)" Title="Internal Coating" Sortable="true" />
-        <TemplateColumn Title="Actions">
-            <button @onclick="@(() => EditTank(context))" class="btn btn-warning"><span class="oi oi-pencil"></span></button>
-            <button @onclick="@(() => SoftDeleteTank(context))" class="btn btn-danger"><span class="oi oi-trash"></span></button>
-        </TemplateColumn>
-    </QuickGrid>
-
+    <div>
+        <QuickGrid Items="FilteredItems" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover text-center table-bordered">
+            <PropertyColumn Property="@(tank => tank.TankNo)" Title="TankNo" Sortable="true">
+                <ColumnOptions>
+                    <div class="search-box">
+                        <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Tank no..." />
+                    </div>
+                </ColumnOptions>
+            </PropertyColumn>
+            <PropertyColumn Property="@(tank => tank.Capacity)" Title="Capacity (MT)" Sortable="true" />
+            <PropertyColumn Property="@(tank => tank.InternalCoating)" Title="Internal Coating" Sortable="true" />
+            <TemplateColumn Title="Actions">
+                <button @onclick="@(() => EditTank(context))" class="btn btn-warning"><span class="oi oi-pencil"></span></button>
+                <button @onclick="@(() => SoftDeleteTank(context))" class="btn btn-danger"><span class="oi oi-trash"></span></button>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
     <Paginator State="@Pagination" />
 }
 else{
