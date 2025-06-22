@@ -5,17 +5,16 @@
 @inject DataContext DataContext
 @inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
 
-<h3>Tank</h3>
 <EditForm Model="NewTank" OnValidSubmit="CreateTank">
     <DataAnnotationsValidator />
     <div class="card">
-        <div class="card-header bg-light mb-3 border-primary">
-            General Information
+        <div class="card-header border-primary">
+            Tank Information
         </div>
         <div class="card-body">
             <div class="form-group row">
                 <div class="col-sm-12">
-                    <label for="Name" class="col-sm-2 col-form-label">Name <span class="required">*</span></label>
+                    <label for="Name" class="col-sm-2 col-form-label">Tank No <span class="required">*</span></label>
                     <InputText id="Name" @bind-Value="NewTank.TankNo" class="form-control col-sm-10" />
                 </div>
                 <div class="col-sm-12">
@@ -23,14 +22,13 @@
                     <InputNumber id="Capacity" @bind-Value="NewTank.Capacity" class="form-control col-sm-10" />
                 </div>
                 <div class="col-sm-12">
-                    <label for="InternalCoating" class="col-sm-2 col-form-label">InternalCoating <span class="required">*</span></label>
+                    <label for="InternalCoating" class="col-sm-2 col-form-label">Internal Coating <span class="required">*</span></label>
                     <InputText id="InternalCoating" @bind-Value="NewTank.InternalCoating" class="form-control col-sm-10" />
                 </div>
-            </div>
+            </div><br />
+            <button type="submit" class="btn btn-primary">Add New Tank</button>
         </div>
     </div>
-    <br />
-    <button type="submit" class="btn btn-primary">Add New Tank</button>
 </EditForm>
 
 @code{

@@ -1,0 +1,52 @@
+﻿@page "/PumpDelete/{PumpId}"
+
+@using MaintenanceWebApp.Data
+@inject DataContext DataContext
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+
+<div class="card">
+
+    <div class="card-body">
+        <h3>Delete Pump</h3><hr />
+
+        <p>Anda yakin ingin menghapus Pump dengan ID: @PumpId ?</p>
+        <button type="button" class="btn btn-danger" @onclick="DeletePump">Delete</button>
+        <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+    </div>
+
+</div>
+
+@code {
+    [Parameter]
+    public string PumpId { get; set; }
+    private Pump pump;
+
+    protected override async Task OnInitializedAsync()
+    {
+        pump = await DataContext.Pumps.FindAsync(PumpId);
+    }
+
+    private async Task DeletePump()
+    {
+        var pumpToDelete = await DataContext.Pumps.FindAsync(PumpId);
+        string PumpPhoto = pump.Photo;
+
+        if (pumpToDelete != null)
+        {
+            if(PumpPhoto != null)
+            {
+                System.IO.File.Delete(Path.Combine("wwwroot/uploads/images/inventories/", PumpPhoto));
+            }
+
+            DataContext.Pumps.Remove(pumpToDelete);
+            await DataContext.SaveChangesAsync();
+            NavigationManager.NavigateTo("/PumpList");
+        }
+    }
+
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/PumpList");
+    }
+}

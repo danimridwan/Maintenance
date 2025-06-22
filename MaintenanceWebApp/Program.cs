@@ -1,16 +1,14 @@
 using MaintenanceWebApp.Data;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using UploadFilesLibrary;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddSingleton<ISqlDataAccess, SqlDataAccess>();
 
 // Retrieves the connection string named "Default" from the application's configuration.
 builder.Services.AddDbContextFactory<DataContext>(options =>

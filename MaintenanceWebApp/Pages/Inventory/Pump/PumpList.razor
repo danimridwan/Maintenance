@@ -2,114 +2,215 @@
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
-
-<div class="row">
-    <div class=" col-sm-12">
-        <input class="form-control" type="text" placeholder="Search.." @bind="Filter" @bind:event="oninput" />
-    </div>
-</div><br />
+@implements IDisposable
 
 <div class="card">
-    @if (Pumps.Count != 0)
-    {
-        <div class="row px-3">
-            <div class=" col-sm-5 form-group">
-                <h5 class="display-6">Pump</h5>
-                <label style="font-size: smaller;">@TotalCount Records</label>
-            </div>
-            <div class="col-sm-4"></div>
-            <div style="align-content: center;" class="col-sm-3">
-                <button class="btn btn-primary float-end" @onclick="() => AddPump()">Add Pump</button>
-            </div>
+    <div class="row px-3">
+        <div class="col-sm-5 form-group">
+            <h5 class="display-6">Pump</h5>
+            @if (HasPumps)
+            {
+                <div class="page-size-chooser my-2">
+                    Items per page:
+                    <select @bind="ItemsPerPage">
+                        @foreach (var option in PageSizeOptions.Where(o => o <= PumpCount))
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </select>
+                </div>
+            }
         </div>
-        <table width="100%" class="table my-0">
-            <tbody>
-                <tr style="border-top-width: 1px;" class="">
-                    <th style="padding-left: 20px; font-weight: 500;" width="30%">Name</th>
-                    <th style="font-weight: 500;" class="text-center" width="12%">Brand</th>
-                    <th style="font-weight: 500;" class="text-center" width="12%">Type</th>
-                    <th style="font-weight: 500;" class="text-center" width="12%">Location</th>
-                    <th style="font-weight: 500;" class="text-center" width="12%">Tank</th>
-                    <th style="font-weight: 500;" class="text-center" width="22%">Action</th>
-                </tr>
-                @foreach (var p in Pumps)
-                {
-                    if (!FilteringData(p))
-                        continue;
-                    <tr>
-                        <td style="align-content: center; padding-left: 20px;"><a style="text-decoration: none;" href="#" @onclick="() => PumpInfo(p)">@p.Name</a></td>
-                        <td style="align-content: center;" class="text-center">@p.Brand</td>
-                        <td style="align-content: center;" class="text-center">@p.Type</td>
-                        <td style="align-content: center;" class="text-center">@p.Location</td>
-                        <td style="align-content: center;" class="text-center">@p.Tank</td>
-                        <td style="align-content: center;" class="text-center">
-                            <button class="btn btn-success" @onclick="() => EditPump(p)"><span class="oi oi-pencil"></span></button>
-                            <button class="btn btn-danger" @onclick="() => DeletePump(p)"><span class="oi oi-trash"></span></button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="col-sm-4"></div>
+        <div class="col-sm-3 d-flex align-items-center justify-content-end">
+            <button class="btn btn-primary" @onclick="NavigateToAddPump">
+                Add Pump
+            </button>
+        </div>
+    </div>
 
-        <div class="row mx-2 my-2">
-            <div class="col-sm-12">
-                <b>Pagination Tab Here.</b>
+    <div class="px-3">
+        @if (_isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading pump data...</p>
             </div>
-        </div>
-    }
-    else
-    {
-        <p>No Pumps Found.</p>
-    }
+        }
+        else if (!HasPumps)
+        {
+            <hr />
+            <div class="text-center py-3">
+                <p>No pumps found.</p>
+                @if (!string.IsNullOrEmpty(pumpNoFilter))
+                {
+                    <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
+                }
+            </div>
+        }
+        else
+        {
+            <QuickGrid Items="FilteredPumps" Virtualize="true" Pagination="@Pagination"
+                       Class="table table-striped table-hover text-center table-bordered">
+
+                <TemplateColumn Title="Name">
+                    <a style="text-decoration: none;" href="" @onclick="@(() => NavigateToPumpInfo(context))">
+                        @context.Name
+                    </a>
+                </TemplateColumn>
+
+                <PropertyColumn Property="@(pump => pump.Brand)" Title="Brand" Sortable="true" />
+                <PropertyColumn Property="@(pump => pump.Type)" Title="Type" Sortable="true" />
+                <PropertyColumn Property="@(pump => pump.Location)" Title="Location" Sortable="true" />
+                <PropertyColumn Property="@(pump => pump.Tank)" Title="Tank" Sortable="true" />
+                <TemplateColumn Title="Actions">
+                    <button @onclick="@(() => NavigateToEditPump(context))" class="btn btn-warning">
+                        <span class="oi oi-pencil"></span>
+                    </button>
+                    <button @onclick="@(() => NavigateToDeletePump(context))" class="btn btn-danger">
+                        <span class="oi oi-trash"></span>
+                    </button>
+                </TemplateColumn>
+            </QuickGrid>
+
+            <Paginator State="@Pagination" />
+        }
+    </div>
 </div>
 
 @code {
-    private List<Pump> Pumps { get; set; } = new List<Pump>();
-    public string Filter { get; set; } = string.Empty;
-    private int TotalCount => Pumps.Count;
+    #region Fields and Properties
+
+    private IQueryable<Pump>? _allPumps;
+    private string _pumpNoFilter = string.Empty;
+    private Timer? _filterDebounceTimer;
+    private const int DebounceInterval = 300; // milliseconds
+    private bool _isLoading = true;
+
+    private readonly int[] PageSizeOptions = new[] { 5, 10, 20 };
+
+    public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
+
+    public bool HasPumps => !_isLoading && (_allPumps?.Any() ?? false);
+    public int PumpCount => _allPumps?.Count() ?? 0;
+
+    public string pumpNoFilter
+    {
+        get => _pumpNoFilter;
+        set
+        {
+            if (_pumpNoFilter != value)
+            {
+                _pumpNoFilter = value;
+                _filterDebounceTimer?.Dispose();
+                _filterDebounceTimer = new Timer(OnFilterDebounced, null, DebounceInterval, Timeout.Infinite);
+            }
+        }
+    }
+
+    public int ItemsPerPage
+    {
+        get => Pagination.ItemsPerPage;
+        set
+        {
+            if (Pagination.ItemsPerPage != value)
+            {
+                Pagination.ItemsPerPage = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    public IQueryable<Pump> FilteredPumps =>
+        string.IsNullOrWhiteSpace(_pumpNoFilter)
+            ? _allPumps ?? Enumerable.Empty<Pump>().AsQueryable()
+            : (_allPumps?.Where(p => p.Name.Contains(_pumpNoFilter, StringComparison.OrdinalIgnoreCase))
+              ?? Enumerable.Empty<Pump>().AsQueryable());
+
+    #endregion
+
+    #region Lifecycle Methods
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await LoadPumps();
+        _isLoading = false;
+        await base.OnInitializedAsync();
     }
 
-    private async Task LoadData()
+    public void Dispose()
     {
-        Pumps = await DataContext.Pumps.ToListAsync();
+        _filterDebounceTimer?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
-    private void AddPump()
+    #endregion
+
+    #region Data Methods
+
+    private async Task LoadPumps()
     {
-        NavigationManager.NavigateTo($"/PumpAdd/");
+        try
+        {
+            // First get the list asynchronously
+            var pumpsList = await DataContext.Pumps
+                .AsNoTracking()
+                .OrderBy(p => p.InventoryID)
+                .ToListAsync();
+
+            // Then convert to IQueryable
+            _allPumps = pumpsList.AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            // TODO: Add proper error handling/logging
+            Console.WriteLine($"Error loading pumps: {ex.Message}");
+            // Consider adding error state handling in the UI
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 
-    private void PumpInfo(Pump pump)
+    private void OnFilterDebounced(object? state)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearFilter()
+    {
+        pumpNoFilter = string.Empty;
+    }
+
+    #endregion
+
+    #region Navigation Methods
+
+    private void NavigateToAddPump()
+    {
+        NavigationManager.NavigateTo("/PumpAdd");
+    }
+
+    private void NavigateToPumpInfo(Pump pump)
     {
         NavigationManager.NavigateTo($"/PumpInfo/{pump.InventoryID}");
     }
 
-    private void EditPump(Pump pump)
+    private void NavigateToEditPump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/EditPump/{pump.InventoryID}");
+        NavigationManager.NavigateTo($"/PumpEdit/{pump.InventoryID}");
     }
 
-    private void DeletePump(Pump pump)
+    private void NavigateToDeletePump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/DeletePump/{pump.InventoryID}");
+        NavigationManager.NavigateTo($"/PumpDelete/{pump.InventoryID}");
     }
 
-    public bool FilteringData(Pump pump)
-    {
-        Filter = Filter.ToLower();
-
-        if (string.IsNullOrEmpty(Filter))
-            return true;
-
-        if (pump.Name.ToString().ToLower().Contains(Filter) || pump.Brand.ToString().ToLower().Contains(Filter) || pump.Type.ToString().ToLower().Contains(Filter) || pump.Location.ToString().ToLower().Contains(Filter))
-            return true;
-
-        return false;
-    }
+    #endregion
 }

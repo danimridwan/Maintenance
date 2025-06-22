@@ -4,14 +4,24 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.Contracts;
 
 namespace MaintenanceWebApp.Data
+
+
 {
+
+    public class FileViewModel
+    {
+        public string Name { get; set; }
+        public IFormFile File { get; set; }
+        public List<IFormFile> Files { get; set; }
+    }
+
     public abstract class Inventory
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string InventoryID { get; set; }
 
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         public string Location { get; set; } = null;
 
@@ -25,9 +35,9 @@ namespace MaintenanceWebApp.Data
 
         public int? TankId { get; set; } = null;//foreign key
 
-        public byte[]? Photo { get; set; } = null;
+        public string? Photo { get; set; } = null;
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 
     public class BreatherValve : Inventory
@@ -74,6 +84,8 @@ namespace MaintenanceWebApp.Data
     public class Pump : Inventory
     {
         public string PumpTag { get; set; }
+
+        public string CategoryType { get; set; }
 
         public string Year { get; set; }
 

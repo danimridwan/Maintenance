@@ -31,12 +31,16 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Primitives" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Primitives" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Migrations\" />
     <Folder Include="Pages\Inventory\Panel\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UploadFilesLibrary\UploadFilesLibrary.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,10 +2,14 @@
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
+@using UploadFilesLibrary
+@using Microsoft.Data.SqlClient
 @inject IDbContextFactory<DataContext> DbContextFactory
 @inject DataContext DataContext
-@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
-@inject IJSRuntime jsRuntime
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+@inject ISqlDataAccess SqlDataAccess
 
 <EditForm Model="pump" OnValidSubmit="CreatePump">
     <DataAnnotationsValidator />
@@ -13,10 +17,13 @@
         <div class="card-header bg-light border-primary">
             <ul class="nav nav-tabs card-header-tabs">
                 <li class="nav-item">
-                    <a id="headerGeneral" class="nav-link active">General Information</a>
+                    <a href="PumpList" class="nav-link"><span class="oi oi-chevron-left"></span></a>
                 </li>
                 <li class="nav-item">
-                    <a id="headerSpecific" class="nav-link disabled">Pump Information</a>
+                    <a class="nav-link @(CurrentStep == 1 ? "active" : "disabled")">General Information</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(CurrentStep == 2 ? "active" : "disabled")">Pump Information</a>
                 </li>
             </ul>
         </div>
@@ -24,140 +31,313 @@
             @if (CurrentStep == 1)
             {
                 <div class="form-group row">
-                    <div class="col-sm-6">
-                        <label for="Name" class="col-sm-2 col-form-label">Name <span class="required">*</span></label>
-                        <InputText id="Name" @bind-Value="pump.Name" class="form-control col-sm-10" />
+                    <div class="col-sm-12">
+                        <label for="PumpTag" class="col-form-label">Pump Tag <span class="required">*</span></label>
+                        <InputText id="PumpTag" @bind-Value="pump.PumpTag" class="form-control" />
+                        @if (errors.ContainsKey("PumpTag"))
+                        {
+                            <span class="text-danger">@errors["PumpTag"]</span>
+                        }
                     </div>
                     <div class="col-sm-6">
-                        <label for="Location" class="col-sm-2 col-form-label">Location</label>
-                        <InputText id="Location" @bind-Value="pump.Location" class="form-control col-sm-10" />
+                        <label for="Brand" class="col-form-label">Brand <span class="required">*</span></label>
+                        <InputText id="Brand" @bind-Value="pump.Brand" class="form-control" />
+
+                        @if (errors.ContainsKey("Brand"))
+                        {
+                            <span class="text-danger">@errors["Brand"]</span>
+                        }
+
                     </div>
                     <div class="col-sm-6">
-                        <label for="Material" class="col-sm-2 col-form-label">Material</label>
-                        <InputText id="Material" @bind-Value="pump.Material" class="form-control col-sm-10" />
+                        <label for="Material" class="col-form-label">Material <span class="required">*</span></label>
+                        <InputText id="Material" @bind-Value="pump.Material" class="form-control" />
+
+                        @if (errors.ContainsKey("Material"))
+                        {
+                            <span class="text-danger">@errors["Material"]</span>
+                        }
+
                     </div>
                     <div class="col-sm-6">
-                        <label for="Brand" class="col-sm-2 col-form-label">Brand</label>
-                        <InputText id="Brand" @bind-Value="pump.Brand" class="form-control col-sm-10" />
+                        <label for="Type" class="col-form-label">Type <span class="required">*</span></label>
+                        <InputText id="Type" @bind-Value="pump.Type" class="form-control" />
+
+                        @if (errors.ContainsKey("Type"))
+                        {
+                            <span class="text-danger">@errors["Type"]</span>
+                        }
+
                     </div>
                     <div class="col-sm-6">
-                        <label for="Type" class="col-sm-2 col-form-label">Type</label>
-                        <InputText id="Type" @bind-Value="pump.Type" class="form-control col-sm-10" />
-                    </div>
-                    <div class="col-sm-6">
-                        <label for="Tank" class="col-sm-2 col-form-label">Tank</label>
-                        <InputSelect id="Tank" @bind-Value="pump.Tank" class="form-control col-sm-10">
-                            <option value="">Select Tank..</option>
-                            @foreach (var t in Tanks)
-                            {
-                                <option value="@t.TankID">@t.TankNo</option>
-                            }
-                        </InputSelect>
-                        <ValidationMessage For="@(() => pump.Tank)" />
+                        <label for="Location" class="col-form-label">Location <span class="required">*</span></label>
+                        <InputText id="Location" @bind-Value="pump.Location" class="form-control" />
+
+                        @if (errors.ContainsKey("Location"))
+                        {
+                            <span class="text-danger">@errors["Location"]</span>
+                        }
+
                     </div>
                     <div class="col-sm-12">
-                        <label for="Photo" class="col-sm-2 col-form-label">Photo</label>
-                        <InputFile id="Photo" class="form-control col-sm-10" accept=".jpg,.jpeg,.png" OnChange="OnInputDocChangeAsync"></InputFile>
-                    </div>
-                    <div class="col-sm-12">
-                        <label for="Description" class="col-sm-2 col-form-label">Description</label>
-                        <InputTextArea id="Description" @bind-Value="@pump.Description" class="form-control col-sm-10" rows="4"></InputTextArea>
+                        <label for="Photo" class="col-form-label">Photo</label>
+                        <InputFile id="Photo" class="form-control"
+                        accept=".jpg,.jpeg,.png"
+                        OnChange="HandleFileUpload" />
                     </div>
                 </div>
             }
             else if (CurrentStep == 2)
             {
                 <div class="form-group row">
-                    <div class="col-sm-6">
-                        <label for="PumpTag" class="col-sm-3 col-form-label">Pump Tag</label>
-                        <InputText id="PumpTag" @bind-Value="pump.PumpTag" class="form-control col-sm-9" />
-                    </div>
-                    <div class="col-sm-6">
-                        <label for="PumpYear" class="col-sm-3 col-form-label">Pump Year</label>
-                        <InputText id="PumpYear" @bind-Value="pump.Year" class="form-control col-sm-9" />
-                    </div>
-                    <div class="col-sm-6">
-                        <label for="PumpCapacity" class="col-sm-3 col-form-label">Pump Capacity</label>
-                        <InputText id="PumpCapacity" @bind-Value="pump.PumpCapacity" class="form-control col-sm-9" />
-                    </div>
-                    <div class="col-sm-6">
-                        <label for="PumpPower" class="col-sm-3 col-form-label">Power</label>
-                        <InputText id="PumpPower" @bind-Value="pump.Power" class="form-control col-sm-9" />
-                    </div>
                     <div class="col-sm-12">
-                        <label for="ExplotionProofCode" class="col-sm-2 col-form-label">ExplotionProofCode</label>
-                        <InputText id="ExplotionProofCode" @bind-Value="@pump.ExplotionProofCode" class="form-control col-sm-10" />
+                        <label for="PumpCategoryType" class="col-form-label">Pump Category Type <span class="required">*</span></label>
+                        <InputText id="PumpCategoryType" @bind-Value="pump.CategoryType" class="form-control" />
+                        @if (errors.ContainsKey("PumpCategoryType"))
+                        {
+                            <span class="text-danger">@errors["PumpCategoryType"]</span>
+                        }
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="PumpYear" class="col-form-label">Year <span class="required">*</span></label>
+                        <InputText id="PumpYear" @bind-Value="pump.Year" class="form-control" />
+                        @if (errors.ContainsKey("PumpYear"))
+                        {
+                            <span class="text-danger">@errors["PumpYear"]</span>
+                        }
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="PumpCapacity" class="col-form-label">Capacity (M3/h) <span class="required">*</span></label>
+                        <InputText id="PumpCapacity" @bind-Value="pump.PumpCapacity" class="form-control" />
+                        @if (errors.ContainsKey("PumpCapacity"))
+                        {
+                            <span class="text-danger">@errors["PumpCapacity"]</span>
+                        }
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="PumpPower" class="col-form-label">Power</label>
+
+                                <InputText class="form-control" id="PumpPower" step="any" @bind-value:event="onchange" @oninput="InputPower" @bind-value="pump.Power" />
+
+                                @if (errors.ContainsKey("PumpPower"))
+                                {
+                                    <span class="text-danger">@errors["PumpPower"]</span>
+                                }
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="PowerType" class="col-form-label text-muted">HP/KW</label>
+                                <InputSelect id="PowerType" @bind-Value="PowerType" class="form-control" disabled>
+                                    <option value="">Select Power..</option>
+                                    <option value="HP">HP</option>
+                                    <option value="KW">KW</option>
+                                </InputSelect>
+                                @if (errors.ContainsKey("PowerType"))
+                                {
+                                    <span class="text-danger">@errors["PowerType"]</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label for="ExplotionProofCode" class="col-form-label">Explotion Proof Code</label>
+                        <InputText id="ExplotionProofCode" @bind-Value="pump.ExplotionProofCode"
+                        class="form-control" />
+                        @if (errors.ContainsKey("ExplotionProofCode"))
+                        {
+                            <span class="text-danger">@errors["ExplotionProofCode"]</span>
+                        }
                     </div>
                 </div>
             }
+
+            <div class="float-end mt-3">
+                @if (CurrentStep == 1)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="NextStep">Next</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-secondary mr-2" @onclick="PreviousStep">Previous</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                }
+            </div>
+
         </div>
     </div>
-    <br />
-
-    <div style="float: right;">
-        <div id="btnNext" style="display:block;">
-            <button type="button" class="btn btn-primary" @onclick="NextStep">Next</button>
-        </div>
-        <div style="display:none;" id="btnPreviousSubmit">
-            <button id="btnPrevious" type="button" class="btn btn-secondary" @onclick="PreviousStep">Previous</button>
-            <button id="btnSubmit" type="submit" class="btn btn-primary" @onclick="CreatePump">Simpan</button>
-        </div>
-    </div>
-
 </EditForm>
 
 @code {
-    private Pump pump { get; set; } = new Pump();
-    private List<Tank> Tanks { get; set; } = new List<Tank>();
-    private int CurrentStep { get; set; } = 1;
+    private Pump pump = new();
+    private List<Tank> Tanks = new();
+    private int CurrentStep = 1;
+    private Dictionary<string, string> errors = new();
+    private const long MaxFileSize = 3 * 1024 * 1024; // 3MB in bytes
+    private bool ValidationStatus = false;
+    private string PowerType;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
+        await LoadTanksAsync();
     }
 
-    private async Task LoadData()
+    private async Task LoadTanksAsync()
     {
-        await using var db = await DbContextFactory.CreateDbContextAsync();
-        Tanks = await db.Tanks.ToListAsync();
-    }
-
-    private void NextStep()
-    {
-        jsRuntime.InvokeAsync<object>("nextHeader");
-        CurrentStep++;
-    }
-    private void PreviousStep()
-    {
-        jsRuntime.InvokeAsync<object>("previousHeader");
-        CurrentStep--;
-    }
-    private async Task CreatePump()
-    {
-        await using var db = await DbContextFactory.CreateDbContextAsync();
-        DataContext.Pumps.Add(pump);
-        await db.SaveChangesAsync();
-
-        pump = new Pump();
-
-        NavigationManager.NavigateTo("/Pump");
-    }
-
-    private async Task OnInputDocChangeAsync(InputFileChangeEventArgs e)
-    {
-        var allowedExtensions = new List<string> { ".jpg", ".jpeg", ".png" };
-        var fileExtension = Path.GetExtension(e.File.Name);
-
-        if (!allowedExtensions.Contains(fileExtension.ToLower()))
+        try
         {
-            // Display an error message to the user or prevent the upload
-            await Task.Run(() => { }); // Replace with your error handling logic
+            await using var db = await DbContextFactory.CreateDbContextAsync();
+            Tanks = await db.Tanks.OrderBy(t => t.TankNo).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading tanks: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        errors.Clear();
+        var file = e.File;
+
+        if (file == null)
+        {
+            pump.Photo = null;
             return;
         }
-        // Proceed with the upload
-        var buffer = new byte[e.File.Size];
-        await e.File.OpenReadStream().ReadAsync(buffer);
-        // Do something with the file data (e.g., save it to a database or file system)
-        await Task.Run(() => { }); // Replace with your file saving logic
+
+        if (file.Size > MaxFileSize)
+        {
+            errors["File"] = $"File size exceeds maximum limit of {MaxFileSize / (1024 * 1024)}MB";
+            await ShowAlert(string.Join("\n", errors));
+            return;
+        }
+
+        try
+        {
+            var basePath = Configuration["FileStorageInventories"];
+            var folder = "Pump";
+            var directory = Path.Combine(basePath, folder);
+
+            Directory.CreateDirectory(directory);
+
+            var extension = Path.GetExtension(file.Name);
+            var newFileName = $"{Guid.NewGuid()}{extension}";
+            var fullPath = Path.Combine(directory, newFileName);
+
+            await using var stream = file.OpenReadStream(MaxFileSize);
+            await using var fileStream = new FileStream(fullPath, FileMode.Create);
+            await stream.CopyToAsync(fileStream);
+
+            pump.Photo = Path.Combine(folder, newFileName);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"File upload error: {ex.Message}");
+            errors["File"] = "Failed to upload file. Please try again.";
+            await ShowAlert(string.Join("\n", errors));
+        }
+    }
+
+    private async Task ValidateForm()
+    {
+        if (CurrentStep == 1)
+        {
+            ValidateGeneralInformation();
+        }
+        else if (CurrentStep == 2)
+        {
+            ValidatePumpInformation();
+        }
+    }
+
+    private void ValidateGeneralInformation()
+    {
+        if (string.IsNullOrWhiteSpace(pump.PumpTag))
+            errors["PumpTag"] = "Pump Tag is required";
+        if (string.IsNullOrWhiteSpace(pump.Brand))
+            errors["Brand"] = "Brand is required";
+        if (string.IsNullOrWhiteSpace(pump.Material))
+            errors["Material"] = "Material is required";
+        if (string.IsNullOrWhiteSpace(pump.Type))
+            errors["Type"] = "Type is required";
+        if (string.IsNullOrWhiteSpace(pump.Location))
+            errors["Location"] = "Location is required";
+    }
+
+    private void ValidatePumpInformation()
+    {
+        if (string.IsNullOrWhiteSpace(pump.Year))
+            errors["PumpCategoryType"] = "Pump Category Type is required";
+        if (string.IsNullOrWhiteSpace(pump.Year))
+            errors["PumpYear"] = "Pump Year is required";
+        if (string.IsNullOrWhiteSpace(pump.PumpCapacity))
+            errors["PumpCapacity"] = "Pump Capacity is required";
+    }
+
+    private async Task NextStep()
+    {
+        errors.Clear();
+        await ValidateForm();
+
+        if (!errors.Any())
+        {
+            CurrentStep++;
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousStep()
+    {
+        CurrentStep--;
+        StateHasChanged();
+    }
+
+    private async Task CreatePump()
+    {
+        errors.Clear();
+        await ValidateForm();
+
+        if (!errors.Any())
+        {
+            try
+            {
+                pump.Power = pump.Power + "&nbsp" + PowerType;
+                await using var db = await DbContextFactory.CreateDbContextAsync();
+                db.Pumps.Add(pump);
+                await db.SaveChangesAsync();
+
+                NavigationManager.NavigateTo("/PumpList");
+            }
+            catch (DbUpdateException ex)
+            {
+                var errorMessage = ex.InnerException switch
+                {
+                    SqlException sqlEx => $"Database error: {sqlEx.Message}",
+                    _ => ex.Message
+                };
+
+                errors["Database"] = errorMessage;
+                Console.WriteLine($"Database error: {errorMessage}");
+                await ShowAlert(string.Join("\n", errors));
+            }
+            catch (Exception ex)
+            {
+                errors["General"] = "An unexpected error occurred";
+                Console.WriteLine($"Error creating pump: {ex.Message}");
+                await ShowAlert(string.Join("\n", errors));
+            }
+        }
+    }
+
+    private void InputPower(ChangeEventArgs args)
+    {
+        if (!string.IsNullOrWhiteSpace(Convert.ToString(pump.Power)))
+            Console.WriteLine("Halo");
+    }
+
+    private async Task ShowAlert(string message)
+    {
+        await JSRuntime.InvokeVoidAsync("alert", message);
     }
 }
