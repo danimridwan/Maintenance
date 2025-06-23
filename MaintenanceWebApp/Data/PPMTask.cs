@@ -23,7 +23,7 @@ namespace MaintenanceWebApp.Data
         public DateTime RequestDate { get; set; }
 
         [Required]
-        public DateTime TargetDate { get; set; }
+        public DateTime TargetDate { get; set; } = DateTime.Now;
 
         public StatusEnum Status { get; set; } = StatusEnum.Request; //default val
 
