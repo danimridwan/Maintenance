@@ -7,79 +7,50 @@
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
-<div class="card">
-    <div class="row px-3">
-        <div class="col-sm-5 form-group">
-            <h5 class="display-6">Tank</h5>
-            @if (HasTanks)
-            {
-                <div class="page-size-chooser my-2">
-                    Items per page:
-                    <select @bind="ItemsPerPage">
-                        @foreach (var option in PageSizeOptions.Where(o => o <= TankCount))
-                        {
-                            <option value="@option">@option</option>
-                        }
-                    </select>
-                </div>
-            }
-        </div>
-        <div class="col-sm-4"></div>
-        <div class="col-sm-3 d-flex align-items-center justify-content-end">
-            <button class="btn btn-primary" @onclick="NavigateToAddTank">
-                Add Tank
-            </button>
-        </div>
+
+<div class="row">
+    <div class="col-6">
+        <h3>Tank</h3>
     </div>
-
-    <div class="px-3">
-        @if (_isLoading)
-        {
-            <div class="text-center py-3">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p>Loading tank data...</p>
-            </div>
-        }
-        else if (!HasTanks)
-        {
-            <div class="text-center py-3">
-                <p>No tanks found.</p>
-                @if (!string.IsNullOrEmpty(tankNoFilter))
-                {
-                    <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
-                }
-            </div>
-        }
-        else
-        {
-            <QuickGrid Items="FilteredTanks" Virtualize="true" Pagination="@Pagination"
-                       Class="table table-striped table-hover text-center table-bordered">
-                <PropertyColumn Property="@(tank => tank.TankNo)" Title="Tank No." Sortable="true">
-                    <ColumnOptions>
-                        <div class="search-box">
-                            <input type="search" @bind="tankNoFilter" @bind:event="oninput"
-                                   placeholder="Search tank no..." />
-                        </div>
-                    </ColumnOptions>
-                </PropertyColumn>
-                <PropertyColumn Property="@(tank => tank.Capacity)" Title="Capacity (MT)" Sortable="true" />
-                <PropertyColumn Property="@(tank => tank.InternalCoating)" Title="Internal Coating" Sortable="true" />
-                <TemplateColumn Title="Actions">
-                    <button @onclick="@(() => NavigateToEditTank(context))" class="btn btn-warning">
-                        <span class="oi oi-pencil"></span>
-                    </button>
-                    <button @onclick="@(() => NavigateToDeleteTank(context))" class="btn btn-danger">
-                        <span class="oi oi-trash"></span>
-                    </button>
-                </TemplateColumn>
-            </QuickGrid>
-
-            <Paginator State="@Pagination" />
-        }
+    <div class="col-6">
+        <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddTank()">New Tank</button>
     </div>
 </div>
+<br />
+<div class="page-size-chooser">
+    Items per page:
+    <select @bind="@Pagination.ItemsPerPage">
+        <option>5</option>
+        <option>10</option>
+        <option>20</option>
+        <option>50</option>
+    </select>
+</div>
+<br />
+@if (totalRow > 0)
+{
+    <div>
+        <QuickGrid Items="FilteredItems" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover text-center table-bordered">
+            <PropertyColumn Property="@(tank => tank.TankNo)" Title="TankNo" Sortable="true">
+                <ColumnOptions>
+                    <div class="search-box">
+                        <input type="search" autofocus @bind="nameFilter" @bind:event="oninput" placeholder="Tank no..." />
+                    </div>
+                </ColumnOptions>
+            </PropertyColumn>
+            <PropertyColumn Property="@(tank => tank.Capacity)" Title="Capacity (MT)" Sortable="true" />
+            <PropertyColumn Property="@(tank => tank.InternalCoating)" Title="Internal Coating" Sortable="true" />
+            <TemplateColumn Title="Actions">
+                <button @onclick="@(() => EditTank(context))" class="btn btn-warning"><span class="oi oi-pencil"></span></button>
+                <button @onclick="@(() => SoftDeleteTank(context))" class="btn btn-danger"><span class="oi oi-trash"></span></button>
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
+    <Paginator State="@Pagination" />
+}
+else{
+    <p>No Tanks Found.</p>
+}
 
 @code {
     #region Fields and Properties

@@ -1,0 +1,3 @@
+﻿::deep .quickgrid tbody tr:not([aria-rowindex]) {
+    display: none;
+}
