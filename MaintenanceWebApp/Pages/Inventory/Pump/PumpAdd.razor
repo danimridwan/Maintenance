@@ -32,6 +32,14 @@
             {
                 <div class="form-group row">
                     <div class="col-sm-12">
+                        <label for="PumpName" class="col-form-label">Pump Name <span class="required">*</span></label>
+                        <InputText id="PumpName" @bind-Value="pump.Name" class="form-control" />
+                        @if (errors.ContainsKey("PumpName"))
+                        {
+                            <span class="text-danger">@errors["PumpName"]</span>
+                        }
+                    </div>
+                    <div class="col-sm-12">
                         <label for="PumpTag" class="col-form-label">Pump Tag <span class="required">*</span></label>
                         <InputText id="PumpTag" @bind-Value="pump.PumpTag" class="form-control" />
                         @if (errors.ContainsKey("PumpTag"))
@@ -253,6 +261,8 @@
 
     private void ValidateGeneralInformation()
     {
+        if (string.IsNullOrWhiteSpace(pump.Name))
+            errors["PumpName"] = "Pump Name is required";
         if (string.IsNullOrWhiteSpace(pump.PumpTag))
             errors["PumpTag"] = "Pump Tag is required";
         if (string.IsNullOrWhiteSpace(pump.Brand))
