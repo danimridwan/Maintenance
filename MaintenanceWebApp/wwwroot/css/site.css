@@ -81,3 +81,13 @@ a, .btn-link {
 .td-last {
     width: 45%;
 }
+
+.icon {
+    font-size: 64px;
+    border-style: dotted;
+    padding-left: 10px;
+}
+
+.td-action{
+    width: 120px;
+}

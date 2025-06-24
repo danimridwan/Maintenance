@@ -16,10 +16,10 @@
                 <div class="page-size-chooser my-2">
                     Items per page:
                     <select @bind="ItemsPerPage">
-                        @foreach (var option in PageSizeOptions.Where(o => o <= PumpCount))
-                        {
-                            <option value="@option">@option</option>
-                        }
+                        <option>5</option>
+                        <option>10</option>
+                        <option>20</option>
+                        <option>50</option>
                     </select>
                 </div>
             }
@@ -39,7 +39,7 @@
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p>Loading pump data...</p>
+                <p>Loading Pump Data...</p>
             </div>
         }
         else if (!HasPumps)
@@ -55,10 +55,9 @@
         }
         else
         {
-            <QuickGrid Items="FilteredPumps" Virtualize="true" Pagination="@Pagination"
-                       Class="table table-striped table-hover text-center table-bordered">
-
-                <TemplateColumn Title="Name">
+            <QuickGrid Items="FilteredPumps" Virtualize="false" Pagination="@Pagination"
+            Class="table table-striped table-hover table-bordered">
+                <TemplateColumn Title="Name" SortBy="@sortByName">
                     <a style="text-decoration: none;" href="" @onclick="@(() => NavigateToPumpInfo(context))">
                         @context.Name
                     </a>
@@ -68,7 +67,7 @@
                 <PropertyColumn Property="@(pump => pump.Type)" Title="Type" Sortable="true" />
                 <PropertyColumn Property="@(pump => pump.Location)" Title="Location" Sortable="true" />
                 <PropertyColumn Property="@(pump => pump.Tank)" Title="Tank" Sortable="true" />
-                <TemplateColumn Title="Actions">
+                <TemplateColumn Title="Actions" Class="td-action">
                     <button @onclick="@(() => NavigateToEditPump(context))" class="btn btn-warning">
                         <span class="oi oi-pencil"></span>
                     </button>
@@ -92,7 +91,7 @@
     private const int DebounceInterval = 300; // milliseconds
     private bool _isLoading = true;
 
-    private readonly int[] PageSizeOptions = new[] { 5, 10, 20 };
+    private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
 
     public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
 
@@ -131,6 +130,9 @@
             ? _allPumps ?? Enumerable.Empty<Pump>().AsQueryable()
             : (_allPumps?.Where(p => p.Name.Contains(_pumpNoFilter, StringComparison.OrdinalIgnoreCase))
               ?? Enumerable.Empty<Pump>().AsQueryable());
+
+    GridSort<Pump> sortByName = GridSort<Pump>
+        .ByAscending(p => p.Name);
 
     #endregion
 
