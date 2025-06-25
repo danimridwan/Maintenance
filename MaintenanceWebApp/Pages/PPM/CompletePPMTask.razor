@@ -1,73 +1,135 @@
-﻿@page "/CompletePPMTask/{PPMId}"
+﻿@page "/CompletePPMTask/{PPMTaskID}"
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
 @inject DataContext DataContext
-@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager		
+@inject IConfiguration Configuration
 
-<h3>Form Pelaksanaan Pekerjaan Maintenance</h3><hr>
+<div class="card">
 
-<EditForm Model="ppm" OnValidSubmit="UpdatePPM">
-    <DataAnnotationsValidator />
-    <InputHidden value="ppm.Status" />
-    <ValidationMessage For="@(() => ppm.Status)" />
-    <div class="form-group row">
-        <label for="CompletePhoto" class="col-sm-2 col-form-label">Gambar Kondisi Akhir</label>
-        <div class="col-sm-10">
-            <InputFile id="CompletePhoto" class="form-control" @bind-Value="ppm.CompletePhoto" accept=".jpg,.jpeg,.png"></InputFile>
-            <ValidationMessage For="@(() => ppm.CompletePhoto)" />
+	@if (ppmTask != null){
+		<div class="card-header bg-light border-primary">
+			Request
+		</div>
+		<div class="card-body">
+
+                <table width="100%">
+                    <tr>
+                        <td class="td-first">Task ID</td>
+                        <td> : </td>
+                        <td class="td-last">@ppmTask.TaskID</td>
+                    </tr>
+                    <tr>
+                        <td class="td-first">Requestor</td>
+                        <td> : </td>
+                        <td class="td-last">@ppmTask.Requestor</td>
+                    </tr>
+                    <tr>
+                        <td class="td-first">Division</td>
+                        <td> : </td>
+                        <td class="td-last">@ppmTask.Division</td>
+                    </tr>
+                    <tr>
+                        <td class="td-first">Target Completion</td>
+                        <td> : </td>
+                        <td class="td-last">@ppmTask.TargetDate.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                </table><br />
+
+                <b>Job Description</b><br />
+                <label>@ppmTask.JobDesc</label><br /><br />
+
+                <b>Photo (Before)</b><br />
+                @if (string.IsNullOrWhiteSpace(ppmTask.Photo) == false)
+                {
+                    <img style="align-content:center;" width="100%" src="@CreateWebPath(ppmTask.Photo)" alt="ppmTask Photo">
+                }
+                else{
+                    <div class="icon">
+                        <span class="oi oi-image"></span><br>
+                        No Image Available
+                    </div>
+                }<br />
+
+                <b>TMD Notes</b><br />
+                <label>@ppmTask.Notes</label>
+
+		</div>
+
+        <div class="card-header bg-light border-primary">
+			Execution
+		</div>
+		<div class="card-body">
+
+            <table width="100%">
+                <tr>
+                    <td class="td-first">Relevance to the target</td>
+                    <td> : </td>
+                    <td class="td-last">@ppmTask.TargetCompletion</td>
+                </tr>
+                <tr>
+                    <td class="td-first">Evaluation</td>
+                    <td> : </td>
+                    <td class="td-last">@ppmTask.Evaluation</td>
+                </tr>
+            </table><br />
+
+            <b>Photo (After)</b><br />
+            @if (string.IsNullOrWhiteSpace(ppmTask.Photo) == false)
+            {
+                <img style="align-content:center;" width="100%" src="@CreateWebPath(ppmTask.Photo)" alt="ppmTask Photo">
+            }
+            else{
+                <div class="icon">
+                    <span class="oi oi-image"></span><br>
+                    No Image Available        
+                </div>
+            }<br />
+
+            <b>Requestor Notes</b><br />
+            <label>@ppmTask.RequestorNotes</label><br /><br />
+
         </div>
-    </div>
-    <div class="form-group row">
-        <label for="TargetCompletion" class="col-sm-2 col-form-label">Sesuai pada target?</label>
-        <div class="col-sm-10">
-            <InputSelect id="TargetCompletion" @bind-Value="ppm.TargetCompletion" class="form-control">
-                <option value="true">Ya</option>
-                <option value="false">Tidak</option>
-            </InputSelect>
-            <ValidationMessage For="@(() => ppm.Division)" />
-        </div>
-    </div>
-    <div class="form-group row">
-        <label for="Evaluation" class="col-sm-2 col-form-label">Evaluasi</label>
-        <div class="col-sm-10">
-            <InputTextArea id="Evaluation" @bind-Value="ppm.Evaluation" class="form-control"></InputTextArea>
-            <ValidationMessage For="@(() => ppm.Evaluation)" />
-        </div>
-    </div>
-    <div class="form-group row">
-        <label for="RequestorNotes" class="col-sm-2 col-form-label">Catatan (Diisi oleh departemen pemohon)</label>
-        <div class="col-sm-10">
-            <InputTextArea id="RequestorNotes" @bind-Value="ppm.RequestorNotes" class="form-control"></InputTextArea>
-            <ValidationMessage For="@(() => ppm.RequestorNotes)" />
-        </div>
-    </div>
-    <button style="margin: 20px 0px; float: right;" type="submit" class="btn btn-primary">Simpan</button>
-</EditForm>
+	}
+	else
+	{
+		<p>Loading PPM information...</p>
+	}
+</div>
 
 @code {
-    private PPMTask ppm;
-    [Parameter]
-    public string PPMId { get; set; }
+	private PPMTask ppmTask;
+	[Parameter]
+	public string PPMTaskID { get; set; }
 
-    private List<Employee> Employees { get; set; } = new List<Employee>();
+	private List<Employee> Employees { get; set; } = new List<Employee>();
 
-    private async Task LoadData()
-    {
-        Employees = await DataContext.Employees.ToListAsync();
-    }
+	private async Task LoadData()
+	{
+		Employees = await DataContext.Employees.ToListAsync();
+	}
+
+	private string CreateWebPath(string relativePath)
+	{
+		return Path.Combine(Configuration.GetValue<string>("WebStorageRoot")!, relativePath);
+	}
 
     protected override async Task OnInitializedAsync()
-    {
-        //employee = await DataContext.Employees.FindAsync(int.Parse(employeeId));
-        ppm = await DataContext.PPMTasks.FindAsync(PPMId);
-        ppm.Status = StatusEnum.Completed;
+	{
+    
+        ppmTask = await DataContext.PPMTasks.FindAsync(PPMTaskID);
         await LoadData();
+
+		if (ppmTask == null)
+        {
+            NavigationManager.NavigateTo("/PPMList", forceLoad: true);
+        }
     }
 
     private async Task UpdatePPM()
     {
-        DataContext.PPMTasks.Update(ppm);
+        DataContext.PPMTasks.Update(ppmTask);
         await DataContext.SaveChangesAsync();
 
         NavigationManager.NavigateTo("/PPMList");

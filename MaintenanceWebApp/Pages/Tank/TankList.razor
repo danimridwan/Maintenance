@@ -13,20 +13,28 @@
             <h5 class="display-6">Tank</h5>
             @if (HasTanks)
             {
-                <div class="page-size-chooser">
+                @if (TankCount > 5)
+                {
+                    <div class="page-size-chooser my-2">
                         Items per page:
-                    <select @bind="@Pagination.ItemsPerPage">
-                        <option>5</option>
-                        <option>10</option>
-                        <option>20</option>
-                        <option>50</option>
-                    </select>
-                </div>
+                        <select @bind="@Pagination.ItemsPerPage">
+                            <option>5</option>
+                            @if (TankCount > 10)
+                            {
+                                <option>10</option>
+                            }
+                            @if (TankCount > 20)
+                            {
+                                <option>20</option>
+                            }
+                        </select>
+                    </div>
+                }
             }
         </div>
         <div class="col-sm-4"></div>
         <div class="col-sm-3 d-flex align-items-center justify-content-end">
-            <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => NavigateToAddTank()">
+            <button class="btn btn-primary btn-xs float-end" @onclick="() => NavigateToAddTank()">
                 Add Tank
             </button>
         </div>

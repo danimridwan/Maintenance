@@ -13,15 +13,23 @@
             <h5 class="display-6">Pump</h5>
             @if (HasPumps)
             {
-                <div class="page-size-chooser my-2">
-                    Items per page:
-                    <select @bind="ItemsPerPage">
-                        <option>5</option>
-                        <option>10</option>
-                        <option>20</option>
-                        <option>50</option>
-                    </select>
-                </div>
+                @if (PumpCount > 5)
+                {
+                    <div class="page-size-chooser my-2">
+                        Items per page:
+                        <select @bind="@Pagination.ItemsPerPage">
+                            <option>5</option>
+                            @if (PumpCount > 10)
+                            {
+                                <option>10</option>
+                            }
+                            @if (PumpCount > 20)
+                            {
+                                <option>20</option>
+                            }
+                        </select>
+                    </div>
+                }
             }
         </div>
         <div class="col-sm-4"></div>
