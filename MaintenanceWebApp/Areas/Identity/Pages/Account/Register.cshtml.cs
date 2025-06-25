@@ -71,6 +71,9 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
 
             [Required]
             public string Role { get; set; }
+
+            [Required]
+            public string Signature { get; set; }
         }
     }
 }
