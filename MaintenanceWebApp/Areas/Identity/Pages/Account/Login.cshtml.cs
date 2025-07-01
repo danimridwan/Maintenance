@@ -1,3 +1,4 @@
+using MaintenanceWebApp.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,8 +9,8 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
 
-        private readonly SignInManager<IdentityUser> _signInManager;
-        public LoginModel(SignInManager<IdentityUser> signInManager)
+        private readonly SignInManager<Employee> _signInManager;
+        public LoginModel(SignInManager<Employee> signInManager)
         {
             _signInManager = signInManager;
         }
