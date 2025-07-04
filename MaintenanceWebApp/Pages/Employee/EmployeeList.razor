@@ -77,12 +77,15 @@
                 <PropertyColumn Property="@(emp => emp.FullName)" Title="Full Name" Sortable="true" />
                 @*@<PropertyColumn Property="@(pump => pump.Location)" Title="Location" Sortable="true" />
                 <PropertyColumn Property="@(pump => pump.Tank)" Title="Tank" Sortable="true" />*@
-                <TemplateColumn Title="Actions" Class="td-action">
+                <TemplateColumn Title="Actions" Class="td-action-3">
                     <button @onclick="@(() => NavigateToEditEmployee(context))" class="btn btn-warning">
                         <span class="oi oi-pencil"></span>
                     </button>
                     <button @onclick="@(() => NavigateToDeleteEmployee (context))" class="btn btn-danger">
                         <span class="oi oi-trash"></span>
+                    </button>
+                    <button @onclick="@(() => NavigateToResetPassword(context))" class="btn btn-info">
+                        <span class="oi oi-key"></span>
                     </button>
                 </TemplateColumn> 
             </QuickGrid>
@@ -222,6 +225,11 @@
     private void NavigateToDeleteEmployee(Employee employee)
     {
         NavigationManager.NavigateTo($"/EmployeeDelete/{employee.Id}");
+    }
+
+    private void NavigateToResetPassword(Employee employee)
+    {
+        NavigationManager.NavigateTo($"/EmployeeResetPassword/{employee.Id}");
     }
 
     #endregion
