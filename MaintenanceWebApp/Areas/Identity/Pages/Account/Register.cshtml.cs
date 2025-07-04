@@ -3,16 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using MaintenanceWebApp.Data;
 
 namespace MaintenanceWebApp.Areas.Identity.Pages.Account
 {
     public class RegisterModel : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<Employee> _signInManager;
+        private readonly UserManager<Employee> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
 
-        public RegisterModel(SignInManager<IdentityUser> signInManager, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager)
+        public RegisterModel(SignInManager<Employee> signInManager, UserManager<Employee> userManager, RoleManager<IdentityRole> roleManager)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -33,11 +34,11 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
             ReturnUrl = Url.Content("~/");
             if (ModelState.IsValid)
             {
-                var identity = new IdentityUser { UserName = Input.Email, Email = Input.Email };
+                var identity = new Employee { UserName = Input.Email, Email = Input.Email };
                 var result = await _userManager.CreateAsync(identity, Input.Password);
 
-                var claim = new Claim("city", Input.City.ToLower());
-                var claimsResult = await _userManager.AddClaimAsync(identity, claim);
+                //var claim = new Claim("city", Input.City.ToLower());
+                //var claimsResult = await _userManager.AddClaimAsync(identity, claim);
 
                 var role = new IdentityRole(Input.Role);
                 var addRoleResult = await _roleManager.CreateAsync(role);
@@ -45,7 +46,7 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
                 var addUserRoleResult = await _userManager.AddToRoleAsync(identity, Input.Role);
 
 
-                if (result.Succeeded && claimsResult.Succeeded && addRoleResult.Succeeded
+                if (result.Succeeded && addRoleResult.Succeeded
                     && addUserRoleResult.Succeeded)
                 {
                     await _signInManager.SignInAsync(identity, isPersistent: false);
@@ -66,14 +67,14 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
             [DataType(DataType.Password)]
             public string Password { get; set; }
 
-            [Required]
-            public string City { get; set; }
+            //[Required]
+            //public string City { get; set; }
 
             [Required]
             public string Role { get; set; }
 
-            [Required]
-            public string Signature { get; set; }
+            //[Required]
+            //public string Signature { get; set; }
         }
     }
 }
