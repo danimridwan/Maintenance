@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+=======
+using Microsoft.AspNetCore.Identity;
+>>>>>>> parent of 5ae3a38 (Add & Employee Info)
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
@@ -9,6 +13,8 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
 
+        private readonly SignInManager<IdentityUser> _signInManager;
+        public LoginModel(SignInManager<IdentityUser> signInManager)
         {
             _signInManager = signInManager;
             _logger = logger;

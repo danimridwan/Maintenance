@@ -10,6 +10,8 @@ namespace MaintenanceWebApp.Data
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string UserID { get; set; }
 
+        [Required]
+        public string Name { get; set; }
 
         [Required]
         public string Email { get; set; }
