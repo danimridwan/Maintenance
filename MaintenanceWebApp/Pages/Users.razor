@@ -27,8 +27,8 @@
         @foreach (var user in filteredUsers)
         {
             <tr>
-                <td>@user.Id</td>
-                <td>@user.FullName</td>
+                <td>@user.UserID</td>
+                <td>@user.Name</td>
                 <td>@user.Email</td>
                 <td>
                     @if (IsUserAdmin())

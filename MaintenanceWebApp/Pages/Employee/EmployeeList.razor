@@ -2,46 +2,47 @@
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.AspNetCore.Components.QuickGrid
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
-@implements IDisposable
 
-@attribute [Authorize(Roles = "Admin")]
-
-<div class="card">
-    <div class="row px-3">
-        <div class="col-sm-5 form-group">
-            <h5 class="display-6">Users</h5>
-            @if (HasEmployees)
-            {
-                @if (EmployeeCount > 5)
-                {
-                    <div class="page-size-chooser my-2">
-                        Items per page:
-                        <select @bind="@Pagination.ItemsPerPage">
-                            <option>5</option>
-                            @if (EmployeeCount > 10)
-                            {
-                                <option>10</option>
-                            }
-                            @if (EmployeeCount > 20)
-                            {
-                                <option>20</option>
-                            }
-                        </select>
-                    </div>
-                }
-            }
-        </div>
-        <div class="col-sm-4"></div>
-        <div class="col-sm-3 d-flex align-items-center justify-content-end">
-            <button class="btn btn-primary" @onclick="NavigateToAddEmployee">
-                Add Employee
-            </button>
-        </div>
+<div class="row">
+    <div class="col-6">
+        <h3>Employee List</h3>
     </div>
+    <div class="col-6">
+        <button class="btn btn-outline-primary btn-xs float-end" @onclick="() => AddEmployee()">New Employee</button>
+    </div>
+</div><br>
 
+@if (Employees.Count != 0)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var employee in Employees)
+            {
+                <tr>
+                    <td><a href="" @onclick="() =>EmployeeInfo(employee)">@employee.UserID</a></td>
+                    <td>@employee.Name</td>
+                    <td>@employee.JobTitle</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditEmployee(employee)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => SoftDeleteEmployee(employee)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<<<<<<< HEAD
     <div class="px-3">
         @if (_isLoading)
         {
@@ -94,123 +95,47 @@
         }
     </div>
 </div>
+=======
+else
+{
+    <p>No employees found.</p>
+}
+>>>>>>> parent of 5ae3a38 (Add & Employee Info)
 
 @code {
-    #region Fields and Properties
-
-    private IQueryable<Employee>? _allEmployees;
-    private string _employeeFilter = string.Empty;
-    private Timer? _filterDebounceTimer;
-    private const int DebounceInterval = 300; // milliseconds
-    private bool _isLoading = true;
-
-    private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
-
-    public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
-
-    public bool HasEmployees => !_isLoading && (_allEmployees?.Any() ?? false);
-    public int EmployeeCount => _allEmployees?.Count() ?? 0;
-
-    public string employeeFilter
-    {
-        get => _employeeFilter;
-        set
-        {
-            if (_employeeFilter != value)
-            {
-                _employeeFilter = value;
-                _filterDebounceTimer?.Dispose();
-                _filterDebounceTimer = new Timer(OnFilterDebounced, null, DebounceInterval, Timeout.Infinite);
-            }
-        }
-    }
-
-    public int ItemsPerPage
-    {
-        get => Pagination.ItemsPerPage;
-        set
-        {
-            if (Pagination.ItemsPerPage != value)
-            {
-                Pagination.ItemsPerPage = value;
-                StateHasChanged();
-            }
-        }
-    }
-
-    public IQueryable<Employee> FilteredEmployees =>
-        string.IsNullOrWhiteSpace(_employeeFilter)
-            ? _allEmployees ?? Enumerable.Empty<Employee>().AsQueryable()
-            : (_allEmployees?.Where(p => p.UserName.Contains(_employeeFilter, StringComparison.OrdinalIgnoreCase))
-              ?? Enumerable.Empty<Employee>().AsQueryable());
-
-    GridSort<Employee> sortByName = GridSort<Employee>
-        .ByAscending(p => p.UserName);
-
-    #endregion
-
-    #region Lifecycle Methods
+    private List<Employee> Employees { get; set; } = new List<Employee>();
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadEmployees();
-        _isLoading = false;
-        await base.OnInitializedAsync();
+        await LoadData();
     }
 
-    public void Dispose()
+    private async Task LoadData()
     {
-        _filterDebounceTimer?.Dispose();
-        GC.SuppressFinalize(this);
+        Employees = await DataContext.Employees.ToListAsync();
     }
 
-    #endregion
-
-    #region Data Methods
-
-    private async Task LoadEmployees()
+    private void EmployeeInfo(Employee employee)
     {
-        try
-        {
-            // First get the list asynchronously
-            var employeesList = await DataContext.Employees
-                .AsNoTracking()
-                .OrderBy(p => p.UserName)
-                .ToListAsync();
-
-            // Then convert to IQueryable
-            _allEmployees = employeesList.AsQueryable();
-        }
-        catch (Exception ex)
-        {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error loading employees: {ex.Message}");
-            // Consider adding error state handling in the UI
-        }
-        finally
-        {
-            StateHasChanged();
-        }
+        NavigationManager.NavigateTo($"/EmployeeInfo/{employee.UserID}");
     }
 
-    private void OnFilterDebounced(object? state)
+    private void AddEmployee()
     {
-        InvokeAsync(StateHasChanged);
+        NavigationManager.NavigateTo($"/NewEmployee/");
     }
 
-    private void ClearFilter()
+    private void EditEmployee(Employee employee)
     {
-        employeeFilter = string.Empty;
+        NavigationManager.NavigateTo($"/EditEmployee/{employee.UserID}");
     }
 
-    #endregion
 
-    #region Navigation Methods
-
-    private void NavigateToAddEmployee()
+    private void SoftDeleteEmployee(Employee employee)
     {
-        NavigationManager.NavigateTo("/EmployeeAdd");
+        NavigationManager.NavigateTo($"/DeleteEmployee/{employee.UserID}");
     }
+<<<<<<< HEAD
 
     private void NavigateToEmployeeInfo(Employee employee)
     {
@@ -234,3 +159,6 @@
 
     #endregion
 }
+=======
+}
+>>>>>>> parent of 5ae3a38 (Add & Employee Info)

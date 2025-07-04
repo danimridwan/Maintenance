@@ -1,9 +1,6 @@
 ﻿@page "/logout"
 @using Microsoft.AspNetCore.Identity
-@using MaintenanceWebApp.Data
-@using Microsoft.EntityFrameworkCore
 @attribute [IgnoreAntiforgeryToken]
-@inject SignInManager<Employee> SignInManager
 @functions{
     public async Task<IActionResult> OnGet()
     {

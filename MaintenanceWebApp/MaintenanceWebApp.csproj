@@ -45,10 +45,4 @@
     <ProjectReference Include="..\UploadFilesLibrary\UploadFilesLibrary.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="Pages\Employee\EmployeeAdd.razor">
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-    </Content>
-  </ItemGroup>
-
 </Project>
