@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250701043604_UpdatePumpInventory")]
+    partial class UpdatePumpInventory
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -542,13 +545,6 @@ namespace MaintenanceWebApp.Migrations
                 {
                     b.HasBaseType("MaintenanceWebApp.Data.Inventory");
 
-                    b.Property<string>("CapacityUnit")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("CapacityValue")
-                        .HasColumnType("int");
-
                     b.Property<string>("CategoryType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -557,10 +553,11 @@ namespace MaintenanceWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PowerUnit")
+                    b.Property<string>("Power")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("PowerValue")
+                    b.Property<int>("PumpCapacity")
                         .HasColumnType("int");
 
                     b.Property<string>("PumpTag")

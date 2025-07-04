@@ -87,11 +87,15 @@ namespace MaintenanceWebApp.Data
 
         public string CategoryType { get; set; }
 
-        public string Year { get; set; }
+        public int Year { get; set; }
 
-        public string PumpCapacity { get; set; }
+        public int CapacityValue { get; set; }
 
-        public string Power { get; set; }
+        public string CapacityUnit { get; set; }
+
+        public int? PowerValue { get; set; }
+
+        public string? PowerUnit { get; set; }
 
         public string ExplotionProofCode { get; set; }
     }

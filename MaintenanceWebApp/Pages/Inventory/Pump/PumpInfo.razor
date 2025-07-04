@@ -10,7 +10,18 @@
 
 	@if (pump != null){
 		<div class="card-header bg-light border-primary">
-			Pump Information
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					@* Tombol kembali ke daftar pompa *@
+					<a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					@* Informasi Pompa *@
+					<a class="nav-link active" aria-label="Informasi Pompa">Informasi Pompa</a>
+				</li>
+			</ul>
 		</div>
 		<div class="card-body">
 			<div class="form-group row">
@@ -19,7 +30,7 @@
 
 					@if (string.IsNullOrWhiteSpace(pump.Photo) == false)
 					{
-						<img style="align-content:center;" width="100%" src="@CreateWebPath(pump.Photo)" alt="Pump Photo">
+						<img style="align-content:center;" width="100%" src="@CreateWebPath(pump.Photo)" alt="Pump Photo" class="pt-5">
 					}
 					else{
 						<div class="icon">
@@ -30,12 +41,27 @@
 				</div>
 
 				<div class="col-sm-7">
-					<h5 class="display-6">@pump.Name</h5><hr />
+					<h5 class="display-6">@pump.PumpTag</h5><hr />
 					<table width="100%">
 						<tr>
-							<td class="td-first">Location</td>
+							<td class="td-first">Kategori</td>
 							<td> : </td>
-							<td class="td-last">@pump.Location</td>
+							<td class="td-last">@pump.Name</td>
+						</tr>
+						<tr>
+							<td class="td-first">Merk</td>
+							<td> : </td>
+							<td class="td-last">@pump.Brand</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tahun</td>
+							<td> : </td>
+							<td class="td-last">@pump.Year</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tipe</td>
+							<td> : </td>
+							<td class="td-last">@pump.Type</td>
 						</tr>
 						<tr>
 							<td class="td-first">Material</td>
@@ -43,61 +69,33 @@
 							<td class="td-last">@pump.Material</td>
 						</tr>
 						<tr>
-							<td class="td-first">Brand</td>
+							<td class="td-first">Jenis</td>
 							<td> : </td>
-							<td class="td-last">@pump.Brand</td>
+							<td class="td-last">@pump.CategoryType</td>
 						</tr>
 						<tr>
-							<td class="td-first">Type</td>
+							<td class="td-first">Kapasitas</td>
 							<td> : </td>
-							<td class="td-last">@pump.Type</td>
+							<td class="td-last">@pump.CapacityValue @pump.CapacityUnit</td>
 						</tr>
 						<tr>
-							<td class="td-first">Tank</td>
+							<td class="td-first">Lokasi</td>
 							<td> : </td>
-							@if (tank != null){
-								<td class="td-last">@tank.TankNo</td>
-							}
-							else
-							{
-								<td></td>
-							}
+							<td class="td-last">@pump.Location</td>
 						</tr>
 						<tr>
-							<td class="td-first">Pump Tag</td>
+							<td class="td-first">Daya</td>
 							<td> : </td>
-							<td class="td-last">@pump.PumpTag</td>
+							<td class="td-last">@pump.PowerValue @pump.PowerUnit</td>
 						</tr>
 						<tr>
-							<td class="td-first">Year</td>
-							<td> : </td>
-							<td class="td-last">@pump.Year</td>
-						</tr>
-						<tr>
-							<td class="td-first">Explotion Proof Code</td>
+							<td class="td-first">Kode Explotion Proof</td>
 							<td> : </td>
 							<td class="td-last">@pump.ExplotionProofCode</td>
-						</tr>
-						<tr>
-							<td class="td-first">Pump Capacity</td>
-							<td> : </td>
-							<td class="td-last">@pump.PumpCapacity</td>
-						</tr>
-						<tr>
-							<td class="td-first">Power</td>
-							<td> : </td>
-							<td class="td-last">@pump.Power</td>
 						</tr>
 					</table>
 				</div>
 
-			</div>
-
-			<div class="row">
-				<div class="col-sm-12 px-3 py-2">
-					<p><b>Description</b></p><hr/>
-					<p class="px-1">@pump.Description</p>
-				</div>
 			</div>
 
 		</div>
@@ -111,27 +109,21 @@
 @code {
 	private Pump pump;
 	private Tank tank;
+	private string rootStorage;
 	[Parameter]
 	public string PumpId { get; set; }
 
-	//private List<Tank> Tanks { get; set; } = new List<Tank>();
-
-	private async Task LoadData()
-	{
-		//Tanks = await DataContext.Tanks.ToListAsync();
-		tank = await DataContext.Tanks.FindAsync(pump.TankId);
-	}
-
 	private string CreateWebPath(string relativePath)
 	{
-		return Path.Combine(Configuration.GetValue<string>("WebStorageRoot")!, relativePath);
+		rootStorage = Configuration.GetValue<string>("WebStorageRoot")+"/"+relativePath;
+
+		return rootStorage;
 	}
 
     protected override async Task OnInitializedAsync()
 	{
     
         pump = await DataContext.Pumps.FindAsync(PumpId);
-        await LoadData();
 
 		if (pump == null)
         {
