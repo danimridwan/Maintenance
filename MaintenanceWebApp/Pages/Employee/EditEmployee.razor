@@ -10,8 +10,8 @@
     <DataAnnotationsValidator />
     <div class="form-group">
         <label for="Name">Employee Name:</label>
-        <InputText id="Name" @bind-Value="employee.Name" class="form-control" />
-        <ValidationMessage For="@(() => employee.Name)" />
+        <InputText id="Name" @bind-Value="employee.FullName" class="form-control" />
+        <ValidationMessage For="@(() => employee.FullName)" />
     </div>
     <div class="form-group">
         <label for="Email">Employee Email:</label>

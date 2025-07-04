@@ -8,19 +8,19 @@
     <DataAnnotationsValidator />
     <div class="form-group">
         <label for="Name">Name:</label>
-        <InputText id="Name" @bind-Value="NewEmployee.Name" class="form-control" />
-        <ValidationMessage For="@(() => NewEmployee.Name)" />
+        <InputText id="Name" @bind-Value="NewEmployee.FullName" class="form-control" />
+        <ValidationMessage For="@(() => NewEmployee.FullName)" />
     </div>
     <div class="form-group">
         <label for="Email">Email:</label>
         <InputText id="Email" @bind-Value="NewEmployee.Email" class="form-control" />
         <ValidationMessage For="@(() => NewEmployee.Email)" />
     </div>
-    <div class="form-group">
+    @* <div class="form-group">
         <label for="JobTitle">Role:</label>
         <InputText id="JobTitle" @bind-Value="NewEmployee.JobTitle" class="form-control" />
         <ValidationMessage For="@(() => NewEmployee.JobTitle)" />
-    </div><br />
+    </div> *@<br />
 
     <button type="submit" class="btn btn-primary">Create Employee</button>
 </EditForm>
