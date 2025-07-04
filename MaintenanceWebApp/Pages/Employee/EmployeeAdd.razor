@@ -1,0 +1,108 @@
+﻿@page "/EmployeeAdd"
+
+@using MaintenanceWebApp.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+
+@inject DataContext DataContext
+@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
+@inject UserManager<Employee> employeeManager
+@inject RoleManager<IdentityRole> roleManager
+
+<EditForm Model="NewEmployee" OnValidSubmit="CreateEmployee">
+    <DataAnnotationsValidator />
+    @* <ValidationSummary/> *@
+    <div class="card">
+        <div class="card-header border-primary">
+            Employee Information
+        </div>
+        <div class="card-body">
+            <div class="form-group row">
+                <div class="col-sm-12">
+                    <label for="FullName" class="col-sm-2 col-form-label">Full Name <span class="required">*</span></label>
+                    <InputText id="FullName" @bind-Value="NewEmployee.FullName" class="form-control col-sm-10" />
+                    <ValidationMessage For="@(() => NewEmployee.FullName)" />
+                </div>
+                <div class="col-sm-12">
+                    <label for="EmailAddress" class="col-sm-2 col-form-label">Email Address <span class="required">*</span></label>
+                    <InputText id="EmailAddress" @bind-Value="NewEmployee.EmailAddress" class="form-control col-sm-10" />
+                    <ValidationMessage For="@(() => NewEmployee.EmailAddress)" />
+                </div>
+                <div class="col-sm-12">
+                    <label for="Role" class="col-sm-2 col-form-label">Role <span class="required">*</span></label>
+                    <InputSelect id="Role" @bind-Value="NewEmployee.Role" class="form-control col-sm-10" placeholder="Please Select Role..">
+                        <option value="">Please Select Role..</option>
+                        <option value="Admin">Admin</option>
+                        <option value="General Manager">General Manager</option>
+                        <option value="Operation Supervisor">Operation Supervisor</option>
+                        <option value="Operation">Operation</option>
+                        <option value="User">User</option>operation
+                    </InputSelect>
+                    <ValidationMessage For="@(() => NewEmployee.Role)" />
+                </div>
+            </div><br />
+            <button type="button" class="btn btn-danger" onclick="history.back();">Back</button>
+            <button type="submit" class="btn btn-success">Add New Employee</button>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    private Employee NewEmployee { get; set; } = new Employee();
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    private async Task CreateEmployee()
+    {
+        NewEmployee.EmailConfirmed = true;
+        NewEmployee.UserName = NewEmployee.EmailAddress; // Set UserName to Email
+        NewEmployee.Email = NewEmployee.EmailAddress;
+        string password = NewEmployee.EmailAddress;
+        var result = await employeeManager.CreateAsync(NewEmployee, password);
+
+        var checkRole = await roleManager.RoleExistsAsync(NewEmployee.Role);
+        if (checkRole == false)
+        {
+            // If the role does not exist, create it
+            var roleResult = await roleManager.CreateAsync(new IdentityRole(NewEmployee.Role));
+            if (!roleResult.Succeeded)
+            {
+                // Handle role creation failure
+                foreach (var error in roleResult.Errors)
+                {
+                    Console.WriteLine($"Role creation error: {error.Description}");
+                }
+                return;
+            }
+        }
+
+        var addUserRoleResult = await employeeManager.AddToRoleAsync(NewEmployee, NewEmployee.Role);
+        if (result.Succeeded && addUserRoleResult.Succeeded)
+        {
+            await DataContext.SaveChangesAsync();
+            // Navigate to the Pump List page
+            NavigationManager.NavigateTo("/EmployeeList");
+        }
+        else{
+            foreach (var error in result.Errors)
+            {
+                Console.WriteLine($"User creation error: {error.Description}");
+            }
+            foreach (var error in addUserRoleResult.Errors)
+            {
+                Console.WriteLine($"Role creation error: {error.Description}");
+            }
+            return;
+        }
+    }
+
+    // Go back in browser using Javascript on a Razor Page
+    private async Task GoBack()
+    {
+        NavigationManager.NavigateTo($"/EmployeeList");
+    }
+
+}

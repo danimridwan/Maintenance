@@ -168,13 +168,11 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
             }
         }
 
-        private IUserEmailStore<IdentityUser> GetEmailStore()
-        {
-            if (!_userManager.SupportsUserEmail)
-            {
-                throw new NotSupportedException("The default UI requires a user store with email support.");
-            }
-            return (IUserEmailStore<IdentityUser>)_userStore;
+            [Required]
+            public string Role { get; set; }
+
+            [Required]
+            public string Signature { get; set; }
         }
     }
 }
