@@ -1,25 +1,32 @@
-﻿@page "/PumpDelete/{PumpId}"
+﻿@page "/PumpDelete/{PumpId:int}"
 
 @using MaintenanceWebApp.Data
-@inject DataContext DataContext
-@inject NavigationManager NavigationManager
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
 
 <div class="card">
 
     <div class="card-body">
         @if (pump == null)
         {
-            <p><em>Memuat data pompa...</em></p>
+            <p><em>Memuat Data Pompa...</em></p>
             <div class="spinner-border text-primary" role="status">
-		        <span class="sr-only">Loading...</span>
+                <span class="sr-only">Loading...</span>
             </div>
         }
         else
         {
             <h3>Delete Pump</h3><hr />
 
-            <p>Anda yakin ingin menghapus Pump dengan Tag: <b>@pump.PumpTag</b> ?</p>
+            <p>Anda yakin ingin menghapus Pump dengan Tag: <b>@pump.Tag</b> ?</p>
             <button type="button" class="btn btn-danger" @onclick="DeletePump">Delete</button>
             <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
         }
@@ -28,35 +35,84 @@
 </div>
 
 @code {
+    //Page
     [Parameter]
-    public string PumpId { get; set; }
+    public int PumpId { get; set; }
     private Pump pump;
+    private string _webStorageRoot = string.Empty;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "Pump";
 
     protected override async Task OnInitializedAsync()
     {
-        pump = await DataContext.Pumps.FindAsync(PumpId);
-    }
+        await LoadPump();
 
-    private async Task DeletePump()
-    {
-        var pumpToDelete = await DataContext.Pumps.FindAsync(PumpId);
-        string PumpPhoto = pump.Photo;
-
-        if (pumpToDelete != null)
+        try
         {
-            if(PumpPhoto != null)
-            {
-                System.IO.File.Delete(Path.Combine("wwwroot/uploads/images/inventories/", PumpPhoto));
-            }
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
 
-            DataContext.Pumps.Remove(pumpToDelete);
-            await DataContext.SaveChangesAsync();
-            NavigationManager.NavigateTo("/PumpList");
+            ShowNotification(alertMessage, logMessage);
         }
     }
 
+    //Read Data Pump
+    private async Task LoadPump()
+    {
+        try
+        {
+            //Read Pump using Service
+            pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data pompa. Hubungi administrator.";
+            logMessage = $"Gagal memuat data pompa\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Pump
+    private async Task DeletePump()
+    {
+        //File Delete using Service
+        await UploadService.FileChange(pump.Image, subFolderName);
+        pump.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/PumpList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
     private void CancelDelete()
     {
         NavigationManager.NavigateTo("/PumpList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
     }
 }

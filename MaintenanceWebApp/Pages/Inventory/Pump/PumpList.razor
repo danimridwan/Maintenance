@@ -1,13 +1,29 @@
 ﻿@page "/PumpList"
 
 @using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.WebUtilities
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
+@inject CRUDService CRUDService
+@inject UrlStatusService UrlStatusService
 @implements IDisposable
 
 @attribute [Authorize(Roles = "Admin")]
+
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div class="container px-0">
+        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+            @statusMessage
+            <button style="background-color: transparent; border: transparent; float: right;" type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    </div>
+}
 
 <div class="card">
     <div class="row px-3">
@@ -49,7 +65,7 @@
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p>Loading Data Pompa...</p>
+                <p>Memuat Data Pompa...</p>
             </div>
         }
         else if (!HasPumps)
@@ -65,14 +81,15 @@
         }
         else
         {
-            <QuickGrid Items="FilteredPumps" Virtualize="false" Pagination="@Pagination"
-            Class="table table-striped table-hover table-bordered">
+            <QuickGrid Items="FilteredPumps" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
 
-                <TemplateColumn Title="Tag" SortBy="@sortByCategory">
-                    <a style="text-decoration: none;" href="" @onclick="@(() => NavigateToPumpInfo(context))">
-                        @context.PumpTag
-                    </a>
-                </TemplateColumn>
+                <PropertyColumn Property="@(pump => pump.Tag)" Title="Tag" Sortable="true">
+                    <ColumnOptions>
+                        <div class="search-box">
+                            <input type="search" autofocus @bind="_pumpNoFilter" @bind:event="oninput" placeholder="Tag..." />
+                        </div>
+                    </ColumnOptions>
+                </PropertyColumn>
 
                 <PropertyColumn Property="@(pump => pump.Name)" Title="Category" Sortable="true" />
                 <PropertyColumn Property="@(pump => pump.Brand)" Title="Merk" Sortable="true" />
@@ -109,6 +126,8 @@
     public bool HasPumps => !_isLoading && (_allPumps?.Any() ?? false);
     public int PumpCount => _allPumps?.Count() ?? 0;
 
+    private string statusMessage = string.Empty;
+
     public string pumpNoFilter
     {
         get => _pumpNoFilter;
@@ -139,11 +158,8 @@
     public IQueryable<Pump> FilteredPumps =>
         string.IsNullOrWhiteSpace(_pumpNoFilter)
             ? _allPumps ?? Enumerable.Empty<Pump>().AsQueryable()
-            : (_allPumps?.Where(p => p.Name.Contains(_pumpNoFilter, StringComparison.OrdinalIgnoreCase))
+            : (_allPumps?.Where(p => p.Tag.Contains(_pumpNoFilter, StringComparison.OrdinalIgnoreCase))
               ?? Enumerable.Empty<Pump>().AsQueryable());
-
-    GridSort<Pump> sortByCategory = GridSort<Pump>
-        .ByAscending(p => p.Name);
 
     #endregion
 
@@ -151,9 +167,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPumps();
         _isLoading = false;
-        await base.OnInitializedAsync();
+
+        await LoadPumps();
+        LoadUrlStatus();
+    }
+
+    private async Task LoadUrlStatus()
+    {
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+
+        var uri = new Uri(NavigationManager.Uri);
+        var currentPath = uri.AbsolutePath;
+        NavigationManager.NavigateTo(currentPath, replace: true);
     }
 
     public void Dispose()
@@ -170,20 +196,15 @@
     {
         try
         {
-            // First get the list asynchronously
-            var pumpsList = await DataContext.Pumps
-                .AsNoTracking()
-                .OrderBy(p => p.InventoryID)
-                .ToListAsync();
+            // Get List
+            var pumpsList = await CRUDService.ReadAllAsync<Pump>(orderBy: q => q.OrderBy(p => p.PumpID));
 
             // Then convert to IQueryable
             _allPumps = pumpsList.AsQueryable();
         }
         catch (Exception ex)
         {
-            // TODO: Add proper error handling/logging
             Console.WriteLine($"Error loading pumps: {ex.Message}");
-            // Consider adding error state handling in the UI
         }
         finally
         {
@@ -212,17 +233,17 @@
 
     private void NavigateToPumpInfo(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpInfo/{pump.InventoryID}");
+        NavigationManager.NavigateTo($"/PumpInfo/{pump.PumpID}");
     }
 
     private void NavigateToEditPump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpEdit/{pump.InventoryID}");
+        NavigationManager.NavigateTo($"/PumpEdit/{pump.PumpID}");
     }
 
     private void NavigateToDeletePump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpDelete/{pump.InventoryID}");
+        NavigationManager.NavigateTo($"/PumpDelete/{pump.PumpID}");
     }
 
     #endregion

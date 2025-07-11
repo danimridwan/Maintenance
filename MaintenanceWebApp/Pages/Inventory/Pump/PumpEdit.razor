@@ -1,496 +1,375 @@
-﻿@page "/PumpEdit/{PumpId}"
+﻿@page "/PumpEdit/{PumpId:int}"
 
 @using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
-@using UploadFilesLibrary
-@using Microsoft.Data.SqlClient
-@inject IDbContextFactory<DataContext> DbContextFactory
-@inject NavigationManager NavigationManager
-@inject IJSRuntime JSRuntime
+@inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
 
-@* Form Edit Pump *@
-@if (pump == null)
-{
-	<p><em>Memuat data pompa...</em></p>
-	<div class="spinner-border text-primary" role="status">
-		<span class="sr-only">Loading...</span>
-	</div>
-}
-else
-{
-	<EditForm Model="pump" OnValidSubmit="HandleValidSubmit">
-		<DataAnnotationsValidator />
-		<div class="card">
-			<div class="card-header bg-light border-primary">
-				<ul class="nav nav-tabs card-header-tabs">
-					<li class="nav-item">
-						@* Tombol kembali ke daftar pompa *@
-						<a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
-							<span class="oi oi-chevron-left"></span>
-						</a>
-					</li>
-					<li class="nav-item">
-						@* Navigasi untuk langkah "Informasi Umum" *@
-						<a class="nav-link @(CurrentStep == 1 ? "active" : "disabled")" aria-current="@(CurrentStep == 1 ? "page" : null)">Informasi Umum</a>
-					</li>
-					<li class="nav-item">
-						@* Navigasi untuk langkah "Informasi Pompa" *@
-						<a class="nav-link @(CurrentStep == 2 ? "active" : "disabled")" aria-current="@(CurrentStep == 2 ? "page" : null)">Informasi Pompa</a>
-					</li>
-				</ul>
-			</div>
-			<div class="card-body">
-				@if (CurrentStep == 1)
-				{
-					<div class="form-group row">
-						<div class="col-sm-12">
-							<label for="NamaPompa" class="col-form-label">Nama Pompa <span class="required">*</span></label>
-							<InputSelect id="NamaPompa" @bind-Value="pump.Name" class="form-control">
-								<option value="">...</option>
-								<option value="Pompa Delivery">Pompa Delivery</option>
-								<option value="Pompa Pendukung Operasional">Pompa Pendukung Operasional</option>
-								<option value="Pompa Air Bersih">Pompa Air Bersih</option>
-								<option value="Pompa Kondisi Darurat Kebakaran">Pompa Kondisi Darurat Kebakaran</option>
-							</InputSelect>
-							<ValidationMessage For="@(() => pump.Name)" />
-							@if (validationErrors.ContainsKey("Name"))
-							{
-								<span class="text-danger">@validationErrors["Name"]</span>
-							}
-						</div>
-						<div class="col-sm-12">
-							<label for="TagPompa" class="col-form-label">Tag No Pompa <span class="required">*</span></label>
-							<InputText id="TagPompa" @bind-Value="pump.PumpTag" class="form-control" />
-							<ValidationMessage For="@(() => pump.PumpTag)" />
-							@if (validationErrors.ContainsKey("PumpTag"))
-							{
-								<span class="text-danger">@validationErrors["PumpTag"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<label for="Merk" class="col-form-label">Merk <span class="required">*</span></label>
-							<InputText id="Merk" @bind-Value="pump.Brand" class="form-control" />
-							<ValidationMessage For="@(() => pump.Brand)" />
-							@if (validationErrors.ContainsKey("Brand"))
-							{
-								<span class="text-danger">@validationErrors["Brand"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<label for="Material" class="col-form-label">Material <span class="required">*</span></label>
-							<InputText id="Material" @bind-Value="pump.Material" class="form-control" />
-							<ValidationMessage For="@(() => pump.Material)" />
-							@if (validationErrors.ContainsKey("Material"))
-							{
-								<span class="text-danger">@validationErrors["Material"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<label for="Jenis" class="col-form-label">Jenis <span class="required">*</span></label>
-							<InputText id="Jenis" @bind-Value="pump.CategoryType" class="form-control" />
-							<ValidationMessage For="@(() => pump.CategoryType)" />
-							@if (validationErrors.ContainsKey("CategoryType"))
-							{
-								<span class="text-danger">@validationErrors["CategoryType"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
-							<InputText id="Lokasi" @bind-Value="pump.Location" class="form-control" />
-							<ValidationMessage For="@(() => pump.Location)" />
-							@if (validationErrors.ContainsKey("Location"))
-							{
-								<span class="text-danger">@validationErrors["Location"]</span>
-							}
-						</div>
-						<div class="col-sm-12">
-							<label for="Foto" class="col-form-label">Foto</label>
-							<InputFile id="Foto" class="form-control"
-							accept=".jpg,.jpeg,.png"
-							OnChange="HandleFileUpload" />
-							<ValidationMessage For="@(() => pump.Photo)" />
-						</div>
-						<p>@pump.Photo</p>
-					</div>
-				}
-				else if (CurrentStep == 2)
-				{
-					<div class="form-group row">
-						<div class="col-sm-12">
-							<label for="Tipe" class="col-form-label">Tipe <span class="required">*</span></label>
-							<InputText id="Tipe" @bind-Value="pump.Type" class="form-control" />
-							<ValidationMessage For="@(() => pump.Type)" />
-							@if (validationErrors.ContainsKey("Type"))
-							{
-								<span class="text-danger">@validationErrors["Type"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<label for="Tahun" class="col-form-label">Tahun <span class="required">*</span></label>
-							<InputNumber id="Tahun" @bind-Value="pump.Year" class="form-control" />
-							<ValidationMessage For="@(() => pump.Year)" />
-							@if (validationErrors.ContainsKey("Year"))
-							{
-								<span class="text-danger">@validationErrors["Year"]</span>
-							}
-						</div>
-						<div class="col-sm-6">
-							<div class="row">
-								<div class="col-sm-8">
-									<label for="Kapasitas" class="col-form-label">Kapasitas</label>
-									<InputNumber class="form-control" id="Kapasitas" @bind-Value="pump.CapacityValue" @oninput="OnCapacityInputChanged" />
-									<ValidationMessage For="@(() => pump.CapacityValue)" />
-									@if (validationErrors.ContainsKey("CapacityValue"))
-									{
-										<span class="text-danger">@validationErrors["CapacityValue"]</span>
-									}
-								</div>
-								<div class="col-sm-4">
-									<label for="SatuanKapasitas" class="col-form-label">Unit</label>
-									<InputSelect id="SatuanKapasitas" @bind-Value="pump.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
-										<ValidationMessage For="@(() => pump.CapacityUnit)" />
-										<option value="">...</option>
-										<option value="M3/h">M3/h</option>
-										<option value="M3/min">M3/min</option>
-										<option value="GPM">GPM</option>
-										<option value="GMP">GMP</option>
-										<option value="LPM">LPM</option>
-										<option value="L/menit">L/menit</option>
-									</InputSelect>
-									@if (validationErrors.ContainsKey("CapacityUnit"))
-									{
-										<span class="text-danger">@validationErrors["CapacityUnit"]</span>
-									}
-								</div>
-							</div>
-						</div>
-						<div class="col-sm-6">
-							<div class="row">
-								<div class="col-sm-8">
-									<label for="Daya" class="col-form-label">Daya</label>
-									<InputNumber class="form-control" id="Daya" @bind-Value="pump.PowerValue" @oninput="OnPowerInputChanged" />
-									<ValidationMessage For="@(() => pump.PowerValue)" />
-									@if (validationErrors.ContainsKey("PowerValue"))
-									{
-										<span class="text-danger">@validationErrors["PowerValue"]</span>
-									}
-								</div>
-								<div class="col-sm-4">
-									<label for="SatuanDaya" class="col-form-label">HP/KW</label>
-									<InputSelect id="SatuanDaya" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
-										<ValidationMessage For="@(() => pump.PowerUnit)" />
-										<option value="">...</option>
-										<option value="HP">HP</option>
-										<option value="KW">KW</option>
-									</InputSelect>
-									@if (validationErrors.ContainsKey("PowerUnit"))
-									{
-										<span class="text-danger">@validationErrors["PowerUnit"]</span>
-									}
-								</div>
-							</div>
-						</div>
-						<div class="col-sm-6">
-							<label for="KodeExplotionProof" class="col-form-label">Kode Explotion Proof</label>
-							<InputText id="KodeExplotionProof" @bind-Value="pump.ExplotionProofCode" class="form-control" />
-							<ValidationMessage For="@(() => pump.ExplotionProofCode)" />
-							@if (validationErrors.ContainsKey("ExplotionProofCode"))
-							{
-								<span class="text-danger">@validationErrors["ExplotionProofCode"]</span>
-							}
-						</div>
-					</div>
-				}
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
 
-				<div class="float-end mt-3">
-					@* Tombol navigasi "Next" atau "Previous" / "Simpan" *@
-					@if (CurrentStep == 1)
-					{
-						<button type="button" class="btn btn-primary" @onclick="GoToNextStep">Selanjutnya</button>
-					}
-					else
-					{
-						<button type="button" class="btn btn-secondary me-2" @onclick="GoToPreviousStep">Kembali</button>
-						<button type="submit" class="btn btn-primary">Simpan</button>
-					}
-				</div>
+    <div class="card">
+        <div class="card-header bg-light border-primary">
+            @* Tab Header *@
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                        <span class="oi oi-chevron-left"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <span class="nav-link active" aria-current="page">Informasi Pompa</span>
+                </li>
+            </ul>
+        </div>
+    <div class="card-body">
+        @if (pump != null)
+        {
+            @* Form Edit *@
+            <EditForm Model="pump" OnValidSubmit="HandleUpdatePump" OnInvalidSubmit="HandleInvalidSubmit">
+                <DataAnnotationsValidator />
+                <div class="form-group row">
+                    <div class="col-sm-12 mb-3">
+                        <label for="NamaPompa" class="col-form-label">Nama Pompa <span class="required">*</span></label>
+                        <InputSelect id="NamaPompa" @bind-Value="pump.Name" class="form-control">
+                            <option value="">...</option>
+                            @foreach (var name in pumpName)
+                            {
+                                <option value="@name">@name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => pump.Name)" />
+                    </div>
 
-			</div>
-		</div>
-	</EditForm>
-}
+                    <div class="col-sm-12 mb-3">
+                        <label for="TagPompa" class="col-form-label">Tag No Pompa <span class="required">*</span></label>
+                        <InputText id="TagPompa" @bind-Value="pump.Tag" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Tag)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Merk" class="col-form-label">Merk</label>
+                        <InputText id="Merk" @bind-Value="pump.Brand" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Brand)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Material" class="col-form-label">Material</label>
+                        <InputText id="Material" @bind-Value="pump.Material" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Material)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Jenis" class="col-form-label">Jenis</label>
+                        <InputText id="Jenis" @bind-Value="pump.Category" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Category)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
+                        <InputText id="Lokasi" @bind-Value="pump.Location" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Location)" />
+                    </div>
+
+                    <div class="col-sm-12 mb-3">
+                        <label for="Tipe" class="col-form-label">Tipe</label>
+                        <InputText id="Tipe" @bind-Value="pump.Type" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Type)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Tahun" class="col-form-label">Tahun</label>
+                        <InputNumber id="Tahun" @bind-Value="pump.Year" class="form-control" />
+                        <ValidationMessage For="@(() => pump.Year)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="Kapasitas" class="col-form-label">Kapasitas</label>
+                                <InputNumber class="form-control" id="Kapasitas" @bind-Value="pump.CapacityValue" @oninput="OnCapacityInputChanged" />
+                                <ValidationMessage For="@(() => pump.CapacityValue)" />
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="SatuanKapasitas" class="col-form-label">Unit</label>
+                                <InputSelect id="SatuanKapasitas" @bind-Value="pump.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
+                                    <option value="">...</option>
+                                    @foreach (var unit in capacityUnits)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </InputSelect>
+                                @* Custom validation message for CapacityUnit *@
+                                @if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
+                                {
+                                    <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="Daya" class="col-form-label">Daya</label>
+                                <InputNumber class="form-control" id="Daya" @bind-Value="pump.PowerValue" @oninput="OnPowerInputChanged" />
+                                <ValidationMessage For="@(() => pump.PowerValue)" />
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="SatuanDaya" class="col-form-label">Unit</label>
+                                <InputSelect id="SatuanDaya" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
+                                    <option value="">...</option>
+                                    @foreach (var unit in powerUnits)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </InputSelect>
+                                @* Custom validation message for PowerUnit *@
+                                @if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
+                                {
+                                    <div class="text-danger">Satuan Daya harus dipilih.</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="KodeExplotionProof" class="col-form-label">Kode Explotion Proof</label>
+                        <InputText id="KodeExplotionProof" @bind-Value="pump.ExplotionProofCode" class="form-control" />
+                        <ValidationMessage For="@(() => pump.ExplotionProofCode)" />
+                    </div>
+
+                    <div class="col-sm-12 mb-3">
+                        <label for="Foto" class="col-form-label">Foto</label>
+                        @if (string.IsNullOrWhiteSpace(pump.Image))
+                        {
+                            <InputFile id="Foto" class="form-control"
+                                       accept=".jpg,.jpeg,.png"
+                                       OnChange="HandleFileUpload" />
+                            <ValidationMessage For="@(() => pump.Image)" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center">
+                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(pump.Image)" alt="Pump Image">
+                                <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                        {
+                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                        }
+                    </div>
+                </div>
+
+                @* Submit Button *@
+                <div class="float-end mt-3">
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </EditForm>
+        }
+        else
+        {
+            <p>Memuat Data Pompa...</p>
+        }
+        </div>
+    </div>
 
 @code {
-	private Pump pump;
-	[Parameter]
-	public string PumpId { get; set; }
-	private int CurrentStep { get; set; } = 1;
-	private Dictionary<string, string> validationErrors = new();
-	private const long MaxFileSize = 3 * 1024 * 1024; // 3MB in bytes
+    //Page
+    private Pump pump;
+    [Parameter]
+    public int PumpId { get; set; }
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
 
-	private bool IsPowerUnitDisabled = false;
+    //Form
+    private bool IsPowerUnitDisabled = true;
+    private bool IsCapacityUnitDisabled = true;
+    private List<string> pumpName = new() { "Pompa Delivery", "Pompa Pendukung Operasional", "Pompa Air Bersih", "Pompa Kondisi Darurat Kebakaran" };
+    private List<string> powerUnits = new() { "HP", "KW" };
+    private List<string> capacityUnits = new() { "M3/h", "M3/min", "LPM", "GPM" };
 
-	private bool IsCapacityUnitDisabled = false;
+    //File
+    private string subFolderName = "Inventories";
+    private string fileCategory = "img";
+    private string folderName = "Pump";
 
-	private async Task LoadData()
-	{
-	}
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
 
-	protected override async Task OnInitializedAsync()
-	{
-		await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-		pump = await dbContext.Pumps.FindAsync(PumpId);
-
-		if (pump == null)
-		{
-			NavigationManager.NavigateTo("/PumpList", forceLoad: true);
-		}
-	}
-
-	private async Task HandleFileUpload(InputFileChangeEventArgs e)
-	{
-		var file = e.File;
-
-		if (file == null)
-		{
-			System.IO.File.Delete(Path.Combine("wwwroot/uploads/images/inventories/", pump.Photo));
-			ShowAlert(pump.Photo);
-			pump.Photo = null; // Photo di-reset jika file dihapus/tidak dipilih
-			return;
-		}
-
-		if (file != null)
-		{
-
-			if (file.Size > MaxFileSize)
-			{
-				validationErrors["File"] = $"Ukuran file melebihi batas maksimum {MaxFileSize / (1024 * 1024)}MB.";
-				await ShowAlert(string.Join("\n", validationErrors.Values));
-				pump.Photo = null; // path foto tidak disimpan jika validasi gagal
-				return;
-			}
-
-			try
-			{
-				var basePath = Configuration["FileStorageInventories"];
-				const string folderName = "Pump";
-				var directoryPath = Path.Combine(basePath, folderName);
-
-				// Membuat direktori
-				Directory.CreateDirectory(directoryPath);
-
-				// Membuat nama file yang aman dan unik
-				var fileExtension = Path.GetExtension(file.Name).ToLowerInvariant(); // Ambil ekstensi dan jadikan huruf kecil
-				// Filter ekstensi
-				if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(fileExtension))
-				{
-					validationErrors["File"] = "Format file tidak didukung. Harap unggah file JPG, JPEG, atau PNG.";
-					await ShowAlert(string.Join("\n", validationErrors.Values));
-					pump.Photo = null;
-					return;
-				}
-
-				var newFileName = $"{Guid.NewGuid()}{fileExtension}";
-				var fullFilePath = Path.Combine(directoryPath, newFileName);
-
-				System.IO.File.Delete(Path.Combine("wwwroot/uploads/images/inventories/", pump.Photo));
-
-				await using (var stream = file.OpenReadStream(MaxFileSize))
-				{
-					await using (var fileStream = new FileStream(fullFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
-					{
-						await stream.CopyToAsync(fileStream);
-					}
-				}
-
-				pump.Photo = Path.Combine(folderName, newFileName).Replace("\\", "/");
-
-			}
-			catch (IOException ioEx)
-			{
-				Console.WriteLine($"File system error: {ioEx.Message}");
-				validationErrors["File"] = "Terjadi masalah saat menyimpan file. Periksa izin folder atau ruang disk.";
-				await ShowAlert(string.Join("\n", validationErrors.Values));
-				pump.Photo = null;
-			}
-			catch (UnauthorizedAccessException uaEx)
-			{
-				Console.WriteLine($"Access denied error: {uaEx.Message}");
-				validationErrors["File"] = "Akses ditolak saat mencoba menyimpan file. Periksa izin folder.";
-				await ShowAlert(string.Join("\n", validationErrors.Values));
-				pump.Photo = null;
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"File upload error: {ex.Message}");
-				validationErrors["File"] = "Gagal mengunggah file. Silakan coba lagi. Detail: " + ex.Message;
-				await ShowAlert(string.Join("\n", validationErrors.Values));
-				pump.Photo = null;
-			}
-		}
-	}
-
-	private async Task GoToNextStep()
-	{
-		ValidateCurrentStep();
-
-		if (!validationErrors.Any())
-		{
-			CurrentStep++;
-			StateHasChanged();
-		}
-	}
-
-	private void GoToPreviousStep()
-	{
-		CurrentStep--;
-		StateHasChanged();
-	}
-
-	private async Task HandleValidSubmit()
-	{
-		await UpdatePump();
-	}
-
-	private void ValidateCurrentStep()
-	{
-		validationErrors.Clear();
-
-		if (CurrentStep == 1)
-		{
-			if (string.IsNullOrWhiteSpace(pump.Name)) validationErrors["Name"] = "Nama Pompa harus diisi.";
-			if (string.IsNullOrWhiteSpace(pump.PumpTag)) validationErrors["PumpTag"] = "Nomor Tag Pompa harus diisi.";
-			if (string.IsNullOrWhiteSpace(pump.Brand)) validationErrors["Brand"] = "Brand harus diisi.";
-			if (string.IsNullOrWhiteSpace(pump.Material)) validationErrors["Material"] = "Material harus diisi.";
-			if (string.IsNullOrWhiteSpace(pump.CategoryType)) validationErrors["CategoryType"] = "Jenis Pompa harus diisi.";
-			if (string.IsNullOrWhiteSpace(pump.Location)) validationErrors["Location"] = "Lokasi harus diisi.";
-		}
-		else if (CurrentStep == 2)
-		{
-			if (string.IsNullOrWhiteSpace(pump.Type)) validationErrors["Type"] = "Tipe harus diisi.";
-
-			if (pump.Year <= 1800 || pump.Year >= 2100)
-			{
-				validationErrors["Year"] = "Isi Tahun Pompa dengan benar!.";
-			}
-
-			if (pump.CapacityValue <= 0)
-			{
-				validationErrors["CapacityValue"] = "Isi nilai Kapasitas Pompa dengan benar!.";
-			}
-			else if (string.IsNullOrWhiteSpace(pump.CapacityUnit))
-			{
-				validationErrors["CapacityUnit"] = "Pilih Satuan Kapasitas!";
-			}
-
-			// Validasi Daya dan Satuan Daya
-			if (pump.PowerValue < 0)
-			{
-				validationErrors["PowerValue"] = "Isi nilai daya dengan benar!";
-			}
-			else if (pump.PowerValue > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
-			{
-				validationErrors["PowerUnit"] = "Pilih Satuan Daya!";
-			}
-		}
-	}
-
-    private async Task UpdatePump()
+    protected override async Task OnInitializedAsync()
     {
+        //Read Pump using Service
+        pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
 
-		ValidateCurrentStep();
+        if (pump == null)
+        {
+            NavigationManager.NavigateTo("/PumpList", forceLoad: true);
+        }
 
-		if (!validationErrors.Any())
-		{
-			try
-			{
-				await using var dbContext = await DbContextFactory.CreateDbContextAsync();
-				dbContext.Pumps.Update(pump);
-				await dbContext.SaveChangesAsync();
+        editContext = new EditContext(pump);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
 
-				NavigationManager.NavigateTo("/PumpList");
-			}
-			catch (DbUpdateException ex)
-			{
-				// Ekstraksi pesan error yang lebih relevan untuk pengguna
-				var userFriendlyMessage = "Terjadi kesalahan database. Mohon coba lagi atau hubungi administrator.";
-				if (ex.InnerException is SqlException sqlEx)
-				{
-					if (sqlEx.Number == 2601 || sqlEx.Number == 2627) // SQL Server unique constraint violation
-					{
-						if (sqlEx.Message.Contains("IX_Pumps_PumpTag")) // Unique index pada PumpTag
-						{
-							userFriendlyMessage = "Nomor Tag Pompa yang Anda masukkan sudah ada. Mohon gunakan Tag yang berbeda.";
-							validationErrors["PumpTag"] = userFriendlyMessage;
-						}
-						else
-						{
-							userFriendlyMessage = $"Data yang Anda masukkan duplikat atau tidak valid: {sqlEx.Message}";
-						}
-					}
-					else
-					{
-						userFriendlyMessage = $"Kesalahan SQL: {sqlEx.Message}";
-					}
-				}
-				else if (ex.InnerException != null)
-				{
-					userFriendlyMessage = $"Terjadi kesalahan internal: {ex.InnerException.Message}";
-				}
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
 
-				Console.Error.WriteLine($"Database error during pump creation: {ex.ToString()}");
-				await ShowAlert($"Gagal menyimpan data pompa.\n{userFriendlyMessage}");
-			}
-			catch (Exception ex)
-			{
-				Console.Error.WriteLine($"General error during pump creation: {ex.ToString()}");
-				await ShowAlert($"Gagal menyimpan data pompa.\nTerjadi kesalahan tak terduga. Silakan coba lagi.");
-			}
-		}
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+    
+    //File Upload
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+        pump.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal upload gambar. Hubungi Administrator.";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
     }
 
-	private void OnPowerInputChanged(ChangeEventArgs args)
-	{
-		double currentPowerInputValue = 0;
+    //File Change
+    private async Task HandleFileChange()
+    {
+        //File Change using Service
+        await UploadService.FileChange(pump.Image, subFolderName);
+        pump.Image = UploadService.FilePath;
 
-		if (double.TryParse(args.Value?.ToString(), out currentPowerInputValue))
-		{
-		}
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
+            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
 
-		IsPowerUnitDisabled = currentPowerInputValue <= 0;
+            ShowNotification(alertMessage, logMessage);
+        }
 
-		if (IsPowerUnitDisabled)
-		{
-			pump.PowerUnit = "";
-		}
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
+    }
 
-		StateHasChanged();
-	}
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
 
-	private void OnCapacityInputChanged(ChangeEventArgs args)
-	{
-		double currentCapacityInputValue = 0;
+    //Update Data Pump
+    private async Task HandleUpdatePump()
+    {
+        // Custom Capacity Value Validation
+        if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
+        {
+            alertMessage = "Jika Kapasitas diisi, Satuan Kapasitas harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Kapasitas tidak dipilih saat Kapasitas ada.";
 
-		if (double.TryParse(args.Value?.ToString(), out currentCapacityInputValue))
-		{
-		}
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
 
-		IsCapacityUnitDisabled = currentCapacityInputValue <= 0;
+        // Custom Power Value Validation
+        if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
+        {
+            alertMessage = "Jika Daya diisi, Satuan Daya harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Daya tidak dipilih saat Daya ada.";
 
-		if (IsCapacityUnitDisabled)
-		{
-			pump.CapacityUnit = "";
-		}
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
 
-		StateHasChanged();
-	}
+        //Update using Services
+        await CRUDService.UpdateAsync<Pump>(pump);
 
-	private async Task ShowAlert(string message)
-	{
-		if (!string.IsNullOrWhiteSpace(message))
-		{
-			await JSRuntime.InvokeVoidAsync("alert", message);
-		}
-	}
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/PumpList?status=EditSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir PumpAdd disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Power Validation
+    private void OnPowerInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double currentPowerInputValue))
+        {
+            pump.PowerValue = currentPowerInputValue;
+        }
+        else
+        {
+            pump.PowerValue = null;
+        }
+
+        IsPowerUnitDisabled = !pump.PowerValue.HasValue || pump.PowerValue.Value <= 0;
+
+        if (IsPowerUnitDisabled)
+        {
+            pump.PowerUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.PowerValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.PowerUnit));
+    }
+
+    //Capacity Validation
+    private void OnCapacityInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double currentCapacityInputValue))
+        {
+            pump.CapacityValue = currentCapacityInputValue;
+        }
+        else
+        {
+            pump.CapacityValue = null;
+        }
+
+        IsCapacityUnitDisabled = !pump.CapacityValue.HasValue || pump.CapacityValue.Value <= 0;
+
+        if (IsCapacityUnitDisabled)
+        {
+            pump.CapacityUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.CapacityValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.CapacityUnit));
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
 }

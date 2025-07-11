@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MaintenanceWebApp.Migrations
 {
     /// <inheritdoc />
-    public partial class Initialize20250526 : Migration
+    public partial class InitializeDatabase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -30,6 +30,9 @@ namespace MaintenanceWebApp.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Discriminator = table.Column<string>(type: "nvarchar(13)", maxLength: 13, nullable: false),
+                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    UserPhoto = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -51,18 +54,29 @@ namespace MaintenanceWebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Employees",
+                name: "Pumps",
                 columns: table => new
                 {
-                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    JobTitle = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                    PumpID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Tag = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: false),
+                    Brand = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: true),
+                    Year = table.Column<int>(type: "int", nullable: true),
+                    Type = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: true),
+                    Material = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: true),
+                    Category = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: true),
+                    Location = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: false),
+                    CapacityValue = table.Column<double>(type: "float", nullable: true),
+                    CapacityUnit = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    PowerValue = table.Column<double>(type: "float", nullable: true),
+                    PowerUnit = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ExplotionProofCode = table.Column<string>(type: "nvarchar(25)", maxLength: 25, nullable: true),
+                    Image = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Employees", x => x.UserID);
+                    table.PrimaryKey("PK_Pumps", x => x.PumpID);
                 });
 
             migrationBuilder.CreateTable(
@@ -187,33 +201,6 @@ namespace MaintenanceWebApp.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "MaintenanceTasks",
-                columns: table => new
-                {
-                    TaskID = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Requestor = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Division = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RequestDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    Photo = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SupportingDocument = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Notes = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    WorkType = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UserID = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MaintenanceTasks", x => x.TaskID);
-                    table.ForeignKey(
-                        name: "FK_MaintenanceTasks_Employees_UserID",
-                        column: x => x.UserID,
-                        principalTable: "Employees",
-                        principalColumn: "UserID",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "PPMTasks",
                 columns: table => new
                 {
@@ -239,59 +226,10 @@ namespace MaintenanceWebApp.Migrations
                 {
                     table.PrimaryKey("PK_PPMTasks", x => x.TaskID);
                     table.ForeignKey(
-                        name: "FK_PPMTasks_Employees_UserID",
+                        name: "FK_PPMTasks_AspNetUsers_UserID",
                         column: x => x.UserID,
-                        principalTable: "Employees",
-                        principalColumn: "UserID");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Inventories",
-                columns: table => new
-                {
-                    InventoryID = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Location = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Material = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Brand = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Type = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TankId = table.Column<int>(type: "int", nullable: true),
-                    Photo = table.Column<byte[]>(type: "varbinary(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Discriminator = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Mmh20Plus = table.Column<int>(type: "int", nullable: true),
-                    Mmh20Minus = table.Column<int>(type: "int", nullable: true),
-                    BreatherValveDiameter = table.Column<int>(type: "int", nullable: true),
-                    FLowMeterTag = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FlowMeterTemperatureDesigned = table.Column<int>(type: "int", nullable: true),
-                    FlowMeterPressureDesigned = table.Column<int>(type: "int", nullable: true),
-                    FlowMeterRate = table.Column<int>(type: "int", nullable: true),
-                    DeviceModel = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PCValveTankDesignedPressure = table.Column<int>(type: "int", nullable: true),
-                    PCValveTankDiameter = table.Column<int>(type: "int", nullable: true),
-                    PRVValvePumpDesignedPressure = table.Column<int>(type: "int", nullable: true),
-                    PRValvePumpDiameter = table.Column<int>(type: "int", nullable: true),
-                    PRVValveTankDesignedPressure = table.Column<int>(type: "int", nullable: true),
-                    PRValveTankDiameter = table.Column<int>(type: "int", nullable: true),
-                    Capacity = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PumpTag = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Year = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PumpCapacity = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Power = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ExplotionProofCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Pipeline = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ValveDiameter = table.Column<int>(type: "int", nullable: true),
-                    Layer = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TotalUnit = table.Column<int>(type: "int", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Inventories", x => x.InventoryID);
-                    table.ForeignKey(
-                        name: "FK_Inventories_Tanks_TankId",
-                        column: x => x.TankId,
-                        principalTable: "Tanks",
-                        principalColumn: "TankID");
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -334,16 +272,6 @@ namespace MaintenanceWebApp.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Inventories_TankId",
-                table: "Inventories",
-                column: "TankId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MaintenanceTasks_UserID",
-                table: "MaintenanceTasks",
-                column: "UserID");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_PPMTasks_UserID",
                 table: "PPMTasks",
                 column: "UserID");
@@ -368,25 +296,19 @@ namespace MaintenanceWebApp.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "Inventories");
-
-            migrationBuilder.DropTable(
-                name: "MaintenanceTasks");
-
-            migrationBuilder.DropTable(
                 name: "PPMTasks");
+
+            migrationBuilder.DropTable(
+                name: "Pumps");
+
+            migrationBuilder.DropTable(
+                name: "Tanks");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
-
-            migrationBuilder.DropTable(
-                name: "Tanks");
-
-            migrationBuilder.DropTable(
-                name: "Employees");
         }
     }
 }

@@ -1,4 +1,5 @@
 using MaintenanceWebApp.Data;
+using MaintenanceWebApp.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using UploadFilesLibrary;
@@ -10,6 +11,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<ISqlDataAccess, SqlDataAccess>();
 
+builder.Services.AddScoped<UploadFilesService>();
+builder.Services.AddScoped<CRUDService>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<UrlStatusService>();
+
 // Retrieves the connection string named "Default" from the application's configuration.
 builder.Services.AddDbContextFactory<DataContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -18,8 +24,8 @@ options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnectio
 
 builder.Services.AddIdentity<Employee, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 5;
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 8;
     options.Password.RequireLowercase = false;
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;

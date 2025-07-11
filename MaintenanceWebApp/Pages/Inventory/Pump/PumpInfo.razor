@@ -1,47 +1,48 @@
-﻿@page "/PumpInfo/{PumpId}"
+﻿@page "/PumpInfo/{PumpId:int}"
 
 @using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
-@inject DataContext DataContext
-@inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager		
+@inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
 
 <div class="card">
 
 	@if (pump != null){
 		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
 			<ul class="nav nav-tabs card-header-tabs">
 				<li class="nav-item">
-					@* Tombol kembali ke daftar pompa *@
 					<a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
 						<span class="oi oi-chevron-left"></span>
 					</a>
 				</li>
 				<li class="nav-item">
-					@* Informasi Pompa *@
 					<a class="nav-link active" aria-label="Informasi Pompa">Informasi Pompa</a>
 				</li>
 			</ul>
 		</div>
 		<div class="card-body">
+			@* Informasi Pompa *@
 			<div class="form-group row">
-
 				<div class="col-sm-5">
 
-					@if (string.IsNullOrWhiteSpace(pump.Photo) == false)
+					@if (string.IsNullOrWhiteSpace(pump.Image) == false)
 					{
-						<img style="align-content:center;" width="100%" src="@CreateWebPath(pump.Photo)" alt="Pump Photo" class="pt-5">
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(pump.Image)" alt="Pump Image" class="pt-5">
 					}
 					else{
-						<div class="icon">
-							<span class="oi oi-image"></span><br>
-							No Image Available
-						</div>
+						<img style="align-content:center;" width="100%" src="../noimg.png" alt="No Image Available" class="pt-5">
 					}
 				</div>
 
 				<div class="col-sm-7">
-					<h5 class="display-6">@pump.PumpTag</h5><hr />
+					<h5 class="display-6">@pump.Tag</h5><hr />
 					<table width="100%">
 						<tr>
 							<td class="td-first">Kategori</td>
@@ -71,7 +72,7 @@
 						<tr>
 							<td class="td-first">Jenis</td>
 							<td> : </td>
-							<td class="td-last">@pump.CategoryType</td>
+							<td class="td-last">@pump.Category</td>
 						</tr>
 						<tr>
 							<td class="td-first">Kapasitas</td>
@@ -102,32 +103,65 @@
 	}
 	else
 	{
-		<p>Loading pump information...</p>
+		<p>Memuat Data Pompa...</p>
 	}
 </div>
 
 @code {
-	private Pump pump;
-	private Tank tank;
-	private string rootStorage;
+	//Page
 	[Parameter]
-	public string PumpId { get; set; }
+	public int PumpId { get; set; }
+	private Pump pump;
+	private string _webStorageRoot = string.Empty;
 
-	private string CreateWebPath(string relativePath)
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
 	{
-		rootStorage = Configuration.GetValue<string>("WebStorageRoot")+"/"+relativePath;
+		await LoadPump();
 
-		return rootStorage;
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
 	}
 
-    protected override async Task OnInitializedAsync()
+	//Read Data Pump
+	private async Task LoadPump()
 	{
-    
-        pump = await DataContext.Pumps.FindAsync(PumpId);
+		try
+		{
+			//Read Pump using Service
+			pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data pompa. Hubungi administrator.";
+			logMessage = $"Gagal memuat data pompa\nDetail :\n{ex}";
 
-		if (pump == null)
-        {
-            NavigationManager.NavigateTo("/PumpList", forceLoad: true);
-        }
-    }
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
 }
