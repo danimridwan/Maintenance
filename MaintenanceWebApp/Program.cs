@@ -15,6 +15,7 @@ builder.Services.AddScoped<UploadFilesService>();
 builder.Services.AddScoped<CRUDService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<UrlStatusService>();
+builder.Services.AddScoped<TableService>();
 
 // Retrieves the connection string named "Default" from the application's configuration.
 builder.Services.AddDbContextFactory<DataContext>(options =>

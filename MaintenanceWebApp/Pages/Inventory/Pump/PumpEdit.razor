@@ -12,20 +12,23 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-    <div class="card">
-        <div class="card-header bg-light border-primary">
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
             @* Tab Header *@
-            <ul class="nav nav-tabs card-header-tabs">
-                <li class="nav-item">
-                    <a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
-                        <span class="oi oi-chevron-left"></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <span class="nav-link active" aria-current="page">Informasi Pompa</span>
-                </li>
-            </ul>
-        </div>
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Pompa</span>
+            </li>
+        </ul>
+    </div>
     <div class="card-body">
         @if (pump != null)
         {
@@ -159,10 +162,6 @@
                                 <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                             </div>
                         }
-                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-                        {
-                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
-                        }
                     </div>
                 </div>
 
@@ -176,8 +175,8 @@
         {
             <p>Memuat Data Pompa...</p>
         }
-        </div>
     </div>
+</div>
 
 @code {
     //Page

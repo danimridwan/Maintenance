@@ -11,6 +11,9 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
 <div class="card">
 
 	@if (pump != null){

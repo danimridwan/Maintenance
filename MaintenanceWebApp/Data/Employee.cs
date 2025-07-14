@@ -17,7 +17,7 @@ namespace MaintenanceWebApp.Data
         public string? UserPhoto { get; set; }
 
         //[Required(ErrorMessage = "Please enter your email!")]
-        //[EmailAddress(ErrorMessage = "Please enter a valid email address!")]
+        //[EmailAddress(ErrorMessage = "Please enter a valid email address!")]                      
         //[RegularExpression(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", ErrorMessage = "Please enter a valid email address format!")]
         //public override IdentityUser string Email { get; set; }
 
