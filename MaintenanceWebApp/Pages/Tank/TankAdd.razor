@@ -2,6 +2,13 @@
 
 @using MaintenanceWebApp.Data
 @using Microsoft.EntityFrameworkCore
+@* mailer *@
+@using MaintenanceWebApp.Services
+@using MailKit.Net.Smtp
+@using MailKit.Security
+@using MimeKit
+@inject IConfiguration Configuration
+@* end mailer *@
 @inject DataContext DataContext
 @inject Microsoft.AspNetCore.Components.NavigationManager NavigationManager
 
@@ -33,10 +40,17 @@
 
 @code{
     private Tank NewTank { get; set; } = new Tank();
+    private IMailerService _mailer;
+
+
+    public TankAdd(IMailerService mailer)
+    {
+        _mailer = mailer;
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        
+        await _mailer.SendEmailAsync("dani.ridwan@redeco-rpu.com", "subject", "the body");
     }
 
     private async Task CreateTank()
@@ -48,4 +62,5 @@
         // Navigate to the Pump List page
         NavigationManager.NavigateTo("/Tank");
     }
+
 }
