@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250704095726_Update-employee-tbl")]
+    partial class Updateemployeetbl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,32 +24,6 @@ namespace MaintenanceWebApp.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
-                {
-                    b.Property<string>("UserID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("JobTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("UserID");
-
-                    b.ToTable("Employees");
-                });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.Inventory", b =>
                 {
@@ -71,6 +48,105 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Material")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Photo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TankId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("InventoryID");
+
+                    b.HasIndex("TankId");
+
+                    b.ToTable("Inventories");
+
+                    b.HasDiscriminator().HasValue("Inventory");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.MaintenanceTask", b =>
+                {
+                    b.Property<string>("TaskID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Division")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Photo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Requestor")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SupportingDocument")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("WorkType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TaskID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("MaintenanceTasks");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.PPMTask", b =>
+                {
+                    b.Property<string>("TaskID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("CompletePhoto")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Division")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Evaluation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JobDesc")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -118,72 +194,6 @@ namespace MaintenanceWebApp.Migrations
                     b.HasIndex("UserID");
 
                     b.ToTable("PPMTasks");
-                });
-
-            modelBuilder.Entity("MaintenanceWebApp.Data.Pump", b =>
-                {
-                    b.Property<int>("PumpID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PumpID"));
-
-                    b.Property<string>("Brand")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("CapacityUnit")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<double?>("CapacityValue")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Category")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("ExplotionProofCode")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Image")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Material")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("PowerUnit")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<double?>("PowerValue")
-                        .HasColumnType("float");
-
-                    b.Property<string>("Tag")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Type")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
-
-                    b.Property<int?>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("PumpID");
-
-                    b.ToTable("Pumps");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.Tank", b =>
@@ -417,15 +427,48 @@ namespace MaintenanceWebApp.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
+            modelBuilder.Entity("MaintenanceWebApp.Data.BreatherValve", b =>
                 {
-                    b.HasBaseType("Microsoft.AspNetCore.Identity.IdentityUser");
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
 
-                    b.Property<string>("FullName")
+                    b.Property<int>("BreatherValveDiameter")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Mmh20Minus")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Mmh20Plus")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("BreatherValve");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.FlowMeter", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("FLowMeterTag")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("UserPhoto")
+                    b.Property<int>("FlowMeterPressureDesigned")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FlowMeterRate")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FlowMeterTemperatureDesigned")
+                        .HasColumnType("int");
+
+                    b.HasDiscriminator().HasValue("FlowMeter");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.IT", b =>
+                {
+                    b.HasBaseType("MaintenanceWebApp.Data.Inventory");
+
+                    b.Property<string>("DeviceModel")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasDiscriminator().HasValue("IT");
@@ -535,6 +578,33 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("int");
 
                     b.HasDiscriminator().HasValue("Valve");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
+                {
+                    b.HasBaseType("Microsoft.AspNetCore.Identity.IdentityUser");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RoleCategory")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Section")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Signature")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
+
+                    b.Property<string>("UserPhoto")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasDiscriminator().HasValue("Employee");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.Inventory", b =>

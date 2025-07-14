@@ -1,25 +1,56 @@
-﻿@page "/DeleteEmployee/{employeeId}"
+﻿@page "/EmployeeDelete/{Id}"
 
 @using MaintenanceWebApp.Data
 @inject DataContext DataContext
 @inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
 
-<h3>Delete Employee</h3>
+<div class="card">
 
-<p>Are you sure you want to delete the employee with ID: @employeeId?</p>
+    <div class="card-body">
+        @if (employee == null)
+        {
+            <p><em>Memuat data karyawan...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Delete Pump</h3>
 
-<button type="button" class="btn btn-danger" @onclick="DeleteEmployee">Delete</button>
-<button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <hr />
+
+            <p>Anda yakin ingin menghapus Employee dengan Nama: <b>@employee.FullName</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteEmployee">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
 
 @code {
     [Parameter]
-    public string employeeId { get; set; }
+    public string Id { get; set; }
+    private Employee employee;
+
+    protected override async Task OnInitializedAsync()
+    {
+        employee = await DataContext.Employees.FindAsync(Id);
+    }
 
     private async Task DeleteEmployee()
     {
-        var employeeToDelete = await DataContext.Employees.FindAsync(int.Parse(employeeId));
+        var employeeToDelete = await DataContext.Employees.FindAsync(Id);
+        string EmployeePhoto = employee.UserPhoto;
+
         if (employeeToDelete != null)
         {
+            if (EmployeePhoto != null)
+            {
+                System.IO.File.Delete(Path.Combine("wwwroot/uploads/images/inventories/", EmployeePhoto));
+            }
+
             DataContext.Employees.Remove(employeeToDelete);
             await DataContext.SaveChangesAsync();
             NavigationManager.NavigateTo("/EmployeeList");

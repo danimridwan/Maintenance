@@ -29,16 +29,39 @@
                     <ValidationMessage For="@(() => NewEmployee.EmailAddress)" />
                 </div>
                 <div class="col-sm-12">
-                    <label for="Role" class="col-sm-2 col-form-label">Role <span class="required">*</span></label>
-                    <InputSelect id="Role" @bind-Value="NewEmployee.Role" class="form-control col-sm-10" placeholder="Please Select Role..">
+                    <label for="Section" class="col-sm-2 col-form-label">Section</label>
+                    <InputSelect id="Section" @bind-Value="NewEmployee.Section" class="form-control col-sm-10" placeholder="Please Select Section..">
+                        <option value="">-</option>
+                        <option value="Operation">Operation</option>
+                        <option value="Formalities">Formalities</option>
+                        <option value="HSE">HSE</option>
+                        <option value="HRGA">HRGA</option>
+                        <option value="Security">Security</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => NewEmployee.Section)" />
+                </div>
+                <div class="col-sm-12">
+                    <label for="Role" class="col-sm-2 col-form-label">Access Role <span class="required">*</span></label>
+                    <InputSelect id="Role" @bind-Value="NewEmployee.Role" class="form-control col-sm-10" placeholder="Please Select Access Role..">
                         <option value="">Please Select Role..</option>
                         <option value="Admin">Admin</option>
-                        <option value="General Manager">General Manager</option>
-                        <option value="Operation Supervisor">Operation Supervisor</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Manager">Manager</option>
                         <option value="Maintenance">Maintenance</option>
-                        <option value="User">User</option>operation
+                        <option value="Maintenance Supervisor">Maintenance Supervisor</option>
                     </InputSelect>
                     <ValidationMessage For="@(() => NewEmployee.Role)" />
+                </div>
+                <div class="col-sm-12">
+                    <label for="RoleCategory" class="col-sm-2 col-form-label">Role Category </label>
+                    <InputSelect id="RoleCategory" @bind-Value="NewEmployee.RoleCategory" class="form-control col-sm-10" placeholder="Please Select Role Category..">
+                        <option value=""></option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Mechanical">Mechanical</option>
+                        <option value="IT">IT</option>
+                        <option value="Civil">Civil</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => NewEmployee.RoleCategory)" />
                 </div>
             </div><br />
             <button type="button" class="btn btn-danger" onclick="history.back();">Back</button>

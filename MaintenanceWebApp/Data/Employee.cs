@@ -25,6 +25,13 @@ namespace MaintenanceWebApp.Data
         [Required]
         public string Role { get; set; }
 
+        [MaxLength(25)]
+        public string Signature { get; set; } = string.Empty;
+
+        public string Section { get; set; }
+
+        public string RoleCategory { get; set; }
+
         [NotMapped] //Helper prop
         [Required(ErrorMessage = "Please enter your email!")]
         [EmailAddress(ErrorMessage = "Please enter a valid email address!")]
