@@ -50,5 +50,8 @@ namespace MaintenanceWebApp.Data
         public string? ExplotionProofCode { get; set; }
 
         public string? Image { get; set; }
+
+        [Timestamp]
+        public byte[]? RowVersion { get; set; }
     }
 }

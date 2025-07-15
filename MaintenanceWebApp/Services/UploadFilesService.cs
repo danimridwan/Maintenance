@@ -21,6 +21,7 @@ namespace MaintenanceWebApp.Services
             _configuration = configuration;
             _logger = logger;
             _env = env;
+            UploadErrorMessage = null;
         }
 
         public async Task FilesUpload(IBrowserFile file, string folderName, string subFolderName, string fileCategory)

@@ -142,6 +142,11 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<double?>("PowerValue")
                         .HasColumnType("float");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<string>("Tag")
                         .IsRequired()
                         .HasMaxLength(25)

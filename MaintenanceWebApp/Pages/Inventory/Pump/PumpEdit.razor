@@ -3,7 +3,6 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 
@@ -20,7 +19,7 @@
             @* Tab Header *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Pompa">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -148,25 +147,31 @@
 
                     <div class="col-sm-12 mb-3">
                         <label for="Foto" class="col-form-label">Foto</label>
-                        @if (string.IsNullOrWhiteSpace(pump.Image))
+                        @if (!fileStatus)
                         {
                             <InputFile id="Foto" class="form-control"
-                                       accept=".jpg,.jpeg,.png"
-                                       OnChange="HandleFileUpload" />
-                            <ValidationMessage For="@(() => pump.Image)" />
+                            accept=".jpg,.jpeg,.png"
+                            OnChange="HandleFileUpload"/>
+                            <ValidationMessage For="@(() => filePath)" />
                         }
                         else
                         {
                             <div class="d-flex align-items-center">
-                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(pump.Image)" alt="Pump Image">
+                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath)" alt="Pump Image">
                                 <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                             </div>
+
+                            @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                            {
+                                <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                            }
                         }
                     </div>
                 </div>
 
                 @* Submit Button *@
                 <div class="float-end mt-3">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </EditForm>
@@ -185,15 +190,19 @@
     public int PumpId { get; set; }
     private EditContext? editContext;
     private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
 
     //Form
-    private bool IsPowerUnitDisabled = true;
-    private bool IsCapacityUnitDisabled = true;
+    private bool IsPowerUnitDisabled;
+    private bool IsCapacityUnitDisabled;
     private List<string> pumpName = new() { "Pompa Delivery", "Pompa Pendukung Operasional", "Pompa Air Bersih", "Pompa Kondisi Darurat Kebakaran" };
     private List<string> powerUnits = new() { "HP", "KW" };
     private List<string> capacityUnits = new() { "M3/h", "M3/min", "LPM", "GPM" };
 
     //File
+    private string? originalFilePath;
+    private string? filePath;
+    private bool fileStatus;
     private string subFolderName = "Inventories";
     private string fileCategory = "img";
     private string folderName = "Pump";
@@ -216,6 +225,39 @@
         editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
         editContext.OnFieldChanged += (sender, e) => StateHasChanged();
 
+        uploadErrorStatus = false;
+
+        if (!string.IsNullOrWhiteSpace(pump.Image))
+        {
+            fileStatus = true;
+            originalFilePath = pump.Image;
+            filePath = pump.Image;
+        }
+        else
+        {
+            fileStatus = false;
+            originalFilePath = null;
+            filePath = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(pump.PowerUnit))
+        {
+            IsPowerUnitDisabled = true;
+        }
+        else
+        {
+            IsPowerUnitDisabled = false;
+        }
+
+        if (string.IsNullOrWhiteSpace(pump.CapacityUnit))
+        {
+            IsCapacityUnitDisabled = true;
+        }
+        else
+        {
+            IsCapacityUnitDisabled = false;
+        }
+
         try
         {
             // Get Path Root
@@ -229,38 +271,67 @@
             ShowNotification(alertMessage, logMessage);
         }
     }
-    
+
     //File Upload
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
         //File Upload using Service
         await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
-        pump.Image = UploadService.FilePath;
 
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
-            alertMessage = "Gagal upload gambar. Hubungi Administrator.";
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
             logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
 
+            uploadErrorStatus = true;
+
             ShowNotification(alertMessage, logMessage);
+
+            filePath = null;
+
+            return;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
+        filePath = UploadService.FilePath;
+        fileStatus = true;
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
     }
 
-    //File Change
+    //Handle File Change
     private async Task HandleFileChange()
     {
+        if (fileStatus)
+        {
+            if (filePath != originalFilePath)
+            {
+                //Update Image File
+                FileChange(filePath);
+            }
+
+            fileStatus = false;
+        }
+        else
+        {
+            fileStatus = true;
+        }
+    }
+
+    // File Change
+    private async Task FileChange(string ImagePath)
+    {
         //File Change using Service
-        await UploadService.FileChange(pump.Image, subFolderName);
-        pump.Image = UploadService.FilePath;
+        await UploadService.FileChange(ImagePath, subFolderName);
 
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
             alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
             logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
 
+            uploadErrorStatus = true;
+
             ShowNotification(alertMessage, logMessage);
+            return;
         }
 
         editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
@@ -269,7 +340,11 @@
     //Create File Path
     private string CreateFilePath(string relativePath)
     {
-        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+        if (!string.IsNullOrWhiteSpace(relativePath))
+        {
+            return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+        }
+        return null;
     }
 
     //Update Data Pump
@@ -293,6 +368,39 @@
 
             ShowNotification(alertMessage, logMessage);
             return;
+        }
+
+        //File Check
+        if (fileStatus)
+        {
+            if (uploadErrorStatus)
+            {
+                alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+                logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+                uploadErrorStatus = false;
+
+                ShowNotification(alertMessage, logMessage);
+                return;
+            }
+
+            if(filePath != originalFilePath)
+            {
+                if (!string.IsNullOrWhiteSpace(originalFilePath))
+                {
+                    //Update Image File
+                    FileChange(originalFilePath);
+                }
+                pump.Image = filePath;
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(originalFilePath))
+            {
+                FileChange(originalFilePath);
+            }
+            pump.Image = null;
         }
 
         //Update using Services
@@ -370,5 +478,16 @@
     {
         await NotificationService.AlertMessage(alertMessage);
         NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if(filePath != originalFilePath)
+        {
+            FileChange(filePath);
+        }
+
+        NavigationManager.NavigateTo("/PumpList");
     }
 }

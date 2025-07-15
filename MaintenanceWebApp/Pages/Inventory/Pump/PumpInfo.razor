@@ -3,7 +3,6 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 
@@ -40,7 +39,7 @@
 						<img style="align-content:center;" width="100%" src="@CreateFilePath(pump.Image)" alt="Pump Image" class="pt-5">
 					}
 					else{
-						<img style="align-content:center;" width="100%" src="../noimg.png" alt="No Image Available" class="pt-5">
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available" class="pt-5">
 					}
 				</div>
 

@@ -20,7 +20,7 @@
         @* Tab Header *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Pompa">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -149,8 +149,8 @@
                     @if (string.IsNullOrWhiteSpace(pump.Image))
                     {
                         <InputFile id="Foto" class="form-control"
-                                   accept=".jpg,.jpeg,.png"
-                                   OnChange="HandleFileUpload" />
+                        accept=".jpg,.jpeg,.png"
+                        OnChange="HandleFileUpload" />
                         <ValidationMessage For="@(() => pump.Image)" />
                     }
                     else
@@ -159,16 +159,18 @@
                             <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(pump.Image)" alt="Pump Image">
                             <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
-                    }
-                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-                    {
-                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+
+                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                        {
+                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                        }
                     }
                 </div>
             </div>
 
             @* Submit Button *@
             <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
                 <button type="submit" class="btn btn-primary">Simpan</button>
             </div>
         </EditForm>
@@ -180,6 +182,7 @@
     private Pump pump = new();
     private EditContext? editContext;
     private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
 
     //Form
     private bool IsPowerUnitDisabled = true;
@@ -202,6 +205,8 @@
         editContext = new EditContext(pump);
         editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
         editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        uploadErrorStatus = false;
 
         try
         {
@@ -226,10 +231,13 @@
 
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
-            alertMessage = "Gagal upload gambar. Hubungi Administrator.";
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
             logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
 
+            uploadErrorStatus = true;
+
             ShowNotification(alertMessage, logMessage);
+            return;
         }
         editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
     }
@@ -245,6 +253,8 @@
         {
             alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
             logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
 
             ShowNotification(alertMessage, logMessage);
         }
@@ -275,6 +285,17 @@
         {
             alertMessage = "Jika Daya diisi, Satuan Daya harus dipilih.";
             logMessage = $"Validasi kustom gagal: Satuan Daya tidak dipilih saat Daya ada.";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        if (uploadErrorStatus)
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = false;
 
             ShowNotification(alertMessage, logMessage);
             return;
@@ -355,5 +376,16 @@
     {
         await NotificationService.AlertMessage(alertMessage);
         NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if (!string.IsNullOrWhiteSpace(pump.Image))
+        {
+            HandleFileChange();
+        }
+
+        NavigationManager.NavigateTo("/PumpList");
     }
 }

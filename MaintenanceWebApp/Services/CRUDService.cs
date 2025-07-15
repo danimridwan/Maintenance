@@ -4,6 +4,7 @@ using System;
 using System.Linq.Expressions;
 using System.Linq;
 using System.Threading.Tasks;
+using NuGet.Common;
 
 namespace MaintenanceWebApp.Services
 {
@@ -119,6 +120,11 @@ namespace MaintenanceWebApp.Services
             {
                 context.Update(entity);
                 await context.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateConcurrencyException DBCex) // Tangkap konflik konkurensi
+            {
+                CRUDErrorMessage = $"DB Concurrency Exception: {DBCex.Message}";
                 return;
             }
             catch (DbUpdateException DBex)

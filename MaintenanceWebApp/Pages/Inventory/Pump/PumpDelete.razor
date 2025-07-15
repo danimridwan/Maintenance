@@ -3,8 +3,6 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
-@inject IDbContextFactory<DataContext> DbFactory
-@inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 
 @* Services *@
@@ -42,7 +40,6 @@
     [Parameter]
     public int PumpId { get; set; }
     private Pump pump;
-    private string _webStorageRoot = string.Empty;
 
     //Notification
     private string? alertMessage;
@@ -55,19 +52,6 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadPump();
-
-        try
-        {
-            // Get Path Root
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
-        }
-        catch (Exception ex)
-        {
-            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
-        }
     }
 
     //Read Data Pump
