@@ -2,6 +2,7 @@ using MaintenanceWebApp.Data;
 using MaintenanceWebApp.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Configuration;
 using UploadFilesLibrary;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,13 @@ builder.Services.AddScoped<CRUDService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<UrlStatusService>();
 builder.Services.AddScoped<TableService>();
+
+//Mailer
+//MailerService mailerService = new MailerService();
+//builder.Configuration.GetSection("Mailer").Bind(mailerService);
+//builder.Services.AddSingleton(mailerService);
+builder.Services.Configure<SMTPSettings>(builder.Configuration.GetSection("Mailer"));
+builder.Services.AddSingleton<IMailerService, MailerService>();
 
 // Retrieves the connection string named "Default" from the application's configuration.
 builder.Services.AddDbContextFactory<DataContext>(options =>

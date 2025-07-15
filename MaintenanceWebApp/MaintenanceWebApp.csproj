@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.13.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Components" Version="9.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Analyzers" Version="9.0.5" />
