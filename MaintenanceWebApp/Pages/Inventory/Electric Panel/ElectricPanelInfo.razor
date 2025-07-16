@@ -1,0 +1,131 @@
+﻿@page "/ElectricPanelInfo/{PanelID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+
+	@if (electricPanel != null)
+	{
+		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					<a href="ElectricPanelList" class="nav-link" aria-label="Kembali ke Daftar Panel Listrik">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link active" aria-label="Informasi Panel Listrik">Informasi Panel Listrik</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body">
+			@* Informasi Panel Listrik *@
+			<div class="form-group row">
+				<div class="col-sm-5">
+
+					@if (string.IsNullOrWhiteSpace(electricPanel.Image) == false)
+					{
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(electricPanel.Image)" alt="Electric Panel Image" class="pt-5">
+					}
+					else
+					{
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
+					}
+				</div>
+
+				<div style="align-content:center;" class="col-sm-7">
+					<h5 class="display-6">@electricPanel.Name</h5><hr />
+					<table width="100%">
+						<tr>
+							<td class="td-first">Kapasitas</td>
+							<td> : </td>
+							<td class="td-last">@electricPanel.CapacityValue @electricPanel.CapacityUnit</td>
+						</tr>
+						<tr>
+							<td class="td-first">Lokasi</td>
+							<td> : </td>
+							<td class="td-last">@electricPanel.Location</td>
+						</tr>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+	}
+	else
+	{
+		<p>Memuat Data Panel Listrik...</p>
+	}
+</div>
+
+@code {
+	//Page
+	[Parameter]
+	public int PanelID { get; set; }
+	private ElectricPanel electricPanel;
+	private string _webStorageRoot = string.Empty;
+
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadElectricPanel();
+
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	//Read Data Electric Panel
+	private async Task LoadElectricPanel()
+	{
+		try
+		{
+			//Read Electric Panel using Service
+			electricPanel = await CRUDService.ReadSingleAsync<ElectricPanel, int>(PanelID);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data Panel Listrik. Hubungi administrator.";
+			logMessage = $"Gagal memuat data Panel Listrik\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
+}

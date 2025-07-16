@@ -1,0 +1,282 @@
+﻿@page "/ElectricPanelAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbFactory
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        @* Tab Header *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Panel Listrik">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Panel Listrik</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @* Form Add *@
+        <EditForm Model="electricPanel" OnValidSubmit="HandleCreateElectricPanel" OnInvalidSubmit="HandleInvalidSubmit">
+            <DataAnnotationsValidator />
+            <div class="form-group row">
+                <div class="col-sm-12 mb-3">
+                    <label for="Nama" class="col-form-label">Nama Alat <span class="required">*</span></label>
+                    <InputText id="Nama" @bind-Value="electricPanel.Name" class="form-control" />
+                    <ValidationMessage For="@(() => electricPanel.Name)" />
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
+                    <InputText id="Lokasi" @bind-Value="electricPanel.Location" class="form-control" />
+                    <ValidationMessage For="@(() => electricPanel.Location)" />
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Kapasitas" class="col-form-label">Kapasitas</label>
+                            <InputNumber class="form-control" id="Kapasitas" @bind-Value="electricPanel.CapacityValue" @oninput="OnCapacityInputChanged" />
+                            <ValidationMessage For="@(() => electricPanel.CapacityValue)" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="SatuanKapasitas" class="col-form-label">Unit</label>
+                            <InputSelect id="SatuanKapasitas" @bind-Value="electricPanel.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in capacityUnits)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </InputSelect>
+                            @* Custom validation message for CapacityUnit *@
+                            @if (electricPanel.CapacityValue.HasValue && electricPanel.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(electricPanel.CapacityUnit))
+                            {
+                                <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Foto" class="col-form-label">Foto</label>
+                    @if (string.IsNullOrWhiteSpace(electricPanel.Image))
+                    {
+                        <InputFile id="Foto" class="form-control"
+                                   accept=".jpg,.jpeg,.png"
+                                   OnChange="HandleFileUpload" />
+                        <ValidationMessage For="@(() => electricPanel.Image)" />
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(electricPanel.Image)" alt="Electric Panel Image">
+                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                        {
+                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                        }
+                    }
+                </div>
+            </div>
+
+            @* Submit Button *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    //Page
+    private ElectricPanel electricPanel = new();
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
+
+    //Form
+    private bool IsCapacityUnitDisabled = true;
+    private List<string> capacityUnits = new() { "A", "KVA", "Kvar", "KW", "KW A" };
+
+    //File
+    private string subFolderName = "Inventories";
+    private string fileCategory = "img";
+    private string folderName = "Electric Panel";
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(electricPanel);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        uploadErrorStatus = false;
+
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //File Upload
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+        electricPanel.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => electricPanel.Image));
+    }
+
+    //File Change
+    private async Task HandleFileChange()
+    {
+        //File Change using Service
+        await UploadService.FileChange(electricPanel.Image, subFolderName);
+        electricPanel.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
+            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => electricPanel.Image));
+    }
+
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    //Create New Data Pump
+    private async Task HandleCreateElectricPanel()
+    {
+        // Custom Capacity Value Validation
+        if (electricPanel.CapacityValue.HasValue && electricPanel.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(electricPanel.CapacityUnit))
+        {
+            alertMessage = "Jika Kapasitas diisi, Satuan Kapasitas harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Kapasitas tidak dipilih saat Kapasitas ada.";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        if (uploadErrorStatus)
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = false;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        //Create using Services
+        await CRUDService.CreateAsync<ElectricPanel>(electricPanel);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/ElectricPanelList?status=CreateSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir PumpAdd disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Capacity Validation
+    private void OnCapacityInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double currentCapacityInputValue))
+        {
+            electricPanel.CapacityValue = currentCapacityInputValue;
+        }
+        else
+        {
+            electricPanel.CapacityValue = null;
+        }
+
+        IsCapacityUnitDisabled = !electricPanel.CapacityValue.HasValue || electricPanel.CapacityValue.Value <= 0;
+
+        if (IsCapacityUnitDisabled)
+        {
+            electricPanel.CapacityUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => electricPanel.CapacityValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => electricPanel.CapacityUnit));
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if (!string.IsNullOrWhiteSpace(electricPanel.Image))
+        {
+            HandleFileChange();
+        }
+
+        NavigationManager.NavigateTo("/PumpList");
+    }
+}

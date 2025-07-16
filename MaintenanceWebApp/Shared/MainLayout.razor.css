@@ -9,6 +9,10 @@ main {
     background-color: #f7f7f7;
 }
 
+::deep .quickgrid tbody tr:not([aria-rowindex]) {
+    display: none;
+}
+
 .sidebar {
     background-image: linear-gradient(180deg, rgb(16 42 84) 100%, #3a0647 0%);
     transition: 0.5s;
