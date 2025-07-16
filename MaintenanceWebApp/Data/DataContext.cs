@@ -12,6 +12,7 @@ namespace MaintenanceWebApp.Data
         public DbSet<Tank> Tanks { get; set; }
         public DbSet<Pump> Pumps { get; set; }
         public DbSet<ElectricPanel> ElectricPanels { get; set; }
+        public DbSet<IT> IT { get; set; }
 
         public DataContext(DbContextOptions options) : base(options)
         {

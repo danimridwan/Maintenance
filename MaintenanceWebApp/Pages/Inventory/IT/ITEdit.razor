@@ -1,0 +1,319 @@
+﻿@page "/ITEdit/{DeviceID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+            @* Tab Header *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar IT">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Inventory IT</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @if (it != null)
+        {
+            @* Form Edit *@
+            <EditForm Model="it" OnValidSubmit="HandleUpdateIT" OnInvalidSubmit="HandleInvalidSubmit">
+                <DataAnnotationsValidator />
+                <div class="form-group row">
+                    <div class="col-sm-12 mb-3">
+                        <label for="Device" class="col-form-label">Device <span class="required">*</span></label>
+                        <InputSelect id="Device" @bind-Value="it.Device" class="form-control">
+                            <option value="">...</option>
+                            @foreach (var device in Device)
+                            {
+                                <option value="@device">@device</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => it.Device)" />
+                    </div>
+
+                    <div class="col-sm-12 mb-3">
+                        <label for="Merk" class="col-form-label">Merk <span class="required">*</span></label>
+                        <InputText id="Merk" @bind-Value="it.Brand" class="form-control" />
+                        <ValidationMessage For="@(() => it.Brand)" />
+                    </div>
+
+                    <div class="col-sm-12 mb-3">
+                        <label for="Model" class="col-form-label">Model <span class="required">*</span></label>
+                        <InputText id="Model" @bind-Value="it.Model" class="form-control" />
+                        <ValidationMessage For="@(() => it.Model)" />
+                    </div>
+
+                    <div class="col-sm-12 mb-3">
+                        <label for="Foto" class="col-form-label">Foto</label>
+                        @if (!fileStatus)
+                        {
+                            <InputFile id="Foto" class="form-control"
+                                       accept=".jpg,.jpeg,.png"
+                                       OnChange="HandleFileUpload" />
+                            <ValidationMessage For="@(() => filePath)" />
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center">
+                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath)" alt="IT Image">
+                                <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                            {
+                                <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                @* Submit Button *@
+                <div class="float-end mt-3">
+                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </EditForm>
+        }
+        else
+        {
+            <p>Memuat Data Inventory IT...</p>
+        }
+    </div>
+</div>
+
+@code {
+    //Page
+    private IT it;
+    [Parameter]
+    public int DeviceID { get; set; }
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
+
+    //Form
+    private List<string> Device = new() { "CPU", "Monitor", "Mini CPU", "Laptop", "Printer & Scanner" };
+
+    //File
+    private string? originalFilePath;
+    private string? filePath;
+    private bool fileStatus;
+    private string subFolderName = "Inventories";
+    private string fileCategory = "img";
+    private string folderName = "IT";
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Read Pump using Service
+        it = await CRUDService.ReadSingleAsync<IT, int>(DeviceID);
+
+        if (it == null)
+        {
+            NavigationManager.NavigateTo("/ITList", forceLoad: true);
+        }
+
+        editContext = new EditContext(it);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        uploadErrorStatus = false;
+
+        if (!string.IsNullOrWhiteSpace(it.Image))
+        {
+            fileStatus = true;
+            originalFilePath = it.Image;
+            filePath = it.Image;
+        }
+        else
+        {
+            fileStatus = false;
+            originalFilePath = null;
+            filePath = null;
+        }
+
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //File Upload
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+
+            filePath = null;
+
+            return;
+        }
+
+        filePath = UploadService.FilePath;
+        fileStatus = true;
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+    }
+
+    //Handle File Change
+    private async Task HandleFileChange()
+    {
+        if (fileStatus)
+        {
+            if (filePath != originalFilePath)
+            {
+                //Update Image File
+                FileChange(filePath);
+            }
+
+            fileStatus = false;
+        }
+        else
+        {
+            fileStatus = true;
+        }
+    }
+
+    // File Change
+    private async Task FileChange(string ImagePath)
+    {
+        //File Change using Service
+        await UploadService.FileChange(ImagePath, subFolderName);
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
+            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => it.Image));
+    }
+
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        if (!string.IsNullOrWhiteSpace(relativePath))
+        {
+            return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+        }
+        return null;
+    }
+
+    //Update Data Pump
+    private async Task HandleUpdateIT()
+    {
+        //File Check
+        if (fileStatus)
+        {
+            if (uploadErrorStatus)
+            {
+                alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+                logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+                uploadErrorStatus = false;
+
+                ShowNotification(alertMessage, logMessage);
+                return;
+            }
+
+            if (filePath != originalFilePath)
+            {
+                if (!string.IsNullOrWhiteSpace(originalFilePath))
+                {
+                    //Update Image File
+                    FileChange(originalFilePath);
+                }
+                it.Image = filePath;
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(originalFilePath))
+            {
+                FileChange(originalFilePath);
+            }
+            it.Image = null;
+        }
+
+        //Update using Services
+        await CRUDService.UpdateAsync<IT>(it);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/ITList?status=EditSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir PumpEdit disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if (filePath != originalFilePath)
+        {
+            FileChange(filePath);
+        }
+
+        NavigationManager.NavigateTo("/ITList");
+    }
+}

@@ -1,0 +1,110 @@
+﻿@page "/ITDelete/{DeviceID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (it == null)
+        {
+            <p><em>Memuat Data Inventory IT...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus Inventory IT</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus Device IT: <b>@it.Device @it.Brand - @it.Model</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteIT">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int DeviceID { get; set; }
+    private IT it;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "IT";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadIT();
+    }
+
+    //Read Data Pump
+    private async Task LoadIT()
+    {
+        try
+        {
+            //Read Pump using Service
+            it = await CRUDService.ReadSingleAsync<IT, int>(DeviceID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data IT Inventory. Hubungi administrator.";
+            logMessage = $"Gagal memuat data IT Inventory\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Pump
+    private async Task DeleteIT()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(it);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(it.Image, subFolderName);
+        it.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/ITList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/ITList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}
