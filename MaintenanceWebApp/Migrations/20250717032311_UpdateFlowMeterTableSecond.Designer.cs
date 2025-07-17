@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250717032311_UpdateFlowMeterTableSecond")]
+    partial class UpdateFlowMeterTableSecond
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -72,8 +75,8 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("nvarchar(25)");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("DesignPressureUnit")
                         .HasColumnType("nvarchar(max)");
@@ -84,11 +87,9 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<string>("FlowRateUnit")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("FlowRateValueEnd")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("FlowRateValueFirst")
-                        .HasColumnType("float");
+                    b.Property<string>("FlowRateValue")
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
 
                     b.Property<string>("Image")
                         .HasColumnType("nvarchar(max)");
@@ -104,6 +105,7 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("rowversion");
 
                     b.Property<int>("Tag")
+                        .HasMaxLength(25)
                         .HasColumnType("int");
 
                     b.Property<string>("TempDesign")

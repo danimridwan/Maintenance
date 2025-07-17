@@ -1,0 +1,378 @@
+﻿@page "/FlowMeterAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization;
+@inject IDbContextFactory<DataContext> DbFactory
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        @* Tab Header *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Flow Meter">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Flow Meter</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @* Form Add *@
+        <EditForm Model="flowMeter" OnValidSubmit="HandleCreateFlowMeter" OnInvalidSubmit="HandleInvalidSubmit">
+            <DataAnnotationsValidator />
+
+                <div class="col-sm-12 mb-3">
+                    <label for="TagNo" class="col-form-label">Tag No <span class="required">*</span></label>
+                    <InputNumber id="TagNo" @bind-Value="flowMeter.Tag" class="form-control" />
+                    <ValidationMessage For="@(() => flowMeter.Tag)" />
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <label for="Merk" class="col-form-label">Merk</label>
+                        <InputText id="Merk" @bind-Value="flowMeter.Brand" class="form-control" />
+                        <ValidationMessage For="@(() => flowMeter.Brand)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Tipe" class="col-form-label">Tipe</label>
+                        <InputText id="Tipe" @bind-Value="flowMeter.Type" class="form-control" />
+                        <ValidationMessage For="@(() => flowMeter.Type)" />
+                    </div>
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
+                    <InputText id="Lokasi" @bind-Value="flowMeter.Location" class="form-control" />
+                    <ValidationMessage For="@(() => flowMeter.Location)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Deskripsi" class="col-form-label">Deskripsi</label>
+                    <InputTextArea id="Deskripsi" @bind-Value="flowMeter.Description" class="form-control" />
+                    <ValidationMessage For="@(() => flowMeter.Description)" />
+                </div>
+
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Tekanan Desain" class="col-form-label">Tekanan Desain</label>
+                            <InputNumber class="form-control" id="Tekanan Desain" @bind-Value="flowMeter.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
+                            <ValidationMessage For="@(() => flowMeter.DesignPressureValue)" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="DesignPressureUnit" class="col-form-label">Unit</label>
+                            <InputSelect id="DesignPressureUnit" @bind-Value="flowMeter.DesignPressureUnit" class="form-control" disabled="@IsDesignPressureUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in designPressureUnits)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </InputSelect>
+                            @* Custom validation message for Design Pressure Unit *@
+                            @if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+                            {
+                                <div class="text-danger">Satuan Unit Tekanan Desain harus dipilih.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="TempDesain" class="col-form-label">Temperatur Desain</label>
+                    <InputText id="TempDesain" @bind-Value="flowMeter.TempDesign" class="form-control" />
+                    <ValidationMessage For="@(() => flowMeter.TempDesign)" />
+                </div>
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <div class="row">
+                    <div class="col-sm-3">
+                        <label for="DesainLajuAlir" class="col-form-label">Desain Laju Alir</label>
+                        <InputNumber class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValueFirst" @oninput="OnFlowRateInputChanged" />
+                    </div>
+                    <div style="align-content: end; font-size: xx-large;" class="col-sm-1">
+                        <center>~</center>
+                    </div>
+                    <div style="align-content: end;" class="col-sm-3">
+                        <InputCheckbox class="form-check-input" @bind-Value="IsFlowRateValueSecondDisabled"></InputCheckbox>
+                        <InputNumber class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValueEnd" disabled="@IsFlowRateValueSecondDisabled" />
+                    </div>
+                    <div class="col-sm-5">
+                        <label for="SatuanDesainLajuAlir" class="col-form-label">Unit</label>
+                        <InputSelect id="SatuanDesainLajuAlir" @bind-Value="flowMeter.FlowRateUnit" class="form-control" disabled="@IsFlowRateUnitDisabled">
+                            <option value="">...</option>
+                            @foreach (var unit in flowRateUnits)
+                            {
+                                <option value="@unit">@unit</option>
+                            }
+                        </InputSelect>
+                        @* Custom validation message for Flow Rate Unit *@
+                        @if (flowMeter.FlowRateValueFirst.HasValue && flowMeter.FlowRateValueFirst.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+                        {
+                            <div class="text-danger">Satuan Unit Desain Laju Alir harus dipilih.</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Foto" class="col-form-label">Foto</label>
+                @if (string.IsNullOrWhiteSpace(flowMeter.Image))
+                {
+                    <InputFile id="Foto" class="form-control"
+                    accept=".jpg,.jpeg,.png"
+                    OnChange="HandleFileUpload" />
+                    <ValidationMessage For="@(() => flowMeter.Image)" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center">
+                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(flowMeter.Image)" alt="Flow Meter Image">
+                        <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                    }
+                }
+            </div>
+
+            @* Submit Button *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    //Page
+    private FlowMeter flowMeter = new();
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
+
+    //Form
+    private bool IsDesignPressureUnitDisabled = true;
+    private bool IsFlowRateUnitDisabled = true;
+    private bool IsFlowRateValueSecondDisabled = true;
+    private List<string> designPressureUnits = new() { "bar" };
+    private List<string> flowRateUnits = new() { "Liter/menit", "M3/Jam", "L/Jam" };
+
+    //File
+    private string subFolderName = "Inventories";
+    private string fileCategory = "img";
+    private string folderName = "Flow Meter";
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(flowMeter);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        uploadErrorStatus = false;
+
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //File Upload
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+        flowMeter.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.Image));
+    }
+
+    //File Change
+    private async Task HandleFileChange()
+    {
+        //File Change using Service
+        await UploadService.FileChange(flowMeter.Image, subFolderName);
+        flowMeter.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
+            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.Image));
+    }
+
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    //Create New Data flowMeter
+    private async Task HandleCreateFlowMeter()
+    {
+        // Custom Flow Rate Validation
+        if (flowMeter.FlowRateValueFirst.HasValue && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+        {
+            alertMessage = "Jika Laju Alir diisi, Satuan Laju Alir harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Laju Alir tidak dipilih saat nilai Laju Alir ada.";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        // Custom Design Pressure Validation
+        if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+        {
+            alertMessage = "Jika Tekanan Desain diisi, Satuan Tekanan Desain harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Tekanan Desain tidak dipilih saat nilai Tekanan Desain ada.";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        if (uploadErrorStatus)
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = false;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        //Create using Services
+        await CRUDService.CreateAsync<FlowMeter>(flowMeter);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/flowMeterList?status=CreateSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir FlowMeterAdd disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Flow Rate Validation
+    private void OnFlowRateInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double currentFlowRateInputValue))
+        {
+            flowMeter.FlowRateValueFirst = currentFlowRateInputValue;
+        }
+        else
+        {
+            flowMeter.FlowRateValueFirst = null;
+        }
+
+        IsFlowRateUnitDisabled = !flowMeter.FlowRateValueFirst.HasValue || flowMeter.FlowRateValueFirst.Value <= 0;
+
+        if (IsFlowRateUnitDisabled)
+        {
+            flowMeter.FlowRateUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.FlowRateValueFirst));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.FlowRateValueEnd));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.FlowRateUnit));
+    }
+
+    //Design Pressure Validation
+    private void OnDesignPressureInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double currentDesignPressureInputValue))
+        {
+            flowMeter.DesignPressureValue = currentDesignPressureInputValue;
+        }
+        else
+        {
+            flowMeter.DesignPressureValue = null;
+        }
+
+        IsDesignPressureUnitDisabled = !flowMeter.DesignPressureValue.HasValue || flowMeter.DesignPressureValue.Value <= 0;
+
+        if (IsDesignPressureUnitDisabled)
+        {
+            flowMeter.DesignPressureUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.DesignPressureValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => flowMeter.DesignPressureUnit));
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if (!string.IsNullOrWhiteSpace(flowMeter.Image))
+        {
+            HandleFileChange();
+        }
+
+        NavigationManager.NavigateTo("/FlowMeterList");
+    }
+}

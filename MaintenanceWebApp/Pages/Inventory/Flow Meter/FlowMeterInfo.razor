@@ -1,0 +1,163 @@
+﻿@page "/FlowMeterInfo/{FlowMeterID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+
+	@if (flowMeter != null)
+	{
+		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					<a href="FlowMeterList" class="nav-link" aria-label="Kembali ke Daftar Flow Meter">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link active" aria-label="Informasi Flow Meter">Informasi Flow Meter</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body">
+			@* Informasi Flow Meter *@
+			<div class="form-group row">
+				<div class="col-sm-5">
+
+					@if (string.IsNullOrWhiteSpace(flowMeter.Image) == false)
+					{
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(flowMeter.Image)" alt="Flow Meter Image">
+					}
+					else
+					{
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available" class="pt-5">
+					}
+				</div>
+
+				<div style="align-content: center;" class="col-sm-7">
+					<h5 class="display-6">Tag - @flowMeter.Tag</h5><hr />
+					<table width="100%">
+						<tr>
+							<td class="td-first">Merk</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.Brand</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tipe</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.Type</td>
+						</tr>
+						<tr>
+							<td class="td-first">Deskripsi</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.Description</td>
+						</tr>
+						<tr>
+							<td class="td-first">Lokasi</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.Location</td>
+						</tr>
+						<tr>
+							<td class="td-first">Desain Laju Alir</td>
+							<td> : </td>
+							@if(flowMeter.FlowRateValueEnd.HasValue)
+							{
+								<td class="td-last">@flowMeter.FlowRateValueFirst ~ @flowMeter.FlowRateValueEnd @flowMeter.FlowRateUnit</td>
+							}
+							else
+							{
+								<td class="td-last">@flowMeter.FlowRateValueFirst @flowMeter.FlowRateUnit</td>
+							}
+						</tr>
+						<tr>
+							<td class="td-first">Tekanan Desain</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.DesignPressureValue @flowMeter.DesignPressureUnit</td>
+						</tr>
+						<tr>
+							<td class="td-first">Temperatur Desain</td>
+							<td> : </td>
+							<td class="td-last">@flowMeter.TempDesign</td>
+						</tr>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+	}
+	else
+	{
+		<p>Memuat Data Flow Meter...</p>
+	}
+</div>
+
+@code {
+	//Page
+	[Parameter]
+	public int FlowMeterID { get; set; }
+	private FlowMeter flowMeter;
+	private string _webStorageRoot = string.Empty;
+
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadFlowMeter();
+
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	//Read Data Pump
+	private async Task LoadFlowMeter()
+	{
+		try
+		{
+			//Read Pump using Service
+			flowMeter = await CRUDService.ReadSingleAsync<FlowMeter, int>(FlowMeterID);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data Flow Meter. Hubungi administrator.";
+			logMessage = $"Gagal memuat data Flow Meter\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
+}

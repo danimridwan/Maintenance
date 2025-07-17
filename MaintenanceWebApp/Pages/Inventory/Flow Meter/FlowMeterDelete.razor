@@ -1,0 +1,110 @@
+﻿@page "/FlowMeterDelete/{FlowMeterID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (flowMeter == null)
+        {
+            <p><em>Memuat Data Flow Meter...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus Flow Meter</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus Flow Meter dengan Tag: <b>@flowMeter.Tag</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteFlowMeter">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int FlowMeterID { get; set; }
+    private FlowMeter flowMeter;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "Flow Meter";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPump();
+    }
+
+    //Read Data Pump
+    private async Task LoadPump()
+    {
+        try
+        {
+            //Read Pump using Service
+            flowMeter = await CRUDService.ReadSingleAsync<FlowMeter, int>(FlowMeterID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data Flow Meter. Hubungi administrator.";
+            logMessage = $"Gagal memuat data Flow Meter\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Pump
+    private async Task DeleteFlowMeter()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(flowMeter);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(flowMeter.Image, subFolderName);
+        flowMeter.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/FlowMeterList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/FlowMeterList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}

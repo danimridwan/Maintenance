@@ -13,6 +13,7 @@ namespace MaintenanceWebApp.Data
         public DbSet<Pump> Pumps { get; set; }
         public DbSet<ElectricPanel> ElectricPanels { get; set; }
         public DbSet<IT> IT { get; set; }
+        public DbSet<FlowMeter> FlowMeters { get; set; }
 
         public DataContext(DbContextOptions options) : base(options)
         {
