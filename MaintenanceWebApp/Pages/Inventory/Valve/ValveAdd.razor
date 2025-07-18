@@ -1,0 +1,342 @@
+﻿@page "/ValveAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbFactory
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        @* Tab Header *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Valve">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Valve</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @* Form Add *@
+        <EditForm Model="valve" OnValidSubmit="HandleCreateValve" OnInvalidSubmit="HandleInvalidSubmit">
+            <DataAnnotationsValidator />
+            <div class="form-group row">
+                <div class="col-sm-12 mb-3">
+                    <label for="Lokasi" class="col-form-label">Lokasi<span class="required">*</span></label>
+                    <InputSelect id="Lokasi" @bind-Value="valve.Location" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var location in valveLocation)
+                        {
+                            <option value="@location">@location</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => valve.Location)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Jalur" class="col-form-label">Jalur</label>
+                    <InputSelect id="Jalur" @bind-Value="valveTrackId" class="form-control">
+                        <option value="">...</option>
+                        <option value="1">Tangki ke Hose Pit</option>
+                        <option value="2">Jetty ke Hose Pit</option>
+                        <option value="3">CFS</option>
+                    </InputSelect>
+                    <ValidationMessage For="@(() => valveTrackId)" />
+                </div>
+
+                @if(valveTrackId == 1 || valveTrackId == 2)
+                {
+                    <div class="col-sm-6 mb-3">
+                        <label for="Entry" class="col-form-label">Entry</label>
+                        <InputText id="Entry" @bind-Value="valve.ValveEntry" class="form-control" />
+                        <ValidationMessage For="@(() => valve.ValveEntry)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="Exit" class="col-form-label">Exit</label>
+                        <InputText id="Exit" @bind-Value="valve.ValveExit" class="form-control" />
+                        <ValidationMessage For="@(() => valve.ValveExit)" />
+                    </div>
+                }
+                else if(valveTrackId == 3)
+                {
+                    <div class="col-sm-12 mb-3">
+                        <label for="JalurCFS" class="col-form-label">Jalur Valve CFS</label>
+                        <InputText id="JalurCFS" @bind-Value="valve.ValveTrack" class="form-control" />
+                        <ValidationMessage For="@(() => valve.ValveTrack)" />
+                    </div>
+                }
+
+                <div class="col-sm-6 mb-3">
+                    <label for="Tipe" class="col-form-label">Tipe</label>
+                    <InputSelect id="Tipe" @bind-Value="valve.Type" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var type in typeValve)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="Material" class="col-form-label">Material</label>
+                    <InputText id="Material" @bind-Value="valve.Material" class="form-control" />
+                    <ValidationMessage For="@(() => valve.Material)" />
+                </div
+
+                <div class="col-sm-12 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Diameter" class="col-form-label">Diameter</label>
+                            <InputNumber class="form-control" id="Diameter" @bind-Value="valve.DiameterValue" @oninput="OnDiameterInputChanged" />
+                            <ValidationMessage For="@(() => valve.DiameterValue)" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="SatuanDiameter" class="col-form-label">Unit</label>
+                            <InputSelect id="SatuanDiameter" @bind-Value="valve.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in diameterUnits)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </InputSelect>
+                            @* Custom validation message for Diameter Unit *@
+                            @if (valve.DiameterValue.HasValue && valve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(valve.DiameterUnit))
+                            {
+                                <div class="text-danger">Satuan Diameter harus dipilih.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Jumlah" class="col-form-label">Jumlah</label>
+                    <InputNumber id="Jumlah" @bind-Value="valve.Quantity" class="form-control" />
+                    <ValidationMessage For="@(() => valve.Quantity)" />
+                </div
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Foto" class="col-form-label">Foto</label>
+                    @if (string.IsNullOrWhiteSpace(valve.Image))
+                    {
+                        <InputFile id="Foto" class="form-control"
+                                   accept=".jpg,.jpeg,.png"
+                                   OnChange="HandleFileUpload" />
+                        <ValidationMessage For="@(() => valve.Image)" />
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(valve.Image)" alt="Valve Image">
+                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                        {
+                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                        }
+                    }
+                </div>
+            </div>
+
+            @* Submit Button *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    //Page
+    private Valve valve = new();
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
+    private bool uploadErrorStatus;
+
+    //Form
+    private bool IsDiameterUnitDisabled = true;
+    private int? valveTrackId;
+    private List<string> valveLocation = new() { "Tank Pit 1", "Tank Pit 2", "Tank Pit 3", "Tank Pit 4", "Tank Pit 5", "Tank Pit 6", "Tank Pit 7", "Jetty 1", "Jetty 2" };
+    private List<string> typeValve = new() { "Gate Valve", "Check Valve", "Ball Valve" };
+    private List<string> diameterUnits = new() { "inch" };
+
+    //File
+    private string subFolderName = "Inventories";
+    private string fileCategory = "img";
+    private string folderName = "Valve";
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        editContext = new EditContext(valve);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        uploadErrorStatus = false;
+
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //File Upload
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+        valve.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => valve.Image));
+    }
+
+    //File Change
+    private async Task HandleFileChange()
+    {
+        //File Change using Service
+        await UploadService.FileChange(valve.Image, subFolderName);
+        valve.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
+            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = true;
+
+            ShowNotification(alertMessage, logMessage);
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => valve.Image));
+    }
+
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    //Create New Data Valve
+    private async Task HandleCreateValve()
+    {
+        // Custom Diameter Value Validation
+        if (valve.DiameterValue.HasValue && valve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(valve.DiameterUnit))
+        {
+            alertMessage = "Jika Diameter diisi, Satuan Diameter harus dipilih.";
+            logMessage = $"Validasi kustom gagal: Satuan Diameter tidak dipilih saat nilai Diameter ada.";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        if (uploadErrorStatus)
+        {
+            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
+            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
+
+            uploadErrorStatus = false;
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        //Create using Services
+        await CRUDService.CreateAsync<Valve>(valve);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = $"Gagal menyimpan data. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/ValveList?status=CreateSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir ValveAdd disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Diameter Validation
+    private void OnDiameterInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double currentDiameterInputValue))
+        {
+            valve.DiameterValue = currentDiameterInputValue;
+        }
+        else
+        {
+            valve.DiameterValue = null;
+        }
+
+        IsDiameterUnitDisabled = !valve.DiameterValue.HasValue || valve.DiameterValue.Value <= 0;
+
+        if (IsDiameterUnitDisabled)
+        {
+            valve.DiameterUnit = null;
+        }
+
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => valve.DiameterValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => valve.DiameterUnit));
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private void Cancel()
+    {
+        if (!string.IsNullOrWhiteSpace(valve.Image))
+        {
+            HandleFileChange();
+        }
+
+        NavigationManager.NavigateTo("/ValveList");
+    }
+}

@@ -1,0 +1,119 @@
+﻿@page "/ValveDelete/{ValveID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (valve == null)
+        {
+            <p><em>Memuat Data Valve...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus Valve</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus Valve di Jalur:
+                @if (string.IsNullOrWhiteSpace(valve.ValveTrack))
+                {
+                    <b>@valve.ValveEntry ke @valve.ValveExit</b>
+                }
+                else
+                {
+                    <b>valve.ValveTrack</b>
+                }
+                ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteValve">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int ValveID { get; set; }
+    private Valve valve;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "Valve";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadValve();
+    }
+
+    //Read Data Pump
+    private async Task LoadValve()
+    {
+        try
+        {
+            //Read Pump using Service
+            valve = await CRUDService.ReadSingleAsync<Valve, int>(ValveID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data Valve. Hubungi administrator.";
+            logMessage = $"Gagal memuat data Valve\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Valve
+    private async Task DeleteValve()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(valve);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(valve.Image, subFolderName);
+        valve.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/ValveList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/ValveList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}

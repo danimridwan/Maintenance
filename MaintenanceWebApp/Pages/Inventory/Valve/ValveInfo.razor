@@ -1,0 +1,157 @@
+﻿@page "/ValveInfo/{ValveID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+
+	@if (valve != null)
+	{
+		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					<a href="ValveList" class="nav-link" aria-label="Kembali ke Daftar Valve">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link active" aria-label="Informasi Valve">Informasi Valve</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body">
+			@* Informasi Valve *@
+			<div class="form-group row">
+				<div class="col-sm-5">
+
+					@if (string.IsNullOrWhiteSpace(valve.Image) == false)
+					{
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(valve.Image)" alt="Valve Image">
+					}
+					else
+					{
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
+					}
+				</div>
+
+				<div style="align-content: center;" class="col-sm-7">
+					<table width="100%">
+						<tr>
+							<td class="td-first">Lokasi</td>
+							<td> : </td>
+							<td class="td-last">@valve.Location</td>
+						</tr>
+						<tr>
+							<td class="td-first">Jalur</td>
+							<td> : </td>
+							@if (string.IsNullOrWhiteSpace(valve.ValveTrack))
+							{
+								<td class="td-last">@valve.ValveEntry ke @valve.ValveExit</td>
+							}
+							else
+							{
+								<td class="td-last">@valve.ValveTrack</td>
+							}
+						</tr>
+						<tr>
+							<td class="td-first">Tipe</td>
+							<td> : </td>
+							<td class="td-last">@valve.Type</td>
+						</tr>
+						<tr>
+							<td class="td-first">Material</td>
+							<td> : </td>
+							<td class="td-last">@valve.Material</td>
+						</tr>
+						<tr>
+							<td class="td-first">Diameter</td>
+							<td> : </td>
+							<td class="td-last">@valve.DiameterValue @valve.DiameterUnit</td>
+						</tr>
+						<tr>
+							<td class="td-first">Jumlah</td>
+							<td> : </td>
+							<td class="td-last">@valve.Quantity</td>
+						</tr>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+	}
+	else
+	{
+		<p>Memuat Data Valve...</p>
+	}
+</div>
+
+@code {
+	//Page
+	[Parameter]
+	public int ValveID { get; set; }
+	private Valve valve;
+	private string _webStorageRoot = string.Empty;
+
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadValve();
+
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	//Read Data Pump
+	private async Task LoadValve()
+	{
+		try
+		{
+			//Read Valve using Service
+			valve = await CRUDService.ReadSingleAsync<Valve, int>(ValveID);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data Valve. Hubungi administrator.";
+			logMessage = $"Gagal memuat data Valve\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
+}
