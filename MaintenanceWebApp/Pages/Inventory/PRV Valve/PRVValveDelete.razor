@@ -1,0 +1,110 @@
+﻿@page "/PRVValveDelete/{PRVValveID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (prvValve == null)
+        {
+            <p><em>Memuat Data PRV Valve...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus PRV Valve</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus PRV Valve dengan Nomor Tangki: <b>@prvValve.TankNumber</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeletePRVValve">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int PRVValveID { get; set; }
+    private PRVValve prvValve;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "PRV Valve";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPRVValve();
+    }
+
+    //Read Data Pump
+    private async Task LoadPRVValve()
+    {
+        try
+        {
+            //Read Pump using Service
+            prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(PRVValveID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data PRV Valve. Hubungi administrator.";
+            logMessage = $"Gagal memuat data PRV Valve\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Pump
+    private async Task DeletePRVValve()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(prvValve);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(prvValve.Image, subFolderName);
+        prvValve.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/PRVValveList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/PRVValveList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}

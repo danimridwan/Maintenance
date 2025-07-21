@@ -33,8 +33,8 @@ namespace MaintenanceWebApp.Data
         [StringLength(25, ErrorMessage = "Input Jalur Akhir Valve melebihi batas karakter (maks 25 karakter).")]
         public string? ValveExit { get; set; }
 
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Kuantitas Valve dengan benar!")]
-        public double? Quantity { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Isi nilai Kuantitas Valve dengan benar!")]
+        public int? Quantity { get; set; }
 
         public string? Image { get; set; }
 

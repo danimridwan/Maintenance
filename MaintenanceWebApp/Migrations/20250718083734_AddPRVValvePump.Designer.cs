@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250718083734_AddPRVValvePump")]
+    partial class AddPRVValvePump
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -225,21 +228,17 @@ namespace MaintenanceWebApp.Migrations
                     b.ToTable("PPMTasks");
                 });
 
-            modelBuilder.Entity("MaintenanceWebApp.Data.PRVValve", b =>
+            modelBuilder.Entity("MaintenanceWebApp.Data.PRVValvePump", b =>
                 {
-                    b.Property<int>("PRVValveID")
+                    b.Property<int>("PRVValvePumpID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PRVValveID"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PRVValvePumpID"));
 
                     b.Property<string>("Brand")
                         .HasMaxLength(25)
                         .HasColumnType("nvarchar(25)");
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DesignPressureUnit")
                         .HasColumnType("nvarchar(max)");
@@ -273,9 +272,9 @@ namespace MaintenanceWebApp.Migrations
                         .HasMaxLength(25)
                         .HasColumnType("nvarchar(25)");
 
-                    b.HasKey("PRVValveID");
+                    b.HasKey("PRVValvePumpID");
 
-                    b.ToTable("PRVValves");
+                    b.ToTable("PRVValvePumps");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.Pump", b =>

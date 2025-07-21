@@ -15,6 +15,7 @@ namespace MaintenanceWebApp.Data
         public DbSet<IT> IT { get; set; }
         public DbSet<FlowMeter> FlowMeters { get; set; }
         public DbSet<Valve> Valves { get; set; }
+        public DbSet<PRVValve> PRVValves { get; set; }
 
         public DataContext(DbContextOptions options) : base(options)
         {
