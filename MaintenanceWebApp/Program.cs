@@ -19,9 +19,6 @@ builder.Services.AddScoped<UrlStatusService>();
 builder.Services.AddScoped<TableService>();
 
 //Mailer
-//MailerService mailerService = new MailerService();
-//builder.Configuration.GetSection("Mailer").Bind(mailerService);
-//builder.Services.AddSingleton(mailerService);
 builder.Services.Configure<SMTPSettings>(builder.Configuration.GetSection("Mailer"));
 builder.Services.AddSingleton<IMailerService, MailerService>();
 
@@ -29,7 +26,9 @@ builder.Services.AddSingleton<IMailerService, MailerService>();
 builder.Services.AddDbContextFactory<DataContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+;
 //builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<DataContext>();
+
 
 builder.Services.AddIdentity<Employee, IdentityRole>(options =>
 {
@@ -43,6 +42,8 @@ builder.Services.AddIdentity<Employee, IdentityRole>(options =>
     //  Enables role-based authorization and specifies that IdentityRole will be used for managing roles.
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<DataContext>();
+
+builder.Services.AddTransient<DataSeeder>();
 
 var app = builder.Build();
 
@@ -62,5 +63,13 @@ app.UseAuthorization();
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
+
+app.MapControllers();
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+    seeder.SeedAdminRole();
+    await seeder.SeedAdminUser();
+}
 
 app.Run();
