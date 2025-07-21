@@ -79,7 +79,7 @@
                 <PropertyColumn Property="@(emp => emp.Section)" Title="Section" Sortable="true" />
                 <PropertyColumn Property="@(emp => emp.RoleCategory)" Title="Role Category" Sortable="true" />
                 <PropertyColumn Property="@(emp => emp.FullName)" Title="Full Name" Sortable="true" />
-                <TemplateColumn Title="Actions" Class="td-action">
+                <TemplateColumn Title="Actions" Class="">
                     <button @onclick="@(() => NavigateToEditEmployee(context))" class="btn btn-warning">
                         <span class="oi oi-pencil"></span>
                     </button>
