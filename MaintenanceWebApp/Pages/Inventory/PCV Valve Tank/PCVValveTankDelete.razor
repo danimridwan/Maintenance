@@ -1,0 +1,110 @@
+﻿@page "/PCVValveTankDelete/{PCVValveTankID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (pcvValveTank == null)
+        {
+            <p><em>Memuat Data PCV Valve Tank...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus PCV Valve Tank</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus PCV Valve Tank dengan Nomor Pompa: <b>@pcvValveTank.PumpNumber</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeletePCVValveTank">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int PCVValveTankID { get; set; }
+    private PCVValveTank pcvValveTank;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "PCV Valve Tank";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPCVValveTank();
+    }
+
+    //Read Data PCV Valve Tank
+    private async Task LoadPCVValveTank()
+    {
+        try
+        {
+            //Read PCV Valve Tank using Service
+            pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(PCVValveTankID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data PCV Valve Tank. Hubungi administrator.";
+            logMessage = $"Gagal memuat data PCV Valve Tank\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+	//Delete Data PCV Valve Tank
+    private async Task DeletePCVValveTank()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(pcvValveTank);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(pcvValveTank.Image, subFolderName);
+        pcvValveTank.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/PCVValveTankList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/PCVValveTankList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}

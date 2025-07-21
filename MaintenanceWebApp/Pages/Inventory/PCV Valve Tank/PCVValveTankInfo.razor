@@ -1,0 +1,163 @@
+﻿@page "/PCVValveTankInfo/{PCVValveTankID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+
+	@if (pcvValveTank != null)
+	{
+		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					<a href="PRVValveList" class="nav-link" aria-label="Kembali ke Daftar PRV Valve">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link active" aria-label="Informasi PRV Valve">Informasi PRV Valve</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body">
+			@* Informasi PRV Valve *@
+			<div class="form-group row">
+				<div class="col-sm-5">
+
+					@if (string.IsNullOrWhiteSpace(pcvValveTank.Image) == false)
+					{
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(pcvValveTank.Image)" alt="PCV Valve Tank Image">
+					}
+					else
+					{
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
+					}
+				</div>
+
+				<div style="align-content: center;" class="col-sm-7">
+					<h5 class="display-6">Pressure Control Valve</h5><hr />
+					<table width="100%">
+						<tr>
+							<td class="td-first">Nomor Pompa</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.PumpNumber</td>
+						</tr>
+						<tr>
+							<td class="td-first">Merk</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.Brand</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tipe</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.Type</td>
+						</tr>
+						<tr>
+							<td class="td-first">Material</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.Material</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tekanan Desain</td>
+							<td> : </td>
+							@if(pcvValveTank.DesignPressureValue2.HasValue)
+							{
+								<td class="td-last">@pcvValveTank.DesignPressureValue1/@pcvValveTank.DesignPressureValue2 @pcvValveTank.DesignPressureUnit</td>
+							}
+							else
+							{
+								<td class="td-last">@pcvValveTank.DesignPressureValue1 @pcvValveTank.DesignPressureUnit</td>
+							}
+						</tr>
+						<tr>
+							<td class="td-first">Diameter Valve</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.DiameterValue @pcvValveTank.DiameterUnit</td>
+						</tr>
+						<tr>
+							<td class="td-first">Jumlah</td>
+							<td> : </td>
+							<td class="td-last">@pcvValveTank.Quantity</td>
+						</tr>
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+	}
+	else
+	{
+		<p>Memuat Data PRV Valve...</p>
+	}
+</div>
+
+@code {
+	//Page
+	[Parameter]
+	public int PCVValveTankID { get; set; }
+	private PCVValveTank pcvValveTank;
+	private string _webStorageRoot = string.Empty;
+
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadPCVValveTank();
+
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	//Read Data Pump
+	private async Task LoadPCVValveTank()
+	{
+		try
+		{
+			//Read Pump using Service
+			pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(PCVValveTankID);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data PRV Valve. Hubungi administrator.";
+			logMessage = $"Gagal memuat data PRV Valve\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
+}

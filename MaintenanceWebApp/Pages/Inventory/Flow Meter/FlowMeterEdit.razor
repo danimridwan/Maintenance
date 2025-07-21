@@ -113,6 +113,10 @@
                         <div style="align-content: end;" class="col-sm-3">
                             <InputCheckbox class="form-check-input" @bind-Value="IsFlowRateValueSecondDisabled"></InputCheckbox>
                             <InputNumber class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValueEnd" disabled="@IsFlowRateValueSecondDisabled" />
+                            @if (!IsFlowRateValueSecondDisabled)
+                            {
+                                flowMeter.FlowRateValueEnd = null;
+                            }
                         </div>
                         <div class="col-sm-5">
                             <label for="SatuanDesainLajuAlir" class="col-form-label">Unit</label>

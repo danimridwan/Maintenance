@@ -17,7 +17,7 @@ namespace MaintenanceWebApp.Data
         [StringLength(50, ErrorMessage = "Input Nama Pompa melebihi batas karakter (maks 50 karakter).")]
         public string Name { get; set; }
 
-        [StringLength(25, ErrorMessage = "Input Brand melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(25, ErrorMessage = "Input Merk melebihi batas karakter (maks 25 karakter).")]
         public string? Brand { get; set; }
 
         [Range(1900, 2050, ErrorMessage = "Isi Tahun Pompa dengan benar (1900-2050).")]

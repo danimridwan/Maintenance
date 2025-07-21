@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250721072852_AddPCVValveTankTable")]
+    partial class AddPCVValveTankTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -169,10 +172,7 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<string>("DesignPressureUnit")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("DesignPressureValue1")
-                        .HasColumnType("float");
-
-                    b.Property<double?>("DesignPressureValue2")
+                    b.Property<double?>("DesignPressureValue")
                         .HasColumnType("float");
 
                     b.Property<string>("DiameterUnit")
@@ -188,8 +188,10 @@ namespace MaintenanceWebApp.Migrations
                         .HasMaxLength(25)
                         .HasColumnType("nvarchar(25)");
 
-                    b.Property<int>("PumpNumber")
-                        .HasColumnType("int");
+                    b.Property<string>("PumpNumber")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
 
                     b.Property<int?>("Quantity")
                         .HasColumnType("int");
