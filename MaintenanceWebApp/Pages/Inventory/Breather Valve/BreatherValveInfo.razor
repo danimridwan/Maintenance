@@ -1,0 +1,161 @@
+﻿@page "/BreatherValveInfo/{BreatherValveID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+
+	@if (breatherValve != null)
+	{
+		<div class="card-header bg-light border-primary">
+			@* Tab Header *@
+			<ul class="nav nav-tabs card-header-tabs">
+				<li class="nav-item">
+					<a href="BreatherValveList" class="nav-link" aria-label="Kembali ke Daftar Breather Valve">
+						<span class="oi oi-chevron-left"></span>
+					</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link active" aria-label="Informasi Breather Valve">Informasi Breather Valve</a>
+				</li>
+			</ul>
+		</div>
+		<div class="card-body">
+			@* Informasi Breather Valve *@
+			<div class="form-group row">
+				<div class="col-sm-5">
+
+					@if (string.IsNullOrWhiteSpace(breatherValve.Image) == false)
+					{
+						<img style="align-content:center;" width="100%" src="@CreateFilePath(breatherValve.Image)" alt="Breather Valve Image">
+					}
+					else
+					{
+						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
+					}
+				</div>
+
+				<div style="align-content: center;" class="col-sm-7">
+					<h5 class="display-6">Safety Breather Valve</h5><hr />
+					<table width="100%">
+						<tr>
+							<td class="td-first">Tangki</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.Tank</td>
+						</tr>
+						<tr>
+							<td class="td-first">Merk</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.Brand</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tipe</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.Type</td>
+						</tr>
+						<tr>
+							<td class="td-first">Material</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.Material</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tekanan Desain (+MMH20)</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.DesignPressurePos</td>
+						</tr>
+						<tr>
+							<td class="td-first">Tekanan Desain (-MMH20)</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.DesignPressureNeg</td>
+						</tr>
+						<tr>
+							<td class="td-first">Diameter Valve</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.DiameterValue @breatherValve.DiameterUnit</td>
+						</tr>
+						<tr>
+							<td class="td-first">Jumlah</td>
+							<td> : </td>
+							<td class="td-last">@breatherValve.Quantity</td>
+						</tr>	
+					</table>
+				</div>
+
+			</div>
+
+		</div>
+	}
+	else
+	{
+		<p>Memuat Data Breather Valve...</p>
+	}
+</div>
+
+@code {
+	//Page
+	[Parameter]
+	public int BreatherValveID { get; set; }
+	private BreatherValve breatherValve;
+	private string _webStorageRoot = string.Empty;
+
+	//Notification
+	private string? alertMessage;
+	private string? logMessage;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadBreatherValve();
+
+		try
+		{
+			// Get Path Root
+			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	//Read Data Breather Valve
+	private async Task LoadBreatherValve()
+	{
+		try
+		{
+			//Read Breather Valve using Service
+			breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
+		}
+		catch (Exception ex)
+		{
+			alertMessage = "Gagal memuat data Breather Valve. Hubungi administrator.";
+			logMessage = $"Gagal memuat data Breather Valve\nDetail :\n{ex}";
+
+			ShowNotification(alertMessage, logMessage);
+		}
+	}
+
+	private string CreateFilePath(string relativePath)
+	{
+		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+	}
+
+	//Notification
+	private async Task ShowNotification(string alertMessage, string logMessage)
+	{
+		await NotificationService.AlertMessage(alertMessage);
+		NotificationService.LogMessage(logMessage);
+	}
+}

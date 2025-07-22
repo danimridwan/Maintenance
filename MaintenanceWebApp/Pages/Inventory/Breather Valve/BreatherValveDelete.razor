@@ -1,0 +1,110 @@
+﻿@page "/BreatherValveDelete/{BreatherValveID:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+
+<div class="card">
+
+    <div class="card-body">
+        @if (breatherValve == null)
+        {
+            <p><em>Memuat Data Breather Valve...</em></p>
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        }
+        else
+        {
+            <h3>Hapus Breather Valve</h3>
+
+            <hr />
+
+            <p>Anda yakin ingin menghapus Breather Valve dengan Tangki: <b>@breatherValve.Tank</b> ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteBreatherValve">Delete</button>
+            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+        }
+    </div>
+
+</div>
+
+@code {
+    //Page
+    [Parameter]
+    public int BreatherValveID { get; set; }
+    private BreatherValve breatherValve;
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    //File
+    private string subFolderName = "Inventories";
+    private string folderName = "Breather Valve";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBreatherValve();
+    }
+
+    //Read Data Breather Valve
+    private async Task LoadBreatherValve()
+    {
+        try
+        {
+            //Read Breather Valve using Service
+            breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data Breather Valve. Hubungi administrator.";
+            logMessage = $"Gagal memuat data Breather Valve\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    //Delete Data Breather Valve
+    private async Task DeleteBreatherValve()
+    {
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(breatherValve);
+
+        //File Delete using File Upload Service
+        await UploadService.FileChange(breatherValve.Image, subFolderName);
+        breatherValve.Image = UploadService.FilePath;
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/BreatherValveList?status=DeleteSuccess");
+    }
+
+    //Cancel Delete
+    private void CancelDelete()
+    {
+        NavigationManager.NavigateTo("/BreatherValveList");
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}
