@@ -10,53 +10,46 @@ namespace MaintenanceWebApp.Data
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public string TaskID { get; set; }
 
-        [Required]
-        public string Requestor { get; set; }
+        public string PPMID { get; set; }
 
-        [Required]
-        public string Division { get; set; }
+        public string PPMSection { get; set; }
 
-        [Required]
-        public string JobDesc { get; set; }
+        public int Level { get; set; }
+        public DateTime DateCreated { get; set; }
 
-        [Required]
-        public DateTime RequestDate { get; set; }
+        public string CreatedBy { get; set; }
 
-        [Required]
-        public DateTime TargetDate { get; set; } = DateTime.Now;
+        [Required(ErrorMessage = "Deskripsi Pekerjaan harus diisi.")]
+        [StringLength(250, ErrorMessage = "Input Deskripsi Pekerjaan melebihi batas karakter (maks 250 karakter).")]
+        public string JobDescription { get; set; }
 
-        public StatusEnum Status { get; set; } = StatusEnum.Request; //default val
+        [Required(ErrorMessage = "Jenis Pekerjaan harus diisi.")]
+        public string JobCategory { get; set; }
 
-        public string Photo { get; set; } = string.Empty;
-        public string CompletePhoto { get; set; } = string.Empty;
+        public string? ImageBefore { get; set; }
 
-        public string SupportingDocument { get; set; } = string.Empty;
+        public string? Document { get; set; }
 
-        public string Notes { get; set; } = string.Empty;
+        [StringLength(150, ErrorMessage = "Input Catatan Reject melebihi batas karakter (maks 150 karakter).")]
+        public string? RejectionNote { get; set; }
 
-        public string RequestorNotes { get; set; } = string.Empty;
+        public DateOnly? TargetDate { get; set; }
 
-        public bool TargetCompletion { get; set; }
+        public string? MaintenanceCategory { get; set; }
 
-        public string Evaluation { get; set; } = string.Empty;
+        public string? MaintenancePIC { get; set; }
 
-        [Required]
-        public string WorkType { get; set; }
+        public string? ImageAfter { get; set; }
 
-        // Navigation property for the Employee relationship, allow null at first creating data
-        public string? UserID { get; set; }
-        [ForeignKey("UserID")]
-        public virtual Employee? Employee { get; set; }
+        public bool? TargetCompletion { get; set; }
 
-        // Soft deletion flag
-        public bool IsDeleted { get; set; }
+        [StringLength(250, ErrorMessage = "Input Catatan MTD melebihi batas karakter (maks 250 karakter).")]
+        public string? MTDNote { get; set; }
+
+        [StringLength(150, ErrorMessage = "Input Catatan Evaluasi melebihi batas karakter (maks 150 karakter).")]
+        public string? EvaluationNote { get; set; }
+
+        [StringLength(150, ErrorMessage = "Input Catatan Pemohon melebihi batas karakter (maks 150 karakter).")]
+        public string? RequestorNote { get; set; }
     }
-    public enum StatusEnum
-    {
-        Request,
-        InProgress,
-        Completed,
-        CompletedwithNotes
-    }
-
 }

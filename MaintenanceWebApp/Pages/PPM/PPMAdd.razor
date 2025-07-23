@@ -1,0 +1,318 @@
+﻿@page "/PPMAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbFactory
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Supervisor")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        @* Tab Header *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar PPM">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi PPM</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @* Form Add *@
+        <EditForm Model="ppmTask" OnValidSubmit="HandleCreatePPM" OnInvalidSubmit="HandleInvalidSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="col-sm-12 mb-3">
+                <label for="DeskripsiPekerjaan" class="col-form-label">Deskripsi Pekerjaan<span class="required">*</span></label>
+                <InputTextArea id="DeskripsiPekerjaan" @bind-Value="ppmTask.JobDescription" class="form-control" />
+                <ValidationMessage For="@(() => ppmTask.JobDescription)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="JenisPekerjaan" class="col-form-label">Jenis Pekerjaan<span class="required">*</span></label>
+                <InputSelect id="JenisPekerjaan" @bind-Value="ppmTask.JobCategory" class="form-control">
+                    <option value="">...</option>
+                    @foreach (var cat in jobCategory)
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => ppmTask.JobCategory)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Foto" class="col-form-label">Foto Kondisi Awal</label>
+                @if (string.IsNullOrWhiteSpace(ppmTask.ImageBefore))
+                {
+                    <InputFile id="Foto" class="form-control"
+                               accept=".jpg,.jpeg,.png"
+                               OnChange="@HandleFileUploadImg" />
+                    <ValidationMessage For="@(() => ppmTask.ImageBefore)" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center">
+                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(ppmTask.ImageBefore)" alt="PPM Image">
+                        <button @onclick="RemoveImageBefore" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                    }
+                }
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Dokumen" class="col-form-label">Dokumen</label> 
+                @if (string.IsNullOrWhiteSpace(ppmTask.Document))
+                {
+                    <InputFile id="Dokumen" class="form-control"
+                               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                               OnChange="@HandleFileUploadDoc" />
+                    <ValidationMessage For="@(() => ppmTask.Document)" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">File: <a href="@CreateFilePath(ppmTask.Document)" target="_blank">@Path.GetFileName(ppmTask.Document)</a></span>
+                        <button @onclick="RemoveDocument" type="button" class="btn btn-danger btn-sm ms-3">Ubah Dokumen</button>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                    }
+                }
+            </div>
+
+            @* Submit Button *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private string? supervisorId;
+    private string? supervisorSection;
+
+    //Page
+    private PPMTask ppmTask = new();
+    private EditContext? editContext;
+    private string _webStorageRoot = string.Empty;
+
+    //Form
+    private List<string> jobCategory = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
+
+    //File
+    private string subFolderName = "PPM";
+    private string fileCategoryImg = "img";
+    private string folderNameImg = "Image";
+    private string fileCategoryDoc = "doc";
+    private string folderNameDoc = "Document";
+
+    //Notification
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (authenticationStateTask != null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var user = authenticationState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                supervisorId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; 
+                supervisorSection = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(supervisorId))
+                {
+                     supervisorId = user.FindFirst("Id")?.Value; 
+                }
+
+                if (string.IsNullOrEmpty(supervisorSection))
+                {
+                    supervisorSection = user.FindFirst("Section")?.Value;
+                }
+            }
+        }
+
+        editContext = new EditContext(ppmTask);
+        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+        try
+        {
+            // Get Path Root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    private async Task HandleFileUploadImg(InputFileChangeEventArgs e)
+    {
+        await HandleFileUpload(e, folderNameImg, fileCategoryImg, val => ppmTask.ImageBefore = val);
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.ImageBefore));
+    }
+
+    private async Task HandleFileUploadDoc(InputFileChangeEventArgs e)
+    {
+        await HandleFileUpload(e, folderNameDoc, fileCategoryDoc, val => ppmTask.Document = val);
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.Document));
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e, string folderName, string fileCategory, Action<string?> setFilePath)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+            setFilePath(UploadService.FilePath);
+
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                alertMessage = $"Gagal upload file: {UploadService.UploadErrorMessage}";
+                logMessage = $"Gagal upload file\nDetail:\n{UploadService.UploadErrorMessage}";
+                ShowNotification(alertMessage, logMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Terjadi kesalahan saat mengunggah file. Hubungi administrator.";
+            logMessage = $"Kesalahan saat mengunggah file\nDetail:\n{ex.Message}\n{ex.StackTrace}";
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    private async Task RemoveImageBefore()
+    {
+        if (!string.IsNullOrWhiteSpace(ppmTask.ImageBefore))
+        {
+            try
+            {
+                await UploadService.FileChange(ppmTask.ImageBefore ,subFolderName); 
+                ppmTask.ImageBefore = null;
+            }
+            catch (Exception ex)
+            {
+                alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+                logMessage = $"Gagal menghapus gambar\nDetail:\n{ex.Message}\n{ex.StackTrace}";
+                ShowNotification(alertMessage, logMessage);
+            }
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.ImageBefore));
+    }
+
+    private async Task RemoveDocument()
+    {
+        if (!string.IsNullOrWhiteSpace(ppmTask.Document))
+        {
+            try
+            {
+                await UploadService.FileChange(ppmTask.Document, subFolderName); 
+                ppmTask.Document = null;
+            }
+            catch (Exception ex)
+            {
+                alertMessage = "Gagal menghapus dokumen. Hubungi Administrator.";
+                logMessage = $"Gagal menghapus dokumen\nDetail:\n{ex.Message}\n{ex.StackTrace}";
+                ShowNotification(alertMessage, logMessage);
+            }
+        }
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.Document));
+    }
+
+    //Create File Path
+    private string CreateFilePath(string relativePath)
+    {
+        return Uri.EscapeUriString(Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/"));
+    }
+
+    private async Task HandleCreatePPM()
+    {
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            alertMessage = $"Terdapat kesalahan pada proses upload file: {UploadService.UploadErrorMessage}. Silakan perbaiki sebelum menyimpan.";
+            logMessage = $"Percobaan simpan data dengan upload error yang belum teratasi.";
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+		//PPM Default Initialization Value
+        ppmTask.PPMID = Convert.ToString(Guid.NewGuid());
+        ppmTask.PPMSection = supervisorSection ?? "Unknown Section";
+        ppmTask.Level = 0;
+        ppmTask.CreatedBy = supervisorId ?? "Unknown User";
+        ppmTask.DateCreated = DateTime.Now;
+
+        //Create using Services
+        await CRUDService.CreateAsync<PPMTask>(ppmTask);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = $"Gagal menyimpan data. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+
+        NavigationManager.NavigateTo("/PPMList?status=CreateSuccess");
+    }
+
+    //Invalid Submit
+    private async Task HandleInvalidSubmit()
+    {
+        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
+        logMessage = $"Formulir PPMAdd disubmit dengan input tidak valid.";
+
+        ShowNotification(alertMessage, logMessage);
+    }
+
+    //Notification
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+
+    //Cancel
+    private async void Cancel() 
+    {
+        if (!string.IsNullOrWhiteSpace(ppmTask.ImageBefore))
+        {
+             await RemoveImageBefore();
+        }
+
+        if (!string.IsNullOrWhiteSpace(ppmTask.Document))
+        {
+             await RemoveDocument();
+        }
+
+        NavigationManager.NavigateTo("/PPMList");
+    }
+}

@@ -1,29 +1,52 @@
 ﻿@page "/PPMList"
 
 @using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
-@inject DataContext DataContext
+@using Microsoft.AspNetCore.WebUtilities
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
+@* Services *@
+@inject CRUDService CRUDService
+@inject UrlStatusService UrlStatusService
+@inject TableService TableService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+@* Status Notification *@
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div class="container px-0">
+        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+            @statusMessage
+            <button style="background-color: transparent; border: transparent; float: right;" type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    </div>
+}
+
 <div class="card">
+
     <div class="row px-3">
         <div class="col-sm-5 form-group">
-            <h5 class="display-6">PPM Task</h5>
-            @if (HasPPMTask)
+            <h5 class="display-6">PPM</h5>
+            @if (HasPPM)
             {
-                @if (PPMTaskCount > 5)
+                @if (PPMCount > 5)
                 {
                     <div class="page-size-chooser my-2">
                         Items per page:
                         <select @bind="@Pagination.ItemsPerPage">
                             <option>5</option>
-                            @if (PPMTaskCount > 10)
+                            @if (PPMCount > 10)
                             {
                                 <option>10</option>
                             }
-                            @if (PPMTaskCount > 20)
+                            @if (PPMCount > 20)
                             {
                                 <option>20</option>
                             }
@@ -32,30 +55,39 @@
                 }
             }
         </div>
-        <div class="col-sm-4"></div>
-        <div class="col-sm-3 d-flex align-items-center justify-content-end">
-            <button class="btn btn-primary" @onclick="NavigateToAddPPMTask">
-                Add PPM
-            </button>
-        </div>
+
+        @if (dataPermissionSupervisor)
+        {
+            <div class="col-sm-4"></div>
+
+            <div class="col-sm-3 d-flex align-items-center justify-content-end">
+                <button class="btn btn-primary" @onclick="NavigateToAddPPM">
+                    Tambah
+                </button>
+            </div>
+        }
+
     </div>
 
     <div class="px-3">
+        @* Loading Data *@
         @if (_isLoading)
         {
             <div class="text-center py-3">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
-                <p>Loading PPM Data...</p>
+                <p>Memuat Data PPM...</p>
             </div>
         }
-        else if (!HasPPMTask)
+
+        else if (!HasPPM)
         {
+            @* No PPM Data *@
             <hr />
             <div class="text-center py-3">
-                <p>No PPM found.</p>
-                @if (!string.IsNullOrEmpty(ppmTaskNoFilter))
+                <p>Tidak ada PPM.</p>
+                @if (!string.IsNullOrEmpty(NoFilter))
                 {
                     <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
                 }
@@ -63,45 +95,38 @@
         }
         else
         {
-            <QuickGrid Items="FilteredPPMTasks" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
-                <TemplateColumn Title="Task ID" SortBy="@sortByTaskID">
-                    <a style="text-decoration: none;" href="" @onclick="@(() => NavigateToCompletePPMTask(context))">
-                        @context.TaskID
+            @* Search Box *@
+            <div class="search-box mb-3">
+                <input class="form-control" type="search" autofocus @bind="NoFilter" @bind:event="oninput" placeholder="Search..." />
+            </div>
+
+            @* PPM Data Table *@
+            <QuickGrid Items="FilteredPPM" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
+
+                <TemplateColumn Title="ID" Sortable="true">
+                    <a style="cursor:pointer; color: royalblue;" @onclick="@(() => NavigateToPPMInfo(context))">
+                        @context.PPMID
                     </a>
                 </TemplateColumn>
 
-                <PropertyColumn Property="@(ppmTask => ppmTask.RequestDate.ToString("dd/MM/yyyy"))" Title="Request Date" Sortable="true" />
-                <PropertyColumn Property="@(ppmTask => ppmTask.Requestor)" Title="Requestor" Sortable="true" />
-                <PropertyColumn Property="@(ppmTask => ppmTask.WorkType)" Title="Work Type" Sortable="true" />
-                <TemplateColumn Title="Status" Class="td-action" Context="ppmTask">
-                    @if (ppmTask.Status == StatusEnum.Request)
+                <PropertyColumn Property="@(ppm => ppm.JobCategory)" Title="Jenis Pekerjaan" Sortable="true" />
+                <PropertyColumn Property="@(ppm => ppm.DateCreated)" Title="Tanggal" Sortable="true" />
+
+                <TemplateColumn Title="Actions" Class="td-action">
+                    @if (dataPermissionSupervisor && context.Level == 0)
                     {
-                        <div class="btn btn-danger">@ppmTask.Status</div>
+                        <button @onclick="@(() => NavigateToCancelPPM(context))" class="btn btn-danger">
+                            <span class="oi oi-circle-x"></span>
+                        </button>
                     }
-                    else if (ppmTask.Status == StatusEnum.InProgress)
+                    @if (dataPermissionManager || dataPermissionTerminalManager)
                     {
-                        <div class="btn btn-warning">@ppmTask.Status</div>
-                    }
-                    else if (ppmTask.Status == StatusEnum.Completed || ppmTask.Status == StatusEnum.CompletedwithNotes)
-                    {
-                        <div class="btn btn-success">@ppmTask.Status</div>
-                    }
-                    else
-                    {
-                        <div class="btn btn-info">@ppmTask.Status</div>
+                        <button @onclick="@(() => NavigateToApprovePPM(context))" class="btn btn-success">
+                            <span class="oi oi-circle-check"></span>
+                        </button>
                     }
                 </TemplateColumn>
-                <TemplateColumn Title="Action" Class="td-action" Context="ppmTask">
-                    @if (ppmTask.Status == StatusEnum.Request)
-                    {
-                        <button class="btn btn-info" @onclick="() => NavigateToEditPPMTask(ppmTask)"><span class="oi oi-pencil"></span></button>
-                        <button class="btn btn-danger" @onclick="() => NavigateToDeletePPMTask(ppmTask)"><span class="oi oi-trash"></span></button>
-                    }
-                    else if (ppmTask.Status == StatusEnum.InProgress)
-                    {
-                        <button class="btn btn-success" @onclick="() => NavigateToCompletePPMTask(ppmTask)"><span class="oi oi-check"></span></button>
-                    }
-                </TemplateColumn>
+
             </QuickGrid>
 
             <Paginator State="@Pagination" />
@@ -110,37 +135,184 @@
 </div>
 
 @code {
-    #region Fields and Properties
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
 
-    private IQueryable<PPMTask>? _allppmTasks;
-    private string _ppmTaskNoFilter = string.Empty;
-    private Timer? _filterDebounceTimer;
-    private const int DebounceInterval = 300; // milliseconds
+    private string userId;
+    private string userSection;
+    private int[] level;
+
+    private bool dataPermissionSupervisor;
+    private bool dataPermissionManager;
+    private bool dataPermissionTerminalManager;
+    private bool dataPermissionMaintenanceSupervisor;
+    private bool dataPermissionMaintenance;
+
+    private IQueryable<PPMTask>? _allPPM;
     private bool _isLoading = true;
 
-    private List<PPMTask> PPMTasks =  new List<PPMTask>();
-
     private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
-
     public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
 
-    public bool HasPPMTask => !_isLoading && (_allppmTasks?.Any() ?? false);
-    public int PPMTaskCount => _allppmTasks?.Count() ?? 0;
+    public bool HasPPM => !_isLoading && (_allPPM?.Any() ?? false);
+    public int PPMCount => _allPPM?.Count() ?? 0;
 
-    public string ppmTaskNoFilter
+    private string statusMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
     {
-        get => _ppmTaskNoFilter;
-        set
+        _isLoading = true;
+
+        //Authorization
+        await Authorization();
+        if (string.IsNullOrEmpty(userId))
         {
-            if (_ppmTaskNoFilter != value)
+            NavigationManager.NavigateTo("/");
+        }
+
+        //Filter Applied using Table Service
+        TableService.OnFilterApplied += TableService_OnFilterApplied;
+        NoFilter = string.Empty;
+
+        //Load PPM
+        await LoadPPM();
+        _isLoading = false;
+
+        //Get Url Status
+        LoadUrlStatus();
+    }
+
+    private async Task Authorization()
+    {
+        if (authenticationStateTask != null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var user = authenticationState.User;
+
+            if (user.IsInRole("Supervisor"))
             {
-                _ppmTaskNoFilter = value;
-                _filterDebounceTimer?.Dispose();
-                _filterDebounceTimer = new Timer(OnFilterDebounced, null, DebounceInterval, Timeout.Infinite);
+                dataPermissionSupervisor = true;
+            }
+            else
+            {
+                dataPermissionSupervisor = false;
+            }
+
+            if (user.IsInRole("Manager"))
+            {
+                dataPermissionManager = true;
+                level = [0, 6, 7];
+            }
+            else
+            {
+                dataPermissionManager = false;
+            }
+
+            if (user.IsInRole("Terminal Manager"))
+            {
+                dataPermissionTerminalManager = true;
+            }
+            else
+            {
+                dataPermissionTerminalManager = false;
+            }
+
+            if (user.IsInRole("Maintenance Supervisor"))
+            {
+                dataPermissionMaintenanceSupervisor = true;
+            }
+            else
+            {
+                dataPermissionMaintenanceSupervisor = false;
+            }
+
+            if (user.IsInRole("Maintenance"))
+            {
+                dataPermissionMaintenance = true;
+            }
+            else
+            {
+                dataPermissionMaintenance = false;
+            }
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                userSection = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    userId = user.FindFirst("Id")?.Value;
+                }
+                if (string.IsNullOrEmpty(userSection))
+                {
+                    userSection = user.FindFirst("Section")?.Value;
+                }
             }
         }
     }
 
+    private async Task LoadPPM()
+    {
+        _isLoading = true;
+        try
+        {
+            if (dataPermissionSupervisor)
+            {
+                var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
+                    filter: p => userId.Contains(p.CreatedBy),
+                    orderBy: q => q.OrderBy(p => p.TaskID),
+                    tracking: false
+                );
+
+                _allPPM = ppmlist.AsQueryable();
+            }
+
+            if (dataPermissionManager)
+            {
+                var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
+                    filter: p => userSection.Contains(p.PPMSection) && level.Contains(p.Level),
+                    orderBy: q => q.OrderBy(p => p.TaskID),
+                    tracking: false
+                );
+
+                _allPPM = ppmlist.AsQueryable();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading PPM: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUrlStatus()
+    {
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+
+        var uri = new Uri(NavigationManager.Uri);
+        var currentPath = uri.AbsolutePath;
+        NavigationManager.NavigateTo(currentPath, replace: true);
+    }
+
+    //No Filter
+    public string NoFilter
+    {
+        get => TableService.NoFilter ?? string.Empty; // Read from Table Service
+        set
+        {
+            if (TableService.NoFilter != value)
+            {
+                TableService.NoFilter = value;
+            }
+        }
+    }
+
+    //Items per Page
     public int ItemsPerPage
     {
         get => Pagination.ItemsPerPage;
@@ -149,99 +321,52 @@
             if (Pagination.ItemsPerPage != value)
             {
                 Pagination.ItemsPerPage = value;
-                StateHasChanged();
             }
         }
     }
 
-    public IQueryable<PPMTask> FilteredPPMTasks =>
-        string.IsNullOrWhiteSpace(_ppmTaskNoFilter)
-            ? _allppmTasks ?? Enumerable.Empty<PPMTask>().AsQueryable()
-            : (_allppmTasks?.Where(p => p.TaskID.Contains(_ppmTaskNoFilter, StringComparison.OrdinalIgnoreCase))
-              ?? Enumerable.Empty<PPMTask>().AsQueryable());
+    //Filtered
+    public IQueryable<PPMTask> FilteredPPM =>
+        string.IsNullOrWhiteSpace(TableService.NoFilter) // Using Table Service
+            ? _allPPM ?? Enumerable.Empty<PPMTask>().AsQueryable()
+            : (_allPPM?.Where(p =>
+                p.PPMID.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
+                p.JobCategory.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase))
+             ?? Enumerable.Empty<PPMTask>().AsQueryable());
 
-    GridSort<PPMTask> sortByTaskID = GridSort<PPMTask>
-        .ByAscending(p => p.TaskID);
-
-    #endregion
-
-    #region Lifecycle Methods
-
-    protected override async Task OnInitializedAsync()
+    private async void TableService_OnFilterApplied(object? sender, EventArgs e)
     {
-        await LoadPPMTask();
-        _isLoading = false;
-        await base.OnInitializedAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
-        _filterDebounceTimer?.Dispose();
+        TableService.OnFilterApplied -= TableService_OnFilterApplied;
         GC.SuppressFinalize(this);
-    }
-
-    #endregion
-
-    #region Data Methods
-
-    private async Task LoadPPMTask()
-    {
-        try
-        {
-            // First get the list asynchronously
-            var PPMTaskList = await DataContext.PPMTasks
-                .AsNoTracking()
-                .OrderBy(p => p.TaskID)
-                .ToListAsync();
-
-            // Then convert to IQueryable
-            _allppmTasks = PPMTaskList.AsQueryable();
-        }
-        catch (Exception ex)
-        {
-            // TODO: Add proper error handling/logging
-            Console.WriteLine($"Error loading ppmTasks: {ex.Message}");
-            // Consider adding error state handling in the UI
-        }
-        finally
-        {
-            StateHasChanged();
-        }
-    }
-
-    private void OnFilterDebounced(object? state)
-    {
-        InvokeAsync(StateHasChanged);
     }
 
     private void ClearFilter()
     {
-        ppmTaskNoFilter = string.Empty;
+        NoFilter = string.Empty;
     }
 
-    #endregion
-
-    #region Navigation Methods
-
-    private void NavigateToAddPPMTask()
+    private void NavigateToAddPPM()
     {
-        NavigationManager.NavigateTo($"/PPMAdd/");
+        NavigationManager.NavigateTo("/PPMAdd");
     }
 
-    private void NavigateToEditPPMTask(PPMTask ppmTask)
+    private void NavigateToPPMInfo(PPMTask ppm)
     {
-        NavigationManager.NavigateTo($"/EditPPMTask/{ppmTask.TaskID}");
+        NavigationManager.NavigateTo($"/PPMInfo/{ppm.TaskID}");
     }
 
-    private void NavigateToCompletePPMTask(PPMTask ppmTask)
+    private void NavigateToCancelPPM(PPMTask ppm)
     {
-        NavigationManager.NavigateTo($"/CompletePPMTask/{ppmTask.TaskID}");
+        NavigationManager.NavigateTo($"/PPMCancel/{ppm.TaskID}");
     }
-
-    private void NavigateToDeletePPMTask(PPMTask ppmTask)
+    
+    private void NavigateToApprovePPM(PPMTask ppm)
     {
-        NavigationManager.NavigateTo($"/DeletePPMTask/{ppmTask.TaskID}");
+        NavigationManager.NavigateTo($"/PPMApproval/{ppm.TaskID}");
     }
-
-    #endregion
 }

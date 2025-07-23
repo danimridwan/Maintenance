@@ -37,7 +37,14 @@ namespace MaintenanceWebApp.Services
             }
             catch (DbUpdateException DBex)
             {
-                CRUDErrorMessage = $"DB Exception: {DBex.Message}";
+                if (DBex.InnerException != null)
+                {
+                    CRUDErrorMessage += $"Inner Exception: {DBex.InnerException.Message}";
+                }
+                else
+                {
+                    CRUDErrorMessage = $"DB Exception: {DBex.Message}";
+                }
                 return;
             }
             catch (Exception ex)

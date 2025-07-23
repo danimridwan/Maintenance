@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250722084324_AddPPMTaskAndPPMLevel")]
+    partial class AddPPMTaskAndPPMLevel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -313,10 +316,6 @@ namespace MaintenanceWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("PPMSection")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("RejectionNote")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
@@ -328,7 +327,7 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<bool?>("TargetCompletion")
                         .HasColumnType("bit");
 
-                    b.Property<DateOnly?>("TargetDate")
+                    b.Property<DateOnly>("TargetDate")
                         .HasColumnType("date");
 
                     b.HasKey("TaskID");
