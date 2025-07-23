@@ -24,37 +24,41 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
         public InputModel Input { get; set; }
         public string ReturnUrl { get; set; }
 
-        public void OnGet()
+        public IActionResult OnGet()
         {
-            ReturnUrl = Url.Content("~/");
+            //ReturnUrl = Url.Content("~/");
+            return RedirectToPage("Login");
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public IActionResult OnPost() 
         {
-            ReturnUrl = Url.Content("~/");
-            if (ModelState.IsValid)
-            {
-                var identity = new Employee { UserName = Input.Email, Email = Input.Email };
-                var result = await _userManager.CreateAsync(identity, Input.Password);
+            //public async Task<IActionResult> OnPostAsync()
+            //{
+            //    ReturnUrl = Url.Content("~/");
+            //    if (ModelState.IsValid)
+            //    {
+            //        var identity = new Employee { UserName = Input.Email, Email = Input.Email };
+            //        var result = await _userManager.CreateAsync(identity, Input.Password);
 
-                //var claim = new Claim("city", Input.City.ToLower());
-                //var claimsResult = await _userManager.AddClaimAsync(identity, claim);
+            //        //var claim = new Claim("city", Input.City.ToLower());
+            //        //var claimsResult = await _userManager.AddClaimAsync(identity, claim);
 
-                var role = new IdentityRole(Input.Role);
-                var addRoleResult = await _roleManager.CreateAsync(role);
+            //        var role = new IdentityRole(Input.Role);
+            //        var addRoleResult = await _roleManager.CreateAsync(role);
 
-                var addUserRoleResult = await _userManager.AddToRoleAsync(identity, Input.Role);
+            //        var addUserRoleResult = await _userManager.AddToRoleAsync(identity, Input.Role);
 
 
-                if (result.Succeeded && addRoleResult.Succeeded
-                    && addUserRoleResult.Succeeded)
-                {
-                    await _signInManager.SignInAsync(identity, isPersistent: false);
-                    return LocalRedirect(ReturnUrl);
-                }
-            }
+            //        if (result.Succeeded && addRoleResult.Succeeded
+            //            && addUserRoleResult.Succeeded)
+            //        {
+            //            await _signInManager.SignInAsync(identity, isPersistent: false);
+            //            return LocalRedirect(ReturnUrl);
+            //        }
+            //    }
 
-            return Page();
+            //    return Page();
+            return RedirectToPage("Login");
         }
 
         public class InputModel
