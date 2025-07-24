@@ -111,12 +111,12 @@
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     private string? supervisorId;
-    private string? supervisorSection;
+    private Employee supervisor;
 
     //Page
     private PPMTask ppmTask = new();
     private EditContext? editContext;
-    private string _webStorageRoot = string.Empty;
+    private string _webPPMRoot = string.Empty;
 
     //Form
     private List<string> jobCategory = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
@@ -141,17 +141,11 @@
 
             if (user.Identity?.IsAuthenticated == true)
             {
-                supervisorId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value; 
-                supervisorSection = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                supervisorId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                 if (string.IsNullOrEmpty(supervisorId))
                 {
                      supervisorId = user.FindFirst("Id")?.Value; 
-                }
-
-                if (string.IsNullOrEmpty(supervisorSection))
-                {
-                    supervisorSection = user.FindFirst("Section")?.Value;
                 }
             }
         }
@@ -163,12 +157,12 @@
         try
         {
             // Get Path Root
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+            _webPPMRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/"; // Default root
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+            alertMessage = "Gagal memuat konfigurasi '_webPPMRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webPPMRoot'\nDetail :\n{ex}";
 
             ShowNotification(alertMessage, logMessage);
         }
@@ -249,7 +243,7 @@
     //Create File Path
     private string CreateFilePath(string relativePath)
     {
-        return Uri.EscapeUriString(Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/"));
+        return Uri.EscapeUriString(Path.Combine(_webPPMRoot, relativePath).Replace("\\", "/"));
     }
 
     private async Task HandleCreatePPM()
@@ -262,9 +256,22 @@
             return;
         }
 
+        try
+        {
+            //Read User using Service
+            supervisor = await CRUDService.ReadSingleAsync<Employee, string>(supervisorId);
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat data User. Hubungi administrator.";
+            logMessage = $"Gagal memuat data User\nDetail :\n{ex}";
+
+            ShowNotification(alertMessage, logMessage);
+        }
+
 		//PPM Default Initialization Value
         ppmTask.PPMID = Convert.ToString(Guid.NewGuid());
-        ppmTask.PPMSection = supervisorSection ?? "Unknown Section";
+        ppmTask.PPMSection = supervisor.Section;
         ppmTask.Level = 0;
         ppmTask.CreatedBy = supervisorId ?? "Unknown User";
         ppmTask.DateCreated = DateTime.Now;

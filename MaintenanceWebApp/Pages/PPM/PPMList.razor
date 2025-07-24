@@ -112,18 +112,30 @@
                 <PropertyColumn Property="@(ppm => ppm.JobCategory)" Title="Jenis Pekerjaan" Sortable="true" />
                 <PropertyColumn Property="@(ppm => ppm.DateCreated)" Title="Tanggal" Sortable="true" />
 
-                <TemplateColumn Title="Actions" Class="td-action">
-                    @if (dataPermissionSupervisor && context.Level == 0)
+                <TemplateColumn Title="Status" Sortable="true">
+                    @if(context.Level == 0)
                     {
-                        <button @onclick="@(() => NavigateToCancelPPM(context))" class="btn btn-danger">
-                            <span class="oi oi-circle-x"></span>
-                        </button>
+                        <label class="btn btn-warning">Request</label>
                     }
-                    @if (dataPermissionManager || dataPermissionTerminalManager)
+                    else if (context.Level == 1 || context.Level == 2)
                     {
-                        <button @onclick="@(() => NavigateToApprovePPM(context))" class="btn btn-success">
-                            <span class="oi oi-circle-check"></span>
-                        </button>
+                        <label class="btn btn-info">Pending Approval</label>
+                    }
+                    else if (context.Level == 3)
+                    {
+                        <label class="btn btn-info">On Progress</label>
+                    }
+                    else if (context.Level == 4)
+                    {
+                        <label class="btn btn-secondary">Checking</label>
+                    }
+                    else if (context.Level == 5)
+                    {
+                        <label class="btn btn-success">Completed</label>
+                    }
+                    else if (context.Level == 6)
+                    {
+                        <label class="btn btn-danger">Rejected</label>
                     }
                 </TemplateColumn>
 
@@ -137,6 +149,7 @@
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private Employee userInfo;
 
     private string userId;
     private string userSection;
@@ -176,6 +189,7 @@
 
         //Load PPM
         await LoadPPM();
+
         _isLoading = false;
 
         //Get Url Status
@@ -201,7 +215,7 @@
             if (user.IsInRole("Manager"))
             {
                 dataPermissionManager = true;
-                level = [0, 6, 7];
+                level = [0, 5, 6];
             }
             else
             {
@@ -211,6 +225,7 @@
             if (user.IsInRole("Terminal Manager"))
             {
                 dataPermissionTerminalManager = true;
+                level = [1, 5, 6];
             }
             else
             {
@@ -220,6 +235,7 @@
             if (user.IsInRole("Maintenance Supervisor"))
             {
                 dataPermissionMaintenanceSupervisor = true;
+                level = [2, 5, 6];
             }
             else
             {
@@ -229,6 +245,7 @@
             if (user.IsInRole("Maintenance"))
             {
                 dataPermissionMaintenance = true;
+                level = [3, 4, 5, 6];
             }
             else
             {
@@ -238,15 +255,21 @@
             if (user.Identity?.IsAuthenticated == true)
             {
                 userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                userSection = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                 if (string.IsNullOrEmpty(userId))
                 {
                     userId = user.FindFirst("Id")?.Value;
                 }
-                if (string.IsNullOrEmpty(userSection))
+
+                try
                 {
-                    userSection = user.FindFirst("Section")?.Value;
+                    //Read User using Service
+                    userInfo = await CRUDService.ReadSingleAsync<Employee, string>(userId);
+                    userSection = userInfo.Section;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading User: {ex.Message}");
                 }
             }
         }
@@ -272,6 +295,39 @@
             {
                 var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
                     filter: p => userSection.Contains(p.PPMSection) && level.Contains(p.Level),
+                    orderBy: q => q.OrderBy(p => p.TaskID),
+                    tracking: false
+                );
+
+                _allPPM = ppmlist.AsQueryable();
+            }
+
+            if (dataPermissionTerminalManager)
+            {
+                var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
+                    filter: p => level.Contains(p.Level),
+                    orderBy: q => q.OrderBy(p => p.TaskID),
+                    tracking: false
+                );
+
+                _allPPM = ppmlist.AsQueryable();
+            }
+
+            if (dataPermissionMaintenanceSupervisor)
+            {
+                var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
+                    filter: p => level.Contains(p.Level),
+                    orderBy: q => q.OrderBy(p => p.TaskID),
+                    tracking: false
+                );
+
+                _allPPM = ppmlist.AsQueryable();
+            }
+
+            if (dataPermissionMaintenance)
+            {
+                var ppmlist = await CRUDService.ReadAllAsync<PPMTask>(
+                    filter: p => level.Contains(p.Level) && userId.Contains(p.MaintenancePIC),
                     orderBy: q => q.OrderBy(p => p.TaskID),
                     tracking: false
                 );

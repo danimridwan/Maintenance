@@ -203,7 +203,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        //Read Pump using Service
+        //Read PRV Valve using Service
         prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(PRVValveID);
 
         if (prvValve == null)
@@ -337,7 +337,7 @@
         return null;
     }
 
-    //Update Data Pump
+    //Update Data PRV Valve
     private async Task HandleUpdatePRV()
     {
         // Custom Design Pressure Validation

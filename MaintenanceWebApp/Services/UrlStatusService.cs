@@ -9,6 +9,7 @@ namespace MaintenanceWebApp.Services
         CreateSuccess,
         EditSuccess,
         DeleteSuccess,
+        ApproveSuccess,
         OperationFailed
     }
 
@@ -43,6 +44,9 @@ namespace MaintenanceWebApp.Services
                             break;
                         case StatusType.DeleteSuccess:
                             statusMessage = "Data berhasil dihapus.";
+                            break;
+                        case StatusType.ApproveSuccess:
+                            statusMessage = "Data berhasil diapprove.";
                             break;
                         case StatusType.OperationFailed:
                             statusMessage = "Operasi gagal. Silakan coba lagi.";
