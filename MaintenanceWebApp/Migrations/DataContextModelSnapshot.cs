@@ -264,7 +264,6 @@ namespace MaintenanceWebApp.Migrations
             modelBuilder.Entity("MaintenanceWebApp.Data.PPMTask", b =>
                 {
                     b.Property<string>("TaskID")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("CreatedBy")
@@ -275,16 +274,19 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Document")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("EvaluationNote")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageAfter")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageBefore")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("JobCategory")
@@ -293,20 +295,21 @@ namespace MaintenanceWebApp.Migrations
 
                     b.Property<string>("JobDescription")
                         .IsRequired()
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Level")
                         .HasColumnType("int");
 
                     b.Property<string>("MTDNote")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MaintenanceCategory")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MaintenancePIC")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PPMID")
@@ -318,12 +321,7 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RejectionNote")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("RequestorNote")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool?>("TargetCompletion")
                         .HasColumnType("bit");
@@ -334,6 +332,34 @@ namespace MaintenanceWebApp.Migrations
                     b.HasKey("TaskID");
 
                     b.ToTable("PPMTasks");
+                });
+
+            modelBuilder.Entity("MaintenanceWebApp.Data.PPMTaskHistory", b =>
+                {
+                    b.Property<string>("TaskID")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PPMID")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UpdateBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UpdateType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("TaskID");
+
+                    b.ToTable("PPMTaskHistory");
                 });
 
             modelBuilder.Entity("MaintenanceWebApp.Data.PRVValve", b =>
@@ -746,31 +772,32 @@ namespace MaintenanceWebApp.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("MaintenanceWebApp.Data.Employee", b =>
+            modelBuilder.Entity("MaintenanceWebApp.Data.User", b =>
                 {
                     b.HasBaseType("Microsoft.AspNetCore.Identity.IdentityUser");
 
                     b.Property<string>("FullName")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RoleCategory")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Section")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Signature")
-                        .IsRequired()
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserPhoto")
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasDiscriminator().HasValue("Employee");
+                    b.HasDiscriminator().HasValue("User");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

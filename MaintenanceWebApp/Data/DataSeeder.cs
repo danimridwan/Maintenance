@@ -1,47 +1,15 @@
-﻿// Create a class to seed the Admin user with a default username/email and password
-
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace MaintenanceWebApp.Data
 {
-    //public static class DataSeeder
-    //{
-    //    public static async Task SeedAdminUser(UserManager<Employee> userManager, RoleManager<IdentityRole> roleManager)
-    //    {
-    //        string adminRole = "Admin";
-    //        string adminEmail = "admin@example.com";
-    //        string adminPassword = "Admin@123";
-
-    //        if (await roleManager.FindByNameAsync(adminRole) == null)
-    //        {
-    //            await roleManager.CreateAsync(new IdentityRole(adminRole));
-    //        }
-
-    //        if (await userManager.FindByNameAsync(adminEmail) == null)
-    //        {
-    //            Employee admin = new Employee
-    //            {
-    //                UserName = adminEmail,
-    //                Email = adminEmail,
-    //            };
-
-    //            IdentityResult result = await userManager.CreateAsync(admin, adminPassword);
-    //            if (result.Succeeded)
-    //            {
-    //                await userManager.AddToRoleAsync(admin, adminRole);
-    //            }
-    //        }
-    //    }
-    //}
-
     public class DataSeeder
     {
         private readonly DataContext _dataContext;
-        private readonly UserManager<Employee> _userManager;
+        private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
 
-        public DataSeeder(DataContext dataContext, UserManager<Employee> userManager, RoleManager<IdentityRole> roleManager)
+        public DataSeeder(DataContext dataContext, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
         {
             _dataContext = dataContext;
             _userManager = userManager;
@@ -74,22 +42,36 @@ namespace MaintenanceWebApp.Data
 
         public async Task SeedAdminUser()
         {
-            if (!_dataContext.Employees.Any())
-            {
-                string adminEmail = "admin@example.com";
-                string adminPassword = "Admin@123";
+            string adminEmail = "admin@example.com"; 
 
-                Employee employee = new Employee()
+            if (await _userManager.FindByEmailAsync(adminEmail) == null)
+            {
+                User user = new User()
                 {
                     FullName = "Admin",
                     UserName = adminEmail,
                     Email = adminEmail,
                     EmailConfirmed = true,
+                    PhoneNumber = "123456789",
+                    Signature = null, 
+                    UserPhoto = null,
+                    Section = null,
+                    Role = "Admin"
                 };
-                await _userManager.CreateAsync(employee, adminPassword);
-                var adminUser = await _userManager.FindByNameAsync(adminEmail);
-                await _userManager.AddToRoleAsync(employee, "Admin");
-            };
+
+                var result = await _userManager.CreateAsync(user, adminEmail); // Password default
+                if (result.Succeeded)
+                {
+                    await _userManager.AddToRoleAsync(user, "Admin");
+                }
+                else
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        Console.WriteLine($"Error creating admin user: {error.Description}");
+                    }
+                }
+            }
         }
     }
 }

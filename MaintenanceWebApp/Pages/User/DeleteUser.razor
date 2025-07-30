@@ -1,4 +1,4 @@
-﻿@page "/PPMCancel/{TaskID}"
+﻿@page "/UserDelete/{Id}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -11,26 +11,26 @@
 @inject NotificationService NotificationService
 
 @* Roles Authorize *@
-@attribute [Authorize(Roles = "Supervisor")]
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
 
 <div class="card">
 
     <div class="card-body">
-        @if (ppmTask == null)
+        @if (user == null)
         {
-            <p><em>Memuat Data PPM...</em></p>
+            <p><em>Memuat Data User...</em></p>
             <div class="spinner-border text-primary" role="status">
                 <span class="sr-only">Loading...</span>
             </div>
         }
         else
         {
-            <h3>Cancel PPM</h3>
+            <h3>Hapus User</h3>
 
             <hr />
 
-            <p>Anda yakin ingin membatalkan PPM dengan ID: <b>@ppmTask.PPMID</b> ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeletePPM">Delete</button>
+            <p>Anda yakin ingin menghapus User dengan Nama <b>@user.FullName</b> dan Email <b>@user.Email</b>  ?</p>
+            <button type="button" class="btn btn-danger" @onclick="DeleteUserData">Delete</button>
             <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
         }
     </div>
@@ -40,47 +40,45 @@
 @code {
     //Page
     [Parameter]
-    public string TaskID { get; set; }
-    private PPMTask ppmTask;
+    public string Id { get; set; }
+    private User user;
 
     //Notification
     private string? alertMessage;
     private string? logMessage;
 
     //File
-    private string subFolderName = "PPM";
+    private string subFolderName = "User";
+    private string folderName = "Image";
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPPM();
+        await LoadUser();
     }
 
-    //Read Data PPM
-    private async Task LoadPPM()
+    //Read Data User
+    private async Task LoadUser()
     {
         try
         {
-            //Read PPM using Service
-            ppmTask = await CRUDService.ReadSingleAsync<PPMTask, string>(TaskID);
+            //Read User using Service
+            user = await CRUDService.ReadSingleAsync<User, string>(Id);
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data PPM. Hubungi administrator.";
-            logMessage = $"Gagal memuat data PPM\nDetail :\n{ex}";
+            alertMessage = "Gagal memuat data User. Hubungi administrator.";
+            logMessage = $"Gagal memuat data User\nDetail :\n{ex}";
 
             ShowNotification(alertMessage, logMessage);
         }
     }
 
-    //Delete Data PPM
-    private async Task DeletePPM()
+    //Delete Data User
+    private async Task DeleteUserData()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(ppmTask);
-
-        //Image Delete using File Upload Service
-        await UploadService.FileChange(ppmTask.ImageBefore, subFolderName);
-        ppmTask.ImageBefore = UploadService.FilePath;
+        //Profile Photo Delete using File Upload Service
+        await UploadService.FileChange(user.UserPhoto, subFolderName);
+        user.UserPhoto = UploadService.FilePath;
 
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
@@ -91,26 +89,29 @@
             return;
         }
 
-        //Document Delete using File Upload Service
-        await UploadService.FileChange(ppmTask.Document, subFolderName);
-        ppmTask.Document = UploadService.FilePath;
+        //Signature Delete using File Upload Service
+        await UploadService.FileChange(user.Signature, subFolderName);
+        user.Signature = UploadService.FilePath;
+
+        //File Delete using CRUD Service
+        await CRUDService.DeleteAsync(user);
 
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            alertMessage = "Gagal menghapus dokumen. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus dokumen '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
+            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
 
             ShowNotification(alertMessage, logMessage);
             return;
         }
 
-        NavigationManager.NavigateTo("/PPMList?status=DeleteSuccess");
+        NavigationManager.NavigateTo("/UserList?status=DeleteSuccess");
     }
 
     //Cancel Delete
     private void CancelDelete()
     {
-        NavigationManager.NavigateTo("/PPMList");
+        NavigationManager.NavigateTo("/UserList");
     }
 
     //Notification

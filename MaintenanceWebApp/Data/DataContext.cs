@@ -5,8 +5,9 @@ namespace MaintenanceWebApp.Data
 {
     public class DataContext : IdentityDbContext
     {
-        public DbSet<Employee> Employees { get; set; }
+        public DbSet<User> User { get; set; }
         public DbSet<PPMTask> PPMTasks { get; set; }
+        public DbSet<PPMTaskHistory> PPMTaskHistory { get; set; }
 
         //Inventory
         public DbSet<Tank> Tanks { get; set; }

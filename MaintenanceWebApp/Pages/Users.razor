@@ -49,8 +49,8 @@
 </table>
 
 @code {
-    private List<MaintenanceWebApp.Data.Employee> users;
-    private List<MaintenanceWebApp.Data.Employee> filteredUsers;
+    private List<MaintenanceWebApp.Data.User> users;
+    private List<MaintenanceWebApp.Data.User> filteredUsers;
     private string searchTerm = "";
     private AuthenticationState authenticationState; 
 
@@ -78,15 +78,15 @@
         return authenticationState?.User?.IsInRole(role) ?? false;
     }
 
-    private void UpdateUser(MaintenanceWebApp.Data.Employee user)
+    private void UpdateUser(MaintenanceWebApp.Data.User user)
     {
     }
 
-    private void EditUser(MaintenanceWebApp.Data.Employee user)
+    private void EditUser(MaintenanceWebApp.Data.User user)
     {
     }
 
-    private void DeleteUser(MaintenanceWebApp.Data.Employee user)
+    private void DeleteUser(MaintenanceWebApp.Data.User user)
     {
     }
 }

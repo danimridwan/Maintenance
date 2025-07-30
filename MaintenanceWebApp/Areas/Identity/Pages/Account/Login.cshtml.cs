@@ -9,8 +9,8 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
 
-        private readonly SignInManager<Employee> _signInManager;
-        public LoginModel(SignInManager<Employee> signInManager)
+        private readonly SignInManager<User> _signInManager;
+        public LoginModel(SignInManager<User> signInManager)
         {
             _signInManager = signInManager;
         }

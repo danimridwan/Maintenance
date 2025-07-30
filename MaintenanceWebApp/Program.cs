@@ -17,6 +17,7 @@ builder.Services.AddScoped<CRUDService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<UrlStatusService>();
 builder.Services.AddScoped<TableService>();
+builder.Services.AddScoped<PPMWorkflowService>();
 
 //Mailer
 builder.Services.Configure<SMTPSettings>(builder.Configuration.GetSection("Mailer"));
@@ -30,7 +31,7 @@ options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnectio
 //builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<DataContext>();
 
 
-builder.Services.AddIdentity<Employee, IdentityRole>(options =>
+builder.Services.AddIdentity<User, IdentityRole>(options =>
 {
     options.Password.RequireDigit = false;
     options.Password.RequiredLength = 8;

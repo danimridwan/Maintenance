@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Identity
 @using MaintenanceWebApp.Data
 @attribute [IgnoreAntiforgeryToken]
-@inject SignInManager<Employee> SignInManager
+@inject SignInManager<User> SignInManager
 @functions{
     public async Task<IActionResult> OnGet()
     {

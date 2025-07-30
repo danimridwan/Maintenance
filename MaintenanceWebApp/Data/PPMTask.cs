@@ -1,55 +1,43 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace MaintenanceWebApp.Data
 {
     public class PPMTask
     {
+        // Ini adalah Primary Key untuk tabel PPMTask
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public string TaskID { get; set; }
+        public string TaskID { get; set; } = Guid.NewGuid().ToString();
 
-        public string PPMID { get; set; }
+        // Ini adalah ID PPM yang mungkin ditampilkan kepada pengguna atau untuk identifikasi lainnya
+        // yang Anda ingin pisahkan dari TaskID.
+        public string PPMID { get; set; } = string.Empty;
 
-        public string PPMSection { get; set; }
+        public string JobCategory { get; set; } = string.Empty;
+        public string JobDescription { get; set; } = string.Empty;
+        public string ImageBefore { get; set; } = string.Empty; // Path relatif ke file gambar
+        public string Document { get; set; } = string.Empty; // Path relatif ke file dokumen
 
-        public int Level { get; set; }
-        public DateTime DateCreated { get; set; }
+        // Status PPM, menggunakan enum yang baru
+        public PPMStatusLevel Level { get; set; } = PPMStatusLevel.Request; // Defaultnya adalah Request (0)
 
-        public string CreatedBy { get; set; }
+        // Detail Pelaksanaan (diisi oleh peran selanjutnya)
+        public DateOnly? TargetDate { get; set; } // Tanggal target penyelesaian
+        public bool? TargetCompletion { get; set; } // Kesesuaian terhadap target
+        public string MTDNote { get; set; } = string.Empty; // Catatan Maintenance Task Detail
+        public string EvaluationNote { get; set; } = string.Empty; // Evaluasi pelaksanaan
+        public string ImageAfter { get; set; } = string.Empty; // Path relatif ke file gambar
 
-        [Required(ErrorMessage = "Deskripsi Pekerjaan harus diisi.")]
-        [StringLength(250, ErrorMessage = "Input Deskripsi Pekerjaan melebihi batas karakter (maks 250 karakter).")]
-        public string JobDescription { get; set; }
+        // Informasi Penugasan Maintenance
+        public string MaintenanceCategory { get; set; } = string.Empty;
+        public string MaintenancePIC { get; set; } = string.Empty; // ID Employee PIC Maintenance
 
-        [Required(ErrorMessage = "Jenis Pekerjaan harus diisi.")]
-        public string JobCategory { get; set; }
+        // Info Pemohon (dari model Employee)
+        public string CreatedBy { get; set; } = string.Empty; // ID Employee yang membuat request
+        public string PPMSection { get; set; } = string.Empty; // Section pemohon
+        public DateTime DateCreated { get; set; } = DateTime.Now;
 
-        public string? ImageBefore { get; set; }
-
-        public string? Document { get; set; }
-
-        [StringLength(150, ErrorMessage = "Input Catatan Reject melebihi batas karakter (maks 150 karakter).")]
-        public string? RejectionNote { get; set; }
-
-        public DateOnly? TargetDate { get; set; }
-
-        public string? MaintenanceCategory { get; set; }
-
-        public string? MaintenancePIC { get; set; }
-
-        public string? ImageAfter { get; set; }
-
-        public bool? TargetCompletion { get; set; }
-
-        [StringLength(250, ErrorMessage = "Input Catatan MTD melebihi batas karakter (maks 250 karakter).")]
-        public string? MTDNote { get; set; }
-
-        [StringLength(150, ErrorMessage = "Input Catatan Evaluasi melebihi batas karakter (maks 150 karakter).")]
-        public string? EvaluationNote { get; set; }
-
-        [StringLength(150, ErrorMessage = "Input Catatan Pemohon melebihi batas karakter (maks 150 karakter).")]
-        public string? RequestorNote { get; set; }
+        // Info Audit
+        public string? RejectionNote { get; set; } // Catatan jika PPM ditolak
     }
 }

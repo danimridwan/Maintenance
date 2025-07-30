@@ -1,0 +1,277 @@
+﻿@page "/UserList"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UrlStatusService UrlStatusService
+@inject TableService TableService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor")]
+
+@* Status Notification *@
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div class="container px-0">
+        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+            @statusMessage
+            <button style="background-color: transparent; border: transparent; float: right;" type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    </div>
+}
+
+<div class="card">
+
+    <div class="row px-3">
+        <div class="col-sm-5 form-group">
+            <h5 class="display-6">User</h5>
+            @if (HasUser)
+            {
+                @if (UserCount > 5)
+                {
+                    <div class="page-size-chooser my-2">
+                        Items per page:
+                        <select @bind="@Pagination.ItemsPerPage">
+                            <option>5</option>
+                            @if (UserCount > 10)
+                            {
+                                <option>10</option>
+                            }
+                            @if (UserCount > 20)
+                            {
+                                <option>20</option>
+                            }
+                        </select>
+                    </div>
+                }
+            }
+        </div>
+
+        @if (dataPermission)
+        {
+            <div class="col-sm-4"></div>
+
+            <div class="col-sm-3 d-flex align-items-center justify-content-end">
+                <button class="btn btn-primary" @onclick="NavigateToAddUser">
+                    Tambah
+                </button>
+            </div>
+        }
+
+    </div>
+
+    <div class="px-3">
+        @* Loading Data *@
+        @if (_isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Memuat Data User...</p>
+            </div>
+        }
+
+        else if (!HasUser)
+        {
+            @* No User Data *@
+            <hr />
+            <div class="text-center py-3">
+                <p>Tidak ada User.</p>
+                @if (!string.IsNullOrEmpty(NoFilter))
+                {
+                    <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
+                }
+            </div>
+        }
+        else
+        {
+            @* Search Box *@
+            <div class="search-box mb-3">
+                <input class="form-control" type="search" autofocus @bind="NoFilter" @bind:event="oninput" placeholder="Search..." />
+            </div>
+
+            @* User Data Table *@
+            <QuickGrid Items="FilteredUser" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
+
+                <TemplateColumn Title="Nama" Sortable="true">
+                    <a style="cursor:pointer; color: royalblue;" @onclick="@(() => NavigateToUserInfo(context))">
+                        @context.FullName
+                    </a>
+                </TemplateColumn>
+
+                <PropertyColumn Property="@(user => user.Section)" Title="Section" Sortable="true" />
+                <PropertyColumn Property="@(user => user.Role)" Title="Role" Sortable="true" />
+
+                @if (dataPermission)
+                {
+                    <TemplateColumn Title="Actions" Class="td-action">
+                        <button @onclick="@(() => NavigateToEditUser(@context))" class="btn btn-warning">
+                            <span class="oi oi-pencil"></span>
+                        </button>
+                        <button @onclick="@(() => NavigateToDeleteUser(context))" class="btn btn-danger">
+                            <span class="oi oi-trash"></span>
+                        </button>
+                    </TemplateColumn>
+                }
+
+            </QuickGrid>
+
+            <Paginator State="@Pagination" />
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private bool dataPermission;
+
+    private IQueryable<User>? _allUser;
+    private bool _isLoading = true;
+
+    private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
+    public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
+
+    public bool HasUser => !_isLoading && (_allUser?.Any() ?? false);
+    public int UserCount => _allUser?.Count() ?? 0;
+
+    private string statusMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoading = true;
+
+        //Authorization
+        await Authorization();
+
+        NoFilter = string.Empty;
+
+        //Load User
+        await LoadUser();
+        _isLoading = false;
+
+        //Get Url Status
+        LoadUrlStatus();
+    }
+
+    private async Task Authorization()
+    {
+        if (authenticationStateTask != null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var user = authenticationState.User;
+            if (user.IsInRole("Admin") || user.IsInRole("Maintenance Supervisor"))
+            {
+                dataPermission = true;
+            }
+            else
+            {
+                dataPermission = false;
+            }
+        }
+    }
+
+    private async Task LoadUser()
+    {
+        try
+        {
+            // Get All Data using CRUD Service
+            _allUser = (await CRUDService.ReadAllAsync<User>(orderBy: q => q.OrderBy(p => p.Id))).ToList().AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading user: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUrlStatus()
+    {
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+
+        var uri = new Uri(NavigationManager.Uri);
+        var currentPath = uri.AbsolutePath;
+        NavigationManager.NavigateTo(currentPath, replace: true);
+    }
+
+    //No Filter
+    public string NoFilter
+    {
+        get => TableService.NoFilter ?? string.Empty; // Read from Table Service
+        set
+        {
+            if (TableService.NoFilter != value)
+            {
+                TableService.NoFilter = value;
+                StateHasChanged();
+            }
+        }
+    }
+
+    //Items per Page
+    public int ItemsPerPage
+    {
+        get => Pagination.ItemsPerPage;
+        set
+        {
+            if (Pagination.ItemsPerPage != value)
+            {
+                Pagination.ItemsPerPage = value;
+            }
+        }
+    }
+
+    //Filtered
+    public IQueryable<User> FilteredUser =>
+        string.IsNullOrWhiteSpace(TableService.NoFilter) // Using Table Service
+            ? _allUser ?? Enumerable.Empty<User>().AsQueryable()
+            : (_allUser?.Where(p =>
+                p.FullName.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
+                p.Role.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
+                p.Section.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase))
+             ?? Enumerable.Empty<User>().AsQueryable());
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
+
+    private void ClearFilter()
+    {
+        NoFilter = string.Empty;
+    }
+
+    private void NavigateToAddUser()
+    {
+        NavigationManager.NavigateTo("/UserAdd");
+    }
+
+    private void NavigateToUserInfo(User user)
+    {
+        NavigationManager.NavigateTo($"/UserInfo/{user.Id}");
+    }
+
+    private void NavigateToEditUser(User user)
+    {
+        NavigationManager.NavigateTo($"/UserEdit/{user.Id}");
+    }
+
+    private void NavigateToDeleteUser(User user)
+    {
+        NavigationManager.NavigateTo($"/UserDelete/{user.Id}");
+    }
+}

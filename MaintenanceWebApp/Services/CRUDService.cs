@@ -1,177 +1,133 @@
 ﻿using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq.Expressions;
-using System.Linq;
-using System.Threading.Tasks;
-using NuGet.Common;
+using System.Linq.Expressions; // Tambahkan ini
 
 namespace MaintenanceWebApp.Services
 {
     public class CRUDService
     {
-        private readonly IDbContextFactory<DataContext> _dbFactory;
+        private readonly DataContext _dbContext;
+        public string CRUDErrorMessage { get; private set; } = string.Empty;
 
-        public string? CRUDErrorMessage { get; private set; }
-
-        public CRUDService(IDbContextFactory<DataContext> dbFactory)
+        public CRUDService(DataContext dbContext)
         {
-            _dbFactory = dbFactory ?? throw new ArgumentNullException(nameof(dbFactory));
+            _dbContext = dbContext;
         }
 
-        //Create
-        public async Task CreateAsync<TEntity>(TEntity entity) where TEntity : class
+        public async Task CreateAsync<T>(T entity) where T : class
         {
-            if (entity == null)
-            {
-                CRUDErrorMessage = $"Objek entitas kosong/null.";
-                return;
-            }
-
-            using var context = _dbFactory.CreateDbContext();
             try
             {
-                await context.Set<TEntity>().AddAsync(entity);
-                await context.SaveChangesAsync();
-                return;
-            }
-            catch (DbUpdateException DBex)
-            {
-                if (DBex.InnerException != null)
-                {
-                    CRUDErrorMessage += $"Inner Exception: {DBex.InnerException.Message}";
-                }
-                else
-                {
-                    CRUDErrorMessage = $"DB Exception: {DBex.Message}";
-                }
-                return;
+                await _dbContext.Set<T>().AddAsync(entity);
+                await _dbContext.SaveChangesAsync();
+                CRUDErrorMessage = string.Empty;
             }
             catch (Exception ex)
             {
-                CRUDErrorMessage = $"Exception: {ex.Message}";
-                return;
+                CRUDErrorMessage = $"Error creating entity: {ex.Message}";
+                // Log the exception details
             }
         }
 
-        //Read (Single)
-        public async Task<TEntity?> ReadSingleAsync<TEntity, TKey>(TKey id) where TEntity : class
+        public async Task<T?> ReadSingleAsync<T, TId>(TId id) where T : class
         {
-            using var context = _dbFactory.CreateDbContext();
             try
             {
-                return await context.Set<TEntity>().FindAsync(id);
-            }
-            catch (DbUpdateException DBex)
-            {
-                CRUDErrorMessage = $"DB Exception: {DBex.Message}";
-                return null;
+                var entity = await _dbContext.Set<T>().FindAsync(id);
+                CRUDErrorMessage = string.Empty;
+                return entity;
             }
             catch (Exception ex)
             {
-                CRUDErrorMessage = $"Exception: {ex.Message}";
+                CRUDErrorMessage = $"Error reading single entity: {ex.Message}";
+                // Log the exception details
                 return null;
             }
-
         }
 
-        //Read (All)
-        public async Task<List<TEntity>> ReadAllAsync<TEntity>(
-        Expression<Func<TEntity, bool>>? filter = null,
-        Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>>? orderBy = null,
-        bool tracking = false)
-        where TEntity : class
+        // Modifikasi metode ReadAllAsync untuk menerima filter dan order by
+        public async Task<IQueryable<T>> ReadAllAsync<T>(
+            Expression<Func<T, bool>>? filter = null,
+            Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+            bool tracking = false) where T : class
         {
-            using var context = _dbFactory.CreateDbContext();
-
             try
             {
-                IQueryable<TEntity> query = context.Set<TEntity>();
+                IQueryable<T> query = _dbContext.Set<T>();
 
-                // Filter
                 if (filter != null)
                 {
                     query = query.Where(filter);
                 }
-                // Order
+
                 if (orderBy != null)
                 {
                     query = orderBy(query);
                 }
-                // Tracking
+
                 if (!tracking)
                 {
                     query = query.AsNoTracking();
                 }
 
-                return await query.ToListAsync();
+                CRUDErrorMessage = string.Empty;
+                return query; // Mengembalikan IQueryable, tidak dieksekusi di sini
             }
             catch (Exception ex)
             {
-                CRUDErrorMessage = $"Exception: {ex.Message}";
-                throw;
+                CRUDErrorMessage = $"Error reading all entities: {ex.Message}";
+                // Log the exception details
+                return Enumerable.Empty<T>().AsQueryable(); // Mengembalikan query kosong jika error
             }
         }
 
-        //Update
-        public async Task UpdateAsync<TEntity>(TEntity entity) where TEntity : class
+        public async Task UpdateAsync<T>(T entity) where T : class
         {
-            if (entity == null)
-            {
-                CRUDErrorMessage = $"Objek entitas kosong/null.";
-                return;
-            }
-
-            using var context = _dbFactory.CreateDbContext();
             try
             {
-                context.Update(entity);
-                await context.SaveChangesAsync();
-                return;
-            }
-            catch (DbUpdateConcurrencyException DBCex) // Tangkap konflik konkurensi
-            {
-                CRUDErrorMessage = $"DB Concurrency Exception: {DBCex.Message}";
-                return;
-            }
-            catch (DbUpdateException DBex)
-            {
-                CRUDErrorMessage = $"DB Exception: {DBex.Message}";
-                return;
+                _dbContext.Set<T>().Update(entity);
+                await _dbContext.SaveChangesAsync();
+                CRUDErrorMessage = string.Empty;
             }
             catch (Exception ex)
             {
-                CRUDErrorMessage = $"Exception: {ex.Message}";
-                return;
+                CRUDErrorMessage = $"Error updating entity: {ex.Message}";
+                // Log the exception details
             }
         }
 
-        //Delete
-        public async Task DeleteAsync<TEntity>(TEntity entity) where TEntity : class
+        public async Task DeleteAsync<T>(T entity) where T : class
         {
-            if (entity == null)
-            {
-                CRUDErrorMessage = $"Objek entitas kosong/null.";
-                return;
-            }
-
-            using var context = _dbFactory.CreateDbContext();
             try
             {
-                context.Set<TEntity>().Remove(entity);
-                await context.SaveChangesAsync();
-                return;
-            }
-            catch (DbUpdateException DBex)
-            {
-                CRUDErrorMessage = $"DB Exception: {DBex.Message}";
-                return;
+                _dbContext.Set<T>().Remove(entity);
+                await _dbContext.SaveChangesAsync();
+                CRUDErrorMessage = string.Empty;
             }
             catch (Exception ex)
             {
-                CRUDErrorMessage = $"Exception: {ex.Message}";
-                return;
+                CRUDErrorMessage = $"Error deleting entity: {ex.Message}";
+                // Log the exception details
             }
+        }
+    }
+
+    // Perlu menambahkan PredicateBuilder untuk mendukung OrElse pada Expression<Func<T, bool>>
+    // Anda bisa membuatnya sendiri atau menggunakan library seperti System.Linq.Expressions.PredicateBuilder
+    public static class PredicateBuilder
+    {
+        public static Expression<Func<T, bool>> OrElse<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)
+        {
+            var parameter = expr1.Parameters[0];
+            var invokedExpr = Expression.Invoke(expr2, parameter);
+            return Expression.Lambda<Func<T, bool>>(Expression.OrElse(expr1.Body, invokedExpr), parameter);
+        }
+
+        public static Expression<Func<T, bool>> AndAlso<T>(this Expression<Func<T, bool>> expr1, Expression<Func<T, bool>> expr2)
+        {
+            var parameter = expr1.Parameters[0];
+            var invokedExpr = Expression.Invoke(expr2, parameter);
+            return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(expr1.Body, invokedExpr), parameter);
         }
     }
 }
