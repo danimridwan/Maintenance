@@ -73,6 +73,7 @@ else
     private void ConfigurePieConfig()
     {
         _pieConfig = new PieConfig();
+        _pieConfig.Data.Datasets.Clear();
         _pieConfig.Options = new PieOptions
             {
                 Responsive = true,
