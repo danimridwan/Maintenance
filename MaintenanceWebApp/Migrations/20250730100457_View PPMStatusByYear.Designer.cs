@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250730100457_View PPMStatusByYear")]
+    partial class ViewPPMStatusByYear
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -288,9 +291,6 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<string>("TaskID")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<DateTime?>("CompletionDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("CreatedBy")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -333,9 +333,6 @@ namespace MaintenanceWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("MaintenanceCompletionDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("MaintenancePIC")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -364,7 +361,7 @@ namespace MaintenanceWebApp.Migrations
 
             modelBuilder.Entity("MaintenanceWebApp.Data.PPMTaskHistory", b =>
                 {
-                    b.Property<string>("HistoryID")
+                    b.Property<string>("TaskID")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("DateUpdated")
@@ -385,7 +382,7 @@ namespace MaintenanceWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("HistoryID");
+                    b.HasKey("TaskID");
 
                     b.ToTable("PPMTaskHistory");
                 });

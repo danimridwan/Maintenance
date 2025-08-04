@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection.Metadata;
 
 namespace MaintenanceWebApp.Data
 {
@@ -20,9 +21,22 @@ namespace MaintenanceWebApp.Data
         public DbSet<PCVValveTank> PCVValveTanks { get; set; }
         public DbSet<BreatherValve> BreatherValves { get; set; }
 
+
+        //Define View
+        public DbSet<PPMStatusByYear> PPMStatusByYears { get; set; }
+
         public DataContext(DbContextOptions options) : base(options)
         {
 
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            //Generate View
+            modelBuilder.Entity<PPMStatusByYear>()
+                .ToView(nameof(PPMStatusByYears))
+                .HasKey(t => t.RowNum);
         }
     }
 }
