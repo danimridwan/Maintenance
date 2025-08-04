@@ -1,5 +1,14 @@
 ﻿@inherits LayoutComponentBase
 
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using System.Security.Claims
+@inject IConfiguration Configuration
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+
 <PageTitle>RPU Maintenance Web</PageTitle>
 
 <div class="page">
@@ -20,12 +29,26 @@
                 </div>
             </div>
             <div class="dropdown">
-                <button class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="oi oi-menu" aria-hidden="true"></span>
+                <button style="padding-top: 0 px; padding-bottom: 0px;" class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    @if (user != null && !string.IsNullOrEmpty(user.UserPhoto))
+                    {
+                        <img style="max-height: 50px; clip-path: circle();" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
+                    }
+                    else
+                    {
+                        <img style="max-height: 50px; clip-path: circle();" src="../noprofile_pict.png" alt="No Profile Picture">
+                    }
                 </button>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="/ChangePassword">Reset Password</a>
-                    <a class="dropdown-item" href="/logout">Logout</a>
+                    @if (user != null)
+                    {
+                        <a class="dropdown-item" href="/UserInfo/@user.Id"><span class="oi oi-person" aria-hidden="true"></span>&ensp;Profil Anda</a>
+
+                        <hr />
+                        <a class="dropdown-item" href="/UserEdit/@user.Id"><span class="oi oi-pencil" aria-hidden="true"></span>&ensp;Edit Data Pribadi</a>
+                    }
+                    <a class="dropdown-item" href="/ChangePassword"><span class="oi oi-key" aria-hidden="true"></span>&ensp;Ubah Password</a><hr />
+                    <a class="dropdown-item" href="/logout"><span class="oi oi-account-logout" aria-hidden="true"></span>&ensp;Logout</a>
                 </div>
             </div>
         </div>
@@ -35,3 +58,68 @@
         </article>
     </main>
 </div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    private User? user;
+    private string _webUserRoot = string.Empty;
+    private string? userId;
+
+    private string? alertMessage;
+    private string? logMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Authorization();
+
+        try
+        {
+            _webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webUserRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webUserRoot'\nDetail :\n{ex}";
+            ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webUserRoot, relativePath).Replace("\\", "/");
+    }
+
+    private async Task Authorization()
+    {
+        if (authenticationStateTask != null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var userPrincipal = authenticationState.User; // Menggunakan nama variabel yang berbeda
+
+            if (userPrincipal.Identity?.IsAuthenticated == true)
+            {
+                userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    try
+                    {
+                        user = await CRUDService.ReadSingleAsync<User, string>(userId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error loading userInfo for logged in user: {ex.Message}");
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
+}

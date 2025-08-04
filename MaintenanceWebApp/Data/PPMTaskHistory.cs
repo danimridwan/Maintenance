@@ -5,7 +5,7 @@ namespace MaintenanceWebApp.Data
     public class PPMTaskHistory
     {
         [Key]
-        public string TaskID { get; set; } = Guid.NewGuid().ToString();
+        public string HistoryID { get; set; } = Guid.NewGuid().ToString();
 
         public string PPMID { get; set; }
 

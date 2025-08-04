@@ -6,6 +6,7 @@
 @using Microsoft.EntityFrameworkCore
 @inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject UserManager<User> employeeManager
 @inject RoleManager<IdentityRole> roleManager
@@ -19,11 +20,31 @@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
 
 <div class="card">
-    <div class="card-header bg-light border-primary">
+    @* Loading *@
+    @if (_isLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Memuat Data User...</p>
+        </div>
+    }
+    @* No Data *@
+    else if (user == null)
+    {
+        <div class="text-center py-3">
+            <p>Tidak ada User dengan ID ini atau terjadi kesalahan saat memuat.</p>
+        </div>
+    }
+    @* User Information *@
+    else
+    {
+        <div class="card-header bg-light border-primary">
         @* Tab Header *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar User">
+                <a style="cursor: pointer;" @onclick="GoBack" class="nav-link" aria-label="Kembali">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -32,7 +53,7 @@
             </li>
         </ul>
     </div>
-    <div class="card-body">
+        <div class="card-body">
         @* Form Add *@
         <EditForm Model="user" OnValidSubmit="HandleCreateUser" OnInvalidSubmit="HandleInvalidSubmit">
             <DataAnnotationsValidator />
@@ -201,6 +222,7 @@
         </EditForm>
 
     </div>
+    }
 </div>
 
 @code {
@@ -210,6 +232,7 @@
     private EditContext? editContext;
     private string _webUserRoot = string.Empty;
     private bool uploadErrorStatus;
+    private bool _isLoading = true;
 
     //Form
     private List<string> userSection = new() { "Operation", "Formalities", "HSE", "HR/GA", "Security" };
@@ -234,6 +257,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _isLoading = true;
         _dataContext = DbFactory.CreateDbContext();
 
         editContext = new EditContext(user);
@@ -265,8 +289,14 @@
 
             ShowNotification(alertMessage, logMessage);
         }
+
+        _isLoading = false;
     }
 
+    private async Task GoBack()
+    {
+        await JSRuntime.InvokeVoidAsync("history.back");
+    }
     //Profile Photo Upload
     private async Task HandleProfilePhotoUpload(InputFileChangeEventArgs e)
     {

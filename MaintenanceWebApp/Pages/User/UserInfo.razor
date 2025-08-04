@@ -5,171 +5,198 @@
 @using Microsoft.EntityFrameworkCore
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
 @* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+@attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
 <div class="card">
+    @* Loading *@
+    @if (_isLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Memuat Data User...</p>
+        </div>
+    }
+    @* No Data *@
+    else if (user == null)
+    {
+        <div class="text-center py-3">
+            <p>Tidak ada User dengan ID ini atau terjadi kesalahan saat memuat.</p>
+        </div>
+    }
+    @* User Information *@
+    else
+    {
+        <div class="card-header bg-light border-primary">
+            @* Tab Header *@
+            <ul class="nav nav-tabs card-header-tabs">
+                <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor">
+                    <Authorized>
+                        <li class="nav-item">
+                            <a style="cursor: pointer;" @onclick="GoBack" class="nav-link" aria-label="Kembali">
+                                <span class="oi oi-chevron-left"></span>
+                            </a>
+                        </li>
+                    </Authorized>
+                </AuthorizeView>
+                <li class="nav-item">
+                    <a class="nav-link active" aria-label="Informasi User">Informasi User</a>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            @* User Information Section *@
+            <div class="form-group row">
+                <div class="col-sm-5">
+                    @if (string.IsNullOrWhiteSpace(user.UserPhoto) == false)
+                    {
+                        <img style="align-content:center;" width="100%" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
+                    }
+                    else
+                    {
+                        <img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
+                    }
+                </div>
 
-	@if (user != null)
-	{
-		<div class="card-header bg-light border-primary">
-			@* Tab Header *@
-			<ul class="nav nav-tabs card-header-tabs">
-				<li class="nav-item">
-					<a href="UserList" class="nav-link" aria-label="Kembali ke Daftar User">
-						<span class="oi oi-chevron-left"></span>
-					</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link active" aria-label="Informasi User">Informasi User</a>
-				</li>
-			</ul>
-		</div>
-		<div class="card-body">
-			@* Informasi User *@
-			<div class="form-group row">
-				<div class="col-sm-5">
-					@if (string.IsNullOrWhiteSpace(user.UserPhoto) == false)
-					{
-						<img style="align-content:center;" width="100%" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
-					}
-					else
-					{
-						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
-					}
-				</div>
+                <div style="align-content: center;" class="col-sm-7">
+                    <table width="100%">
+                        <tr>
+                            <td class="td-first">Nama</td>
+                            <td> : </td>
+                            <td class="td-last">@user.FullName</td>
+                        </tr>
+                        <tr>
+                            <td class="td-first">Email</td>
+                            <td> : </td>
+                            <td class="td-last">@user.Email</td>
+                        </tr>
+                        <tr>
+                            <td class="td-first">Nomor Telepon</td>
+                            <td> : </td>
+                            <td class="td-last">@user.PhoneNumber</td>
+                        </tr>
+                        <tr>
+                            <td class="td-first">Section</td>
+                            <td> : </td>
+                            <td class="td-last">@user.Section</td>
+                        </tr>
+                        <tr>
+                            <td class="td-first">Role</td>
+                            <td> : </td>
+                            <td class="td-last">@user.Role</td>
+                        </tr>
+                        @if (user.Role == "Supervisor")
+                        {
+                            <tr>
+                                <td class="td-first">Divisi</td>
+                                <td> : </td>
+                                <td class="td-last">@user.RoleCategory</td>
+                            </tr>
+                        }
+                        @if (user.Role != "Admin")
+                        {
+                            <tr>
+                                <td class="td-first" colspan="3">Tanda Tangan</td>
+                            </tr>
 
-				<div class="col-sm-7">
-					<table width="100%">
-						<tr>
-							<td class="td-first">Nama</td>
-							<td> : </td>
-							<td class="td-last">@user.FullName</td>
-						</tr>
-						<tr>
-							<td class="td-first">Email</td>
-							<td> : </td>
-							<td class="td-last">@user.Email</td>
-						</tr>
-						<tr>
-							<td class="td-first">Nomor Telepon</td>
-							<td> : </td>
-							<td class="td-last">@user.PhoneNumber</td>
-						</tr>
-						<tr>
-							<td class="td-first">Section</td>
-							<td> : </td>
-							<td class="td-last">@user.Section</td>
-						</tr>
-						<tr>
-							<td class="td-first">Role</td>
-							<td> : </td>
-							<td class="td-last">@user.Role</td>
-						</tr>
-						@if(user.Role == "Supervisor")
-						{
-							<tr>
-								<td class="td-first">Divisi</td>
-								<td> : </td>
-								<td class="td-last">@user.RoleCategory</td>
-							</tr>
-						}
-						@if (user.Role != "Admin")
-						{
-							<tr>
-								<td class="td-first" colspan="3">Tanda Tangan</td>
-							</tr>
-
-							@if (string.IsNullOrWhiteSpace(user.Signature) == false)
-							{
-								<tr>
-									<td colspan="3">
-										<img style="max-width: 150px;" src="@CreateFilePath(user.Signature)" alt="User Signature">
-									</td>
-								</tr>
-							}
-							else
-							{
-								<tr>
-									<td colspan="3">
-										<img style="max-width: 150px;" src="/noimg.png" alt="No Image Available">
-									</td>
-								</tr>
-							}
-						}
-					</table>
-				</div>
-
-			</div>
-
-		</div>
-	}
-	else
-	{
-		<p>Memuat Data User...</p>
-	}
+                            @if (string.IsNullOrWhiteSpace(user.Signature) == false)
+                            {
+                                <tr>
+                                    <td colspan="3">
+                                        <img style="max-width: 150px;" src="@CreateFilePath(user.Signature)" alt="User Signature">
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3">
+                                        <img style="max-width: 150px;" src="/noimg.png" alt="No Image Available">
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
-	//Page
-	[Parameter]
-	public string Id { get; set; }
-	private User user;
-	private string _webUserRoot = string.Empty;
+    [Parameter]
+    public string Id { get; set; }
 
-	//Notification
-	private string? alertMessage;
-	private string? logMessage;
+    private User? user;
+    private string _webUserRoot = string.Empty;
+    private bool _isLoading = true;
 
-	protected override async Task OnInitializedAsync()
-	{
-		await LoadUser();
+    private string? alertMessage;
+    private string? logMessage;
 
-		try
-		{
-			// Get Path Root
-			_webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/"; // Default root
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat konfigurasi '_webUserRoot'. Hubungi administrator.";
-			logMessage = $"Gagal memuat konfigurasi '_webUserRoot'\nDetail :\n{ex}";
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            alertMessage = "Gagal memuat konfigurasi '_webUserRoot'. Hubungi administrator.";
+            logMessage = $"Gagal memuat konfigurasi '_webUserRoot'\nDetail :\n{ex}";
+            ShowNotification(alertMessage, logMessage);
+        }
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+        await base.OnInitializedAsync();
+    }
 
-	//Read Data User
-	private async Task LoadUser()
-	{
-		try
-		{
-			//Read User using Service
-			user = await CRUDService.ReadSingleAsync<User, string>(Id);
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat data user. Hubungi administrator.";
-			logMessage = $"Gagal memuat data user\nDetail :\n{ex}";
+    private async Task GoBack()
+    {
+        await JSRuntime.InvokeVoidAsync("history.back");
+    }
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+    protected override async Task OnParametersSetAsync()
+    {
+            _isLoading = true;
+            user = null;
+            StateHasChanged();
 
-	private string CreateFilePath(string relativePath)
-	{
-		return Path.Combine(_webUserRoot, relativePath).Replace("\\", "/");
-	}
+            await LoadUser();
 
-	//Notification
-	private async Task ShowNotification(string alertMessage, string logMessage)
-	{
-		await NotificationService.AlertMessage(alertMessage);
-		NotificationService.LogMessage(logMessage);
-	}
+            _isLoading = false;
+            StateHasChanged();
+    }
+    
+    private async Task LoadUser()
+    {
+        user = await CRUDService.ReadSingleAsync<User, string>(Id);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
+        }
+    }
+
+    private string CreateFilePath(string relativePath)
+    {
+        return Path.Combine(_webUserRoot, relativePath).Replace("\\", "/");
+    }
+
+    private async Task ShowNotification(string alertMessage, string logMessage)
+    {
+        await NotificationService.AlertMessage(alertMessage);
+        NotificationService.LogMessage(logMessage);
+    }
 }

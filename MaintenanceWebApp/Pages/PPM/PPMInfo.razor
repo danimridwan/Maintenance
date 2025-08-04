@@ -27,9 +27,9 @@
     {
         <div class="card-header bg-light border-primary">
             @* Tab Header *@
-            <ul class="nav nav-tabs card-header-tabs">
+            <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
                 <li class="nav-item">
-                    <a href="PPMList" class="nav-link active" aria-label="Kembali ke Daftar PPM">
+                    <a href="PPMList" class="nav-link" aria-label="Kembali ke Daftar PPM">
                         <span class="oi oi-chevron-left"></span>
                     </a>
                 </li>
@@ -43,11 +43,17 @@
                         Pelaksanaan
                     </button>
                 </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="true">
+                        History
+                    </button>
+                </li>
             </ul>
         </div>
         <div class="card-body">
             @* Informasi PPM *@
             <div class="tab-content" id="ppmTabContent">
+                @* Tab Permintaan *@
                 <div class="tab-pane fade show active" id="permintaan" role="tabpanel" aria-labelledby="permintaan-tab">
                     <div class="form-group row">
                         <div class="col-sm-12">
@@ -124,6 +130,8 @@
                         </div>
                     </div>
                 </div>
+
+                @* Tab Pelaksanaan *@
                 <div class="tab-pane fade" id="pelaksanaan" role="tabpanel" aria-labelledby="pelaksanaan-tab">
                     <div class="form-group row">
                         <div class="col-sm-12">
@@ -132,13 +140,13 @@
                             <label>@(ppmTask.TargetDate?.ToShortDateString() ?? "Belum ditentukan")</label>
                             <br /><br />
                             <b>Kesesuaian Terhadap Target :</b>
-                            <label>@(ppmTask.TargetCompletion.HasValue ? (ppmTask.TargetCompletion.Value ? "Ya" : "Tidak") : "Belum ditentukan")</label>
+                            <label>@(ppmTask.TargetCompletion.HasValue ? (ppmTask.TargetCompletion.Value ? "Ya" : "Tidak") : "-")</label>
                             <br /><br />
                             <b>Catatan (MTD) :</b><br />
-                            <label>@(string.IsNullOrWhiteSpace(ppmTask.MTDNote) ? "Belum ada catatan." : ppmTask.MTDNote)</label>
+                            <label>@(string.IsNullOrWhiteSpace(ppmTask.MTDNote) ? "-" : ppmTask.MTDNote)</label>
                             <br /><br />
                             <b>Evaluasi :</b><br />
-                            <label>@(string.IsNullOrWhiteSpace(ppmTask.EvaluationNote) ? "Belum ada evaluasi." : ppmTask.EvaluationNote)</label>
+                            <label>@(string.IsNullOrWhiteSpace(ppmTask.EvaluationNote) ? "-" : ppmTask.EvaluationNote)</label>
                             <br /><br />
                             <b>Foto Akhir</b><br />
                             @if (!string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
@@ -147,7 +155,34 @@
                             }
                             else
                             {
-                                <p>Belum ada foto akhir.</p>
+                                <p>Tidak ada foto akhir.</p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* Tab History *@
+                <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                    <div class="form-group row">
+                        <div class="col-sm-12">
+                            <h5 class="display-6">Riwayat PPM</h5>
+                            <hr />
+                            @if (ppmHistoryList != null && ppmHistoryList.Any())
+                            {
+                                <table class="table table-bordered table-striped">
+                                    <tbody>
+                                        @foreach (var history in ppmHistoryList)
+                                        {
+                                            <tr>
+                                                <td>@history.Description</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <p>Belum ada riwayat untuk PPM ini.</p>
                             }
                         </div>
                     </div>
@@ -258,7 +293,7 @@
                                                     <option value="">Pilih PIC</option>
                                                     @foreach (var maintenance in MaintenancePICs)
                                                     {
-                                                        <option value="@maintenance.Id">@maintenance.FullName</option>
+                                                        <option value="@maintenance.FullName">@maintenance.FullName</option>
                                                     }
                                                 </InputSelect>
                                                 <ValidationMessage For="@(() => ppmTask.MaintenancePIC)" />
@@ -352,6 +387,7 @@
 
     private PPMTask? ppmTask;
     private PPMTaskHistory ppmTaskHistory = new PPMTaskHistory();
+    private List<PPMTaskHistory>? ppmHistoryList;
     private User? supervisor; // Pemohon PPM
     private User? userInfo; // Pengguna yang sedang login
     private List<User> MaintenancePICs = new List<User>();
@@ -399,6 +435,8 @@
             return;
         }
 
+        await LoadPPMHistory();
+
         await LoadSupervisor(ppmTask.CreatedBy); // Load info pemohon PPM
 
         try
@@ -414,6 +452,15 @@
 
         editContext = new EditContext(ppmTask);
         editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Panggil fungsi JS untuk menginisialisasi tab Bootstrap
+            await JSRuntime.InvokeVoidAsync("initBootstrapTabs");
+        }
     }
 
     private async Task Authorization()
@@ -460,6 +507,25 @@
             alertMessage = "Gagal memuat data PPM. Hubungi administrator.";
             logMessage = $"Gagal memuat data PPM\nDetail :\n{ex.Message}";
             ShowNotification(alertMessage, logMessage);
+        }
+    }
+
+    private async Task LoadPPMHistory()
+    {
+        try
+        {
+            ppmHistoryList = (await CRUDService.ReadAllAsync<PPMTaskHistory>(
+                filter: h => h.PPMID == ppmTask.PPMID,
+                orderBy: q => q.OrderBy(h => h.DateUpdated)
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading ppm history: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
         }
     }
 
@@ -574,11 +640,14 @@
                 }
                 else if (ppmTask.Level == PPMStatusLevel.OnProgress)
                 {
+                    ppmTask.MaintenanceCompletionDate = DateTime.Now;
+                    ppmTask.TargetCompletion = IsTargetDatePassed();
                     ppmTaskHistory.UpdateType = PPMStatus.Checking.ToString();
                     ppmTaskHistory.Description = $"{userInfo.FullName} melaporkan penyelesaian PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
                 }
                 else if (ppmTask.Level == PPMStatusLevel.Checking)
                 {
+                    ppmTask.CompletionDate = DateTime.Now;
                     ppmTaskHistory.UpdateType = PPMStatus.Completed.ToString();
                     ppmTaskHistory.Description = $"{userInfo.FullName} sudah melakukan pengecekan PPM, dan menyelesaikan laporan PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
                 }

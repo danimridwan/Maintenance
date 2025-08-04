@@ -158,8 +158,6 @@
         //Authorization Admin & Maintenance Supervisor
         await Authorization();
 
-        //Filter Applied using Table Service
-        TableService.OnFilterApplied += TableService_OnFilterApplied;
         NoFilter = string.Empty;
 
         //Load Pump
@@ -191,9 +189,11 @@
     {
         try
         {
-            // Get All Data using CRUD Service
-            var pumpsList = await CRUDService.ReadAllAsync<Pump>(orderBy: q => q.OrderBy(p => p.PumpID));
-            _allPumps = pumpsList.AsQueryable();
+            _allPumps = (await CRUDService.ReadAllAsync<Pump>
+                (
+                    orderBy: q => q.OrderBy(p => p.PumpID),
+                    tracking: false
+                )).ToList().AsQueryable();
         }
         catch (Exception ex)
         {
@@ -252,14 +252,8 @@
                 p.Location.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase))
              ?? Enumerable.Empty<Pump>().AsQueryable());
 
-    private async void TableService_OnFilterApplied(object? sender, EventArgs e)
-    {
-        await InvokeAsync(StateHasChanged);
-    }
-
     public void Dispose()
     {
-        TableService.OnFilterApplied -= TableService_OnFilterApplied;
         GC.SuppressFinalize(this);
     }
 

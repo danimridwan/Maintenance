@@ -16,7 +16,17 @@
 <div class="card">
 
     <div class="card-body">
-        @if (user == null)
+        @if (_isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Memuat Data User...</p>
+            </div>
+        }
+        @* No Data *@
+        else if (user == null)
         {
             <p><em>Memuat Data User...</em></p>
             <div class="spinner-border text-primary" role="status">
@@ -42,6 +52,7 @@
     [Parameter]
     public string Id { get; set; }
     private User user;
+    private bool _isLoading = true;
 
     //Notification
     private string? alertMessage;
@@ -53,7 +64,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _isLoading = true;
         await LoadUser();
+
+        _isLoading = false;
+        StateHasChanged();
     }
 
     //Read Data User

@@ -23,7 +23,9 @@ namespace MaintenanceWebApp.Data
 
         // Detail Pelaksanaan (diisi oleh peran selanjutnya)
         public DateOnly? TargetDate { get; set; } // Tanggal target penyelesaian
+        public DateTime? MaintenanceCompletionDate { get; set; }
         public bool? TargetCompletion { get; set; } // Kesesuaian terhadap target
+        public DateTime? CompletionDate { get; set; }
         public string MTDNote { get; set; } = string.Empty; // Catatan Maintenance Task Detail
         public string EvaluationNote { get; set; } = string.Empty; // Evaluasi pelaksanaan
         public string ImageAfter { get; set; } = string.Empty; // Path relatif ke file gambar
