@@ -498,64 +498,65 @@
 
     private async Task LoadPPM()
     {
-        try
+        ppmTask = await CRUDService.ReadSingleAsync<PPMTask, string>(TaskID);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            ppmTask = await CRUDService.ReadSingleAsync<PPMTask, string>(TaskID);
-        }
-        catch (Exception ex)
-        {
-            alertMessage = "Gagal memuat data PPM. Hubungi administrator.";
-            logMessage = $"Gagal memuat data PPM\nDetail :\n{ex.Message}";
+            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
             ShowNotification(alertMessage, logMessage);
+            return;
         }
     }
 
     private async Task LoadPPMHistory()
     {
-        try
-        {
-            ppmHistoryList = (await CRUDService.ReadAllAsync<PPMTaskHistory>(
+        ppmHistoryList = (await CRUDService.ReadAllAsync<PPMTaskHistory>(
                 filter: h => h.PPMID == ppmTask.PPMID,
                 orderBy: q => q.OrderBy(h => h.DateUpdated)
             )).ToList();
-        }
-        catch (Exception ex)
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            Console.WriteLine($"Error loading ppm history: {ex.Message}");
-        }
-        finally
-        {
-            StateHasChanged();
+            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
         }
     }
 
     private async Task LoadSupervisor(string supervisorIdToLoad)
     {
-        try
+        supervisor = await CRUDService.ReadSingleAsync<User, string>(supervisorIdToLoad);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            supervisor = await CRUDService.ReadSingleAsync<User, string>(supervisorIdToLoad);
-        }
-        catch (Exception ex)
-        {
-            alertMessage = "Gagal memuat data Pemohon. Hubungi administrator.";
-            logMessage = $"Gagal memuat data Pemohon\nDetail :\n{ex.Message}";
+            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
             ShowNotification(alertMessage, logMessage);
+            return;
         }
     }
 
     private async Task LoadMaintenancePIC()
     {
-        if (!string.IsNullOrEmpty(maintenanceSelectCategory))
-        {
-            MaintenancePICs = (await CRUDService.ReadAllAsync<User>(
+        
+        MaintenancePICs = (await CRUDService.ReadAllAsync<User>(
                 filter: p => p.RoleCategory.Contains(maintenanceSelectCategory),
                 orderBy: q => q.OrderBy(p => p.FullName),
                 tracking: false
-            )).ToList(); // Pastikan dieksekusi ke List
-        }
-        else
+            )).ToList();
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            MaintenancePICs = new List<User>();
+            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
+            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
+
+            ShowNotification(alertMessage, logMessage);
+            return;
         }
     }
 
