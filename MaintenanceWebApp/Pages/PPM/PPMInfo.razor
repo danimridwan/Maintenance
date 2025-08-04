@@ -148,6 +148,9 @@
                             <b>Evaluasi :</b><br />
                             <label>@(string.IsNullOrWhiteSpace(ppmTask.EvaluationNote) ? "-" : ppmTask.EvaluationNote)</label>
                             <br /><br />
+                            <b>Catatan (Pemohon) :</b><br />
+                            <label>@(string.IsNullOrWhiteSpace(ppmTask.RequestorNote) ? "-" : ppmTask.RequestorNote)</label>
+                            <br /><br />
                             <b>Foto Akhir</b><br />
                             @if (!string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
                             {
@@ -351,9 +354,13 @@
                                         }
                                         @if (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking)
                                         {
-                                            <label>Anda ingin menyetujui PPM ini sebagai selesai?</label>
-                                        }
+                                            <label for="CatatanPemohon" class="col-form-label">Catatan</label>
+                                            <InputTextArea id="CatatanPemohon" @bind-Value="ppmTask.RequestorNote" class="form-control" />
+                                            <ValidationMessage For="@(() => ppmTask.RequestorNote)" />
 
+                                            <br /><label><b>Anda ingin menyetujui PPM ini sebagai selesai?</b></label>
+                                        }
+                                        
                                         <div class="modal-footer mt-4">
                                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                                             <button type="submit" class="btn btn-success">

@@ -38,6 +38,7 @@ namespace MaintenanceWebApp.Data
         public string CreatedBy { get; set; } = string.Empty; // ID Employee yang membuat request
         public string PPMSection { get; set; } = string.Empty; // Section pemohon
         public DateTime DateCreated { get; set; } = DateTime.Now;
+        public string? RequestorNote { get; set; } = string.Empty; // Catatan Pemohon
 
         // Info Audit
         public string? RejectionNote { get; set; } // Catatan jika PPM ditolak
