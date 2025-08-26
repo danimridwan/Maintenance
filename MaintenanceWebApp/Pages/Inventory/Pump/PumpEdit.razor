@@ -218,7 +218,7 @@
 
         if (pump == null)
         {
-            NavigationManager.NavigateTo("/PumpList", forceLoad: true);
+            NavigationManager.NavigateTo("./PumpList", forceLoad: true);
         }
 
         editContext = new EditContext(pump);
@@ -415,7 +415,7 @@
             return;
         }
 
-        NavigationManager.NavigateTo("/PumpList?status=EditSuccess");
+        NavigationManager.NavigateTo("./PumpList?status=EditSuccess");
     }
 
     //Invalid Submit
@@ -488,6 +488,6 @@
             FileChange(filePath);
         }
 
-        NavigationManager.NavigateTo("/PumpList");
+        NavigationManager.NavigateTo("./PumpList");
     }
 }

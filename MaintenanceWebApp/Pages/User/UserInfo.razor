@@ -122,8 +122,8 @@
 
     // Konstanta
     private string webUserRoot = string.Empty;
-    private const string NO_IMAGE_PATH = "/noimg.png";
-    private const string USER_LIST_PATH = "/UserList";
+    private const string NO_IMAGE_PATH = "./noimg.png";
+    private const string USER_LIST_PATH = "./UserList";
 
     // Metode Lifecycle
     protected override async Task OnInitializedAsync()
@@ -182,7 +182,7 @@
     {
         if (user != null)
         {
-            NavigationManager.NavigateTo($"/UserEdit/{user.Id}");
+            NavigationManager.NavigateTo($"./UserEdit/{user.Id}");
         }
     }
 

@@ -264,21 +264,21 @@
 
     private void NavigateToAddPump()
     {
-        NavigationManager.NavigateTo("/PumpAdd");
+        NavigationManager.NavigateTo("./PumpAdd");
     }
 
     private void NavigateToPumpInfo(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpInfo/{pump.PumpID}");
+        NavigationManager.NavigateTo($"./PumpInfo/{pump.PumpID}");
     }
 
     private void NavigateToEditPump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpEdit/{pump.PumpID}");
+        NavigationManager.NavigateTo($"./PumpEdit/{pump.PumpID}");
     }
 
     private void NavigateToDeletePump(Pump pump)
     {
-        NavigationManager.NavigateTo($"/PumpDelete/{pump.PumpID}");
+        NavigationManager.NavigateTo($"./PumpDelete/{pump.PumpID}");
     }
 }

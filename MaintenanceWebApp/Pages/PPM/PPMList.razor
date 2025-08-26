@@ -370,14 +370,14 @@
 
     private void NavigateToAddPPM()
     {
-        NavigationManager.NavigateTo("/PPMAdd");
+        NavigationManager.NavigateTo("./PPMAdd");
     }
 
     private void NavigateToPPM(PPMTask ppm, PpmPage page)
     {
         string path = page switch
         {
-            PpmPage.Info => $"/PPMInfo/{ppm.TaskID}",
+            PpmPage.Info => $"./PPMInfo/{ppm.TaskID}",
             _ => string.Empty
         };
         if (!string.IsNullOrEmpty(path))
