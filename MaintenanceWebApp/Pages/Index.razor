@@ -87,7 +87,7 @@ else
         };
         _pieConfig.Data.Datasets.Add(dataset);
 
-        for (int i = 2024; i <= DateTime.Now.Year; i++)
+        for (int i = DateTime.Now.Year; i >= 2024; i--)
         {
             var newValue = new SelectOption { Value = i.ToString(), Text = i.ToString() };
             OptionsList.Add(newValue);
