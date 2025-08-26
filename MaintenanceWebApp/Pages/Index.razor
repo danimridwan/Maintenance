@@ -7,6 +7,7 @@
 @using ChartJs.Blazor.PieChart
 
 @inject CRUDService CRUDService
+@inject IJSRuntime JSRuntime
 
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
@@ -19,7 +20,7 @@
     <div class="card col-sm-6">
         <div class="card-body">
             <h5 class="card-title">PPM Performance</h5>
-                <select id="flt-ppm-year" class="form-control" @bind="ddlYear">
+                <select id="flt-ppm-year" class="form-control" @onchange="@HandleChange">
                 </select>
             <ChartJs.Blazor.Chart Config="_pieConfig"></ChartJs.Blazor.Chart>
         </div>
@@ -39,8 +40,8 @@ else
 
 @code{
     private AuthenticationState authenticationState;
-    private IQueryable<PPMStatusByYear>? _ppmStatusByYear;
-    private PieConfig _pieConfig;
+    public IQueryable<PPMStatusByYear>? _ppmStatusByYear;
+    public PieConfig _pieConfig;
     private bool firstRender = true;
     private int ddlYear = DateTime.Now.Year;
 
@@ -48,11 +49,42 @@ else
     {
         authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
 
-        await LoadPPMStatusByYear();
-        ConfigurePieConfig();
+        await LoadPPMPerformance();
+
+        _pieConfig = new PieConfig();
+        _pieConfig.Data.Datasets.Clear();
+        _pieConfig.Options = new PieOptions
+        {
+            Responsive = true,
+            Title = new OptionsTitle
+            {
+                Display = true,
+                Text = "PPM Status"
+            }
+        };
+        foreach (var status in new[] { "Request", "Approved by Manager", "Approved by Terminal Manager", "On Progress", "Checking", "Completed", "Rejected" })
+        {
+            _pieConfig.Data.Labels.Add(status);
+        }
+        //var dataset = new PieDataset<int>(new[] { 35, 50, 16 })
+        List<int> tasks = _ppmStatusByYear.Where(e => e.Year == ddlYear).Select(e => e.Tasks).ToList();
+        var dataset = new PieDataset<int>(tasks)
+        {
+            BackgroundColor = new[]{
+                ColorUtil.FromDrawingColor(System.Drawing.Color.Navy),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.Maroon),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.Khaki),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.Aquamarine),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.DarkMagenta),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.ForestGreen),
+                ColorUtil.FromDrawingColor(System.Drawing.Color.Crimson)
+            }
+        };
+        _pieConfig.Data.Datasets.Add(dataset);
+        StateHasChanged();
     }
 
-    private async Task LoadPPMStatusByYear()
+    private async Task LoadPumps()
     {
         try
         {
@@ -70,43 +102,40 @@ else
         }
     }
 
-    private void ConfigurePieConfig()
+
+
+    //[JSInvokable]
+    public void HandleChange(ChangeEventArgs args)
     {
-        _pieConfig = new PieConfig();
         _pieConfig.Data.Datasets.Clear();
-        _pieConfig.Options = new PieOptions
-            {
-                Responsive = true,
-                Title = new OptionsTitle
-                {
-                    Display = true,
-                    Text = "PPM Status"
-                }
-            };
-        foreach (var status in new[] { "Request", "Approved by Manager", "Approved by Terminal Manager", "On Progress", "Checking", "Completed", "Rejected" })
-        {
-            _pieConfig.Data.Labels.Add(status);
-        }
-        //var dataset = new PieDataset<int>(new[] { 35, 50, 16 })
+        ddlYear = Convert.ToInt32(args.Value);
         List<int> tasks = _ppmStatusByYear.Where(e => e.Year == ddlYear).Select(e => e.Tasks).ToList();
         var dataset = new PieDataset<int>(tasks)
+         {
+             BackgroundColor = new []{
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.Navy),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.Maroon),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.Khaki),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.Aquamarine),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.DarkMagenta),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.ForestGreen),
+                 ColorUtil.FromDrawingColor(System.Drawing.Color.Crimson)
+             }
+         };
+        if(dataset != null)
         {
-            BackgroundColor = new []{
-                ColorUtil.FromDrawingColor(System.Drawing.Color.Navy),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.Maroon),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.Khaki),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.Aquamarine),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.DarkMagenta),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.ForestGreen),
-                ColorUtil.FromDrawingColor(System.Drawing.Color.Crimson)
-            }
-        };
-        _pieConfig.Data.Datasets.Add(dataset);
+            _pieConfig.Data.Datasets.Add(dataset);
+        }
+        else
+        {
+            _pieConfig = null;
+        }
+        StateHasChanged();
     }
 }
 <script type="text/javascript">
     window.onload = function() {
-        jQuery(document).ready(function () {
+        $(document).ready(function () {
          //render year filter
          var d = new Date();
          var year = d.getFullYear();
@@ -118,6 +147,6 @@ else
              $("#flt-ppm-year").append(option);
          };
          $("#flt-ppm-year").val(year).change();
-     });
+        });
     };
 </script>
