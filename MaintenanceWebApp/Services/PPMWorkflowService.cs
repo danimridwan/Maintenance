@@ -51,6 +51,7 @@ namespace MaintenanceWebApp.Services
                         }
                         else if (currentUser.IsInRole("Maintenance Supervisor") && currentStatus == PPMStatusLevel.ApprovedByTerminalManager)
                         {
+                            ppm.PPMID = ppmTaskUpdates.PPMID;
                             nextStatus = PPMStatusLevel.OnProgress;
                             ppm.MaintenanceCategory = ppmTaskUpdates.MaintenanceCategory;
                             ppm.MaintenancePIC = ppmTaskUpdates.MaintenancePIC;
@@ -63,6 +64,8 @@ namespace MaintenanceWebApp.Services
                         else if (currentUser.IsInRole("Supervisor") && currentStatus == PPMStatusLevel.Checking)
                         {
                             nextStatus = PPMStatusLevel.Completed;
+                            ppm.RequestorNote = ppmTaskUpdates.RequestorNote;
+                            ppm.CompletionDate = DateTime.Now;
                         }
                         else if (currentUser.IsInRole("Maintenance") && currentStatus == PPMStatusLevel.OnProgress)
                         {
@@ -71,12 +74,22 @@ namespace MaintenanceWebApp.Services
                             ppm.MTDNote = ppmTaskUpdates.MTDNote;
                             ppm.TargetCompletion = ppmTaskUpdates.TargetCompletion;
                             ppm.ImageAfter = ppmTaskUpdates.ImageAfter;
+                            ppm.MaintenanceCompletionDate = DateTime.Now;
+
+                            if(!string.IsNullOrWhiteSpace(ppm.RejectionNote))
+                            {
+                                ppm.RejectionNote = string.Empty;
+                            }
 
                             // Validasi: Foto akhir mungkin wajib
                             if (string.IsNullOrWhiteSpace(ppm.ImageAfter))
                             {
                                 return ServiceResult.Failure("Foto kondisi akhir wajib diunggah.");
                             }
+                        }
+                        else if (currentUser.IsInRole("Supervisor") && currentStatus == PPMStatusLevel.Checking)
+                        {
+                            ppm.RejectionNote = string.Empty;
                         }
                         else
                         {
@@ -88,11 +101,16 @@ namespace MaintenanceWebApp.Services
                         // Peran yang bisa menolak dan dari status mana
                         if ((currentUser.IsInRole("Manager") && currentStatus == PPMStatusLevel.Request) ||
                             (currentUser.IsInRole("Terminal Manager") && currentStatus == PPMStatusLevel.ApprovedByManager) ||
-                            (currentUser.IsInRole("Maintenance Supervisor") && currentStatus == PPMStatusLevel.ApprovedByTerminalManager) ||
-                            (currentUser.IsInRole("Supervisor") && currentStatus == PPMStatusLevel.Checking))
+                            (currentUser.IsInRole("Maintenance Supervisor") && currentStatus == PPMStatusLevel.ApprovedByTerminalManager))
                         {
+                            ppm.PPMID = ppmTaskUpdates.PPMID;
                             nextStatus = PPMStatusLevel.Rejected;
                             ppm.RejectionNote = ppmTaskUpdates.RejectionNote; // Asumsikan ada input alasan penolakan
+                        }
+                        else if(currentUser.IsInRole("Supervisor") && currentStatus == PPMStatusLevel.Checking)
+                        {
+                            nextStatus = PPMStatusLevel.OnProgress;
+                            ppm.RejectionNote = ppmTaskUpdates.RejectionNote;
                         }
                         else
                         {

@@ -14,125 +14,130 @@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
 
 <div class="card">
-
     <div class="card-body">
-        @if (_isLoading)
+        @if (isDataLoading)
         {
             <div class="text-center py-3">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                    <span class="visually-hidden">Memuat...</span>
                 </div>
-                <p>Memuat Data User...</p>
+                <p>Memuat data pengguna...</p>
             </div>
         }
-        @* No Data *@
         else if (user == null)
         {
-            <p><em>Memuat Data User...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-3">
+                <p>Data pengguna tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus User</h3>
-
+            <h3>Hapus Pengguna</h3>
             <hr />
-
-            <p>Anda yakin ingin menghapus User dengan Nama <b>@user.FullName</b> dan Email <b>@user.Email</b>  ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeleteUserData">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <p>Anda yakin ingin menghapus pengguna dengan Nama <b>@user.FullName</b> dan Email <b>@user.Email</b>?</p>
+            <button type="button" class="btn btn-danger me-2" @onclick="DeleteUserAsync">Hapus</button>
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
     [Parameter]
-    public string Id { get; set; }
-    private User user;
-    private bool _isLoading = true;
+    public string Id { get; set; } = default!;
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    private User? user;
+    private bool isDataLoading = true;
 
-    //File
-    private string subFolderName = "User";
-    private string folderName = "Image";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "User";
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        _isLoading = true;
-        await LoadUser();
-
-        _isLoading = false;
-        StateHasChanged();
+        await LoadUserAsync();
+        isDataLoading = false;
     }
 
-    //Read Data User
-    private async Task LoadUser()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadUserAsync()
     {
         try
         {
-            //Read User using Service
             user = await CRUDService.ReadSingleAsync<User, string>(Id);
+            if (user == null)
+            {
+                await NotificationService.AlertMessage("Pengguna tidak ditemukan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data User. Hubungi administrator.";
-            logMessage = $"Gagal memuat data User\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data pengguna. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Gagal memuat data pengguna dengan ID {Id}. Detail: {ex.Message}");
+            user = null; // Memastikan user null agar UI menunjukkan pesan error
         }
     }
 
-    //Delete Data User
-    private async Task DeleteUserData()
+    private async Task DeleteUserAsync()
     {
-        //Profile Photo Delete using File Upload Service
-        await UploadService.FileChange(user.UserPhoto, subFolderName);
-        user.UserPhoto = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (user == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Pengguna tidak ditemukan. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        //Signature Delete using File Upload Service
-        await UploadService.FileChange(user.Signature, subFolderName);
-        user.Signature = UploadService.FilePath;
-
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(user);
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        try
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
+            // Menghapus file terkait terlebih dahulu
+            await DeleteAssociatedFilesAsync();
 
-            ShowNotification(alertMessage, logMessage);
-            return;
+            // Menghapus record pengguna dari database
+            await CRUDService.DeleteAsync(user);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus pengguna dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus pengguna dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            NavigationManager.NavigateTo("/UserList?status=DeleteSuccess");
         }
-
-        NavigationManager.NavigateTo("/UserList?status=DeleteSuccess");
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat menghapus pengguna. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus pengguna dengan ID {user.Id}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteAssociatedFilesAsync()
+    {
+        var filesToDelete = new List<string?>();
+
+        if (!string.IsNullOrWhiteSpace(user?.UserPhoto))
+        {
+            filesToDelete.Add(user.UserPhoto);
+        }
+        if (!string.IsNullOrWhiteSpace(user?.Signature))
+        {
+            filesToDelete.Add(user.Signature);
+        }
+
+        foreach (var filePath in filesToDelete)
+        {
+            if (string.IsNullOrWhiteSpace(filePath)) continue;
+
+            await UploadService.FileChange(filePath, SUBFOLDER_NAME);
+
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                NotificationService.LogMessage($"Gagal menghapus file '{filePath}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
     {
         NavigationManager.NavigateTo("/UserList");
-    }
-
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
-    {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
     }
 }

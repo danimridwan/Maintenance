@@ -1,0 +1,517 @@
+﻿@page "/PDFViewer/{TaskId}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using System.IO
+@using iText.Html2pdf
+@using iText.Kernel.Pdf
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IWebHostEnvironment WebHostEnvironment
+
+@* Injeksi Service *@
+@inject CRUDService CrudService
+@inject NotificationService NotificationService
+
+<div class="pdf-viewer-container">
+    <div style="text-align: center; margin-bottom: 20px;">
+        @if (isLoading)
+        {
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary mb-2" role="status"></div>
+                <p class="text-muted">Membuat Laporan PDF...</p>
+            </div>
+        }
+    </div>
+    <iframe id="pdf-frame" style="width:100%; height:100vh; border:0;" frameborder="0" allowfullscreen></iframe>
+</div>
+
+@code {
+    [Parameter]
+    public string TaskId { get; set; } = string.Empty;
+
+    private bool isLoading = true;
+    private byte[]? pdfBytes;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await GenerateAndDisplayPdf();
+        }
+    }
+
+    private async Task GenerateAndDisplayPdf()
+    {
+        try
+        {
+            // Memuat data PPM, requestor, dan user terkait secara asinkron
+            var (ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager) = await LoadPpmData(TaskId);
+
+            // Jika ada data yang tidak ditemukan, tampilkan pesan peringatan
+            if (ppmTask == null)
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data PPM. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+            if (requestor == null)
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data Pemohon. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+            if (manager == null && (requestor.Section == "Operation" || requestor.Section == "HSE"))
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data Atasan Pemohon. Pastikan hanya ada satu manajer untuk seksi ini. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+            if (maintenance == null)
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data Pelaksana Maintenance. Pastikan hanya ada satu personel maintenance untuk kategori ini. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+            if (maintenanceSupervisor == null)
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data Atasan Pelaksana. Pastikan hanya ada satu maintenance supervisor. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+            if (terminalManager == null)
+            {
+                NotificationService.AlertMessage($"Gagal mengakses data Terminal Manager. Pastikan hanya ada satu Terminal Manager. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                return;
+            }
+
+            // Mengonversi gambar menjadi format Base64 untuk disematkan dalam HTML
+            var base64Images = await LoadBase64Images(ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager);
+
+            // Membuat template HTML dari data yang sudah disiapkan
+            string htmlTemplate = GetHtmlTemplate(ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager, base64Images);
+
+            // Mengonversi HTML menjadi PDF
+            using (var memoryStream = new MemoryStream())
+            {
+                HtmlConverter.ConvertToPdf(htmlTemplate, memoryStream);
+                pdfBytes = memoryStream.ToArray();
+            }
+
+            // Menampilkan PDF di iframe
+            if (pdfBytes != null && pdfBytes.Length > 0)
+            {
+                string base64PdfData = Convert.ToBase64String(pdfBytes);
+                await JSRuntime.InvokeVoidAsync("showPdfInIframe", base64PdfData);
+            }
+            else
+            {
+                NotificationService.AlertMessage("Gagal membuat PDF. File PDF kosong.");
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Terjadi kesalahan saat membuat PDF: {ex.Message}");
+            Console.WriteLine($"[ERROR] Gagal membuat PDF: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<(PPMTask? ppmTask, User? requestor, User? manager, User? maintenance, User? maintenanceSupervisor, User? terminalManager)> LoadPpmData(string taskId)
+    {
+        PPMTask? ppmTask = await CrudService.ReadSingleAsync<PPMTask, string>(taskId);
+        if (ppmTask == null) return (null, null, null, null, null, null);
+
+        User? requestor = await CrudService.ReadSingleAsync<User, string>(ppmTask.CreatedBy);
+        if (requestor == null) return (ppmTask, null, null, null, null, null);
+
+        User? manager = null;
+        if (requestor.Section == "Operation" || requestor.Section == "HSE")
+        {
+            var managers = await CrudService.ReadAllAsync<User>(u => u.Section == requestor.Section && u.Role == "Manager");
+            manager = await managers.FirstOrDefaultAsync();
+        }
+
+        var maintenances = await CrudService.ReadAllAsync<User>(u => u.RoleCategory == ppmTask.MaintenanceCategory && u.FullName == ppmTask.MaintenancePIC);
+        User? maintenance = await maintenances.FirstOrDefaultAsync();
+
+        var maintenanceSupervisors = await CrudService.ReadAllAsync<User>(u => u.Role == "Maintenance Supervisor");
+        User? maintenanceSupervisor = await maintenanceSupervisors.FirstOrDefaultAsync();
+
+        var terminalManagers = await CrudService.ReadAllAsync<User>(u => u.Role == "Terminal Manager");
+        User? terminalManager = await terminalManagers.FirstOrDefaultAsync();
+
+        return (ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager);
+    }
+
+    private async Task<Base64Images> LoadBase64Images(PPMTask ppmTask, User requestor, User? manager, User? maintenance, User? maintenanceSupervisor, User? terminalManager)
+    {
+        var rpuLogoBase64 = await GetImageBase64("Templates", "RPU-Logo-Blue.png");
+        var imageBeforeBase64 = await GetImageBase64("uploads", "PPM", ppmTask.ImageBefore);
+        var imageAfterBase64 = await GetImageBase64("uploads", "PPM", ppmTask.ImageAfter);
+
+        var requestorSignatureBase64 = await GetImageBase64("uploads", "User", requestor.Signature);
+        var managerSignatureBase64 = manager != null ? await GetImageBase64("uploads", "User", manager.Signature) : string.Empty;
+        var maintenanceSignatureBase64 = maintenance != null ? await GetImageBase64("uploads", "User", maintenance.Signature) : string.Empty;
+        var maintenanceSupervisorSignatureBase64 = maintenanceSupervisor != null ? await GetImageBase64("uploads", "User", maintenanceSupervisor.Signature) : string.Empty;
+        var terminalManagerSignatureBase64 = terminalManager != null ? await GetImageBase64("uploads", "User", terminalManager.Signature) : string.Empty;
+
+        return new Base64Images
+            {
+                RpuLogo = rpuLogoBase64,
+                ImageBefore = imageBeforeBase64,
+                ImageAfter = imageAfterBase64,
+                RequestorSignature = requestorSignatureBase64,
+                ManagerSignature = managerSignatureBase64,
+                MaintenanceSignature = maintenanceSignatureBase64,
+                MaintenanceSupervisorSignature = maintenanceSupervisorSignatureBase64,
+                TerminalManagerSignature = terminalManagerSignatureBase64
+            };
+    }
+
+    private async Task<string> GetImageBase64(params string[] pathSegments)
+    {
+        var imagePath = Path.Combine(WebHostEnvironment.WebRootPath, Path.Combine(pathSegments));
+        if (File.Exists(imagePath))
+        {
+            try
+            {
+                byte[] imageBytes = await File.ReadAllBytesAsync(imagePath);
+                return Convert.ToBase64String(imageBytes);
+            }
+            catch (Exception ex)
+            {
+                // Catat kesalahan jika file tidak dapat dibaca
+                Console.WriteLine($"[WARNING] Gagal membaca file gambar pada {imagePath}: {ex.Message}");
+                return string.Empty;
+            }
+        }
+        // Catat kesalahan jika file tidak ditemukan
+        Console.WriteLine($"[WARNING] File gambar tidak ditemukan pada path: {imagePath}");
+        return string.Empty;
+    }
+
+    private string GetHtmlTemplate(PPMTask ppmTask, User requestor, User? manager, User? maintenance, User? maintenanceSupervisor, User? terminalManager, Base64Images images)
+    {
+        string ppmDateCreated = ppmTask.DateCreated.ToString("dd-MM-yyyy");
+        string printTimestamp = DateTime.Now.ToString("dd-MM-yyyy HH:mm");
+        string targetCompletionStatus = (ppmTask.TargetCompletion ?? false) ? "Ya" : "Tidak";
+
+        if (manager != null)
+        {
+            return $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: ""Segoe UI"", Calibri, Arial, sans-serif; font-size: 10px; line-height: 1.4; }}
+                    table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
+                    td, th {{ border: 1px solid black; padding: 5px; vertical-align: top; }}
+                    .header-section td {{ border: none; padding: 0; }}
+                    .section-title {{ background-color: #f2f2f2; text-align: center; font-weight: bold; font-size: medium; }}
+                    .small-text {{ font-size: 8px; }}
+                    .no-border, .no-border td {{ border: none; }}
+                    .signature-box {{ min-height: 80px; height: 100px; }}
+                    .margin-top-10 {{ margin-top: 10px; }}
+                    .margin-top-30 {{ margin-top: 30px; }}
+                    .margin-top-50 {{ margin-top: 50px; }}
+                    .text-center {{ text-align: center; }}
+                </style>
+            </head>
+            <body>
+                <div class=""container"">
+                    <table class=""header-section margin-top-30"">
+                        <tr>
+                            <td rowspan=""4"">
+                                <center><img src=""data:image/png;base64,{images.RpuLogo}"" style=""max-width: 50px; vertical-align: middle;"" /></center>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>PT. REDECO PETROLIN UTAMA</strong></td>
+                        </tr>
+                        <tr>
+                            <td>TERMINAL: Desa mangunreja, Kec. Puloampel, Serang, Banten, Indonesia</td>
+                        </tr>
+                        <tr>
+                            <td>Telp: (0254) 5750074, Fax: (0254) 5750073, E-mail: maintenance@redeco-rpu.com</td>
+                        </tr>
+                    </table>
+                    <table class=""header-section margin-top-50"">
+                        <tr>
+                            <td style=""font-size: medium;"" class=""text-center"" colspan=""2""><b>PERMINTAAN PEKERJAAN MAINTENANCE</b></td>
+                        </tr>
+                        <tr>
+                            <td>Rev-2 : 16-Januari-2023</td>
+                            <td style=""float: right;"">FM-MTD-03</td>
+                        </tr>
+                    </table>
+                    <table class=""margin-top-10"">
+                        <tr>
+                            <td colspan=""3"" class=""section-title"">PERMINTAAN</td>
+                        </tr>
+                        <tr>
+                            <td style=""width: 15%; font-weight: bold;"">ID PPM</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.PPMID}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Deskripsi Pekerjaan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.JobDescription}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Jenis Pekerjaan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.JobCategory}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Tanggal Pembuatan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmDateCreated}</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""5"" colspan=""2"" style=""font-weight: bold; width: 80%; height: 170px;"">
+                                Gambar / Kondisi Awal<br /><br />
+                                <img src=""data:image/png;base64,{images.ImageBefore}"" style=""max-height: 150px;"" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold;"">Pemohon</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.RequestorSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {requestor.FullName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold;"">Atasan Pemohon</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.ManagerSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {manager.FullName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan=""3"" class=""section-title"">PELAKSANAAN</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""4"" colspan=""1"" style=""font-weight: bold; width: 40%; height: 170px;"">
+                                Gambar / Kondisi Akhir<br /><br />
+                                <img src=""data:image/png;base64,{images.ImageAfter}"" style=""max-height: 150px;"" />
+                            </td>
+                            <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
+                                <b>Evaluasi Pelaksanaan</b><br>
+                                1. Target Penyelesaian : {ppmTask.TargetDate}<br>
+                                2. Kesesuaian terhadap Target : {targetCompletionStatus}<br>
+                                3. Evaluasi :<br>
+        {ppmTask.EvaluationNote}
+                            </td>
+                            <td class=""text-center"" style=""font-weight: bold;"">Pelaksana</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.MaintenanceSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {maintenance?.FullName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold;"">Atasan Pelaksana</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.MaintenanceSupervisorSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {maintenanceSupervisor?.FullName}
+                            </td>
+                        </tr>
+                        <tr style=""font-weight: bold; width: 40%;"">
+                            <td>Catatan Pemohon</td>
+                            <td>Catatan MTD</td>
+                            <td class=""text-center"">Terminal Manager</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""5"" colspan=""1"" style=""width: 40%;"">
+        {ppmTask.RequestorNote}
+                            </td>
+                            <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
+        {ppmTask.MTDNote}
+                            </td>
+                            <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.TerminalManagerSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {terminalManager?.FullName}
+                            </td>
+                        </tr>
+                        </tr>
+                    </table>
+                    <div class=""small-text margin-top-10"">Print : {printTimestamp}</div>
+                </div>
+            </body>
+            </html>";
+        }
+        else
+        {
+            return $@"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: ""Segoe UI"", Calibri, Arial, sans-serif; font-size: 10px; line-height: 1.4; }}
+                    table {{ width: 100%; border-collapse: collapse; font-size: 10px; }}
+                    td, th {{ border: 1px solid black; padding: 5px; vertical-align: top; }}
+                    .header-section td {{ border: none; padding: 0; }}
+                    .section-title {{ background-color: #f2f2f2; text-align: center; font-weight: bold; font-size: medium; }}
+                    .small-text {{ font-size: 8px; }}
+                    .no-border, .no-border td {{ border: none; }}
+                    .signature-box {{ min-height: 80px; height: 100px; }}
+                    .margin-top-10 {{ margin-top: 10px; }}
+                    .margin-top-30 {{ margin-top: 30px; }}
+                    .margin-top-50 {{ margin-top: 50px; }}
+                    .text-center {{ text-align: center; }}
+                </style>
+            </head>
+            <body>
+                <div class=""container"">
+                    <table class=""header-section margin-top-30"">
+                        <tr>
+                            <td rowspan=""4"">
+                                <center><img src=""data:image/png;base64,{images.RpuLogo}"" style=""max-width: 50px; vertical-align: middle;"" /></center>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>PT. REDECO PETROLIN UTAMA</strong></td>
+                        </tr>
+                        <tr>
+                            <td>TERMINAL: Desa mangunreja, Kec. Puloampel, Serang, Banten, Indonesia</td>
+                        </tr>
+                        <tr>
+                            <td>Telp: (0254) 5750074, Fax: (0254) 5750073, E-mail: maintenance@redeco-rpu.com</td>
+                        </tr>
+                    </table>
+                    <table class=""header-section margin-top-50"">
+                        <tr>
+                            <td style=""font-size: medium;"" class=""text-center"" colspan=""2""><b>PERMINTAAN PEKERJAAN MAINTENANCE</b></td>
+                        </tr>
+                        <tr>
+                            <td>Rev-2 : 16-Januari-2023</td>
+                            <td style=""float: right;"">FM-MTD-03</td>
+                        </tr>
+                    </table>
+                    <table class=""margin-top-10"">
+                        <tr>
+                            <td colspan=""3"" class=""section-title"">PERMINTAAN</td>
+                        </tr>
+                        <tr>
+                            <td style=""width: 15%; font-weight: bold;"">ID PPM</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.PPMID}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Deskripsi Pekerjaan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.JobDescription}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Jenis Pekerjaan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmTask.JobCategory}</td>
+                        </tr>
+                        <tr>
+                            <td style=""font-weight: bold; width: 15%;"">Tanggal Pembuatan</td>
+                            <td colspan=""2"" style=""width: 85%;"">: {ppmDateCreated}</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""5"" colspan=""2"" style=""font-weight: bold; width: 80%; height: 170px; border-right: 0px;"">
+                                Gambar / Kondisi Awal<br /><br />
+                                <img src=""data:image/png;base64,{images.ImageBefore}"" style=""max-height: 150px;"" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold;"">Pemohon</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.RequestorSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {requestor.FullName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold; border: 0px; border-right: 1px solid black;""></td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px; border: 0px; border-right: 1px solid black;"">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan=""3"" class=""section-title"">PELAKSANAAN</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""4"" colspan=""1"" style=""font-weight: bold; width: 40%; height: 170px;"">
+                                Gambar / Kondisi Akhir<br /><br />
+                                <img src=""data:image/png;base64,{images.ImageAfter}"" style=""max-height: 150px;"" />
+                            </td>
+                            <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
+                                <b>Evaluasi Pelaksanaan</b><br>
+                                1. Target Penyelesaian : {ppmTask.TargetDate}<br>
+                                2. Kesesuaian terhadap Target : {targetCompletionStatus}<br>
+                                3. Evaluasi :<br>
+        {ppmTask.EvaluationNote}
+                            </td>
+                            <td class=""text-center"" style=""font-weight: bold;"">Pelaksana</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.MaintenanceSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {maintenance?.FullName}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class=""text-center"" style=""font-weight: bold;"">Atasan Pelaksana</td>
+                        </tr>
+                        <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.MaintenanceSupervisorSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {maintenanceSupervisor?.FullName}
+                            </td>
+                        </tr>
+                        <tr style=""font-weight: bold; width: 40%;"">
+                            <td>Catatan Pemohon</td>
+                            <td>Catatan MTD</td>
+                            <td class=""text-center"">Terminal Manager</td>
+                        </tr>
+                        <tr>
+                            <td rowspan=""5"" colspan=""1"" style=""width: 40%;"">
+        {ppmTask.RequestorNote}
+                            </td>
+                            <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
+        {ppmTask.MTDNote}
+                            </td>
+                            <tr class=""signature-box"">
+                            <td class=""text-center"" style=""vertical-align: bottom; height: 80px;"">
+                                <img src=""data:image/png;base64,{images.TerminalManagerSignature}"" style=""max-width: 100px; max-height : 60px;"" /><br />
+        {terminalManager?.FullName}
+                            </td>
+                        </tr>
+                        </tr>
+                    </table>
+                    <div class=""small-text margin-top-10"">Print : {printTimestamp}</div>
+                </div>
+            </body>
+            </html>";
+        }
+    }
+
+    // Kelas pembantu untuk mengemas gambar Base64
+    private class Base64Images
+    {
+        public string RpuLogo { get; set; } = string.Empty;
+        public string ImageBefore { get; set; } = string.Empty;
+        public string ImageAfter { get; set; } = string.Empty;
+        public string RequestorSignature { get; set; } = string.Empty;
+        public string ManagerSignature { get; set; } = string.Empty;
+        public string MaintenanceSignature { get; set; } = string.Empty;
+        public string MaintenanceSupervisorSignature { get; set; } = string.Empty;
+        public string TerminalManagerSignature { get; set; } = string.Empty;
+    }
+}
+
+<script>
+    function showPdfInIframe(base64Data) {
+        var iframe = document.getElementById('pdf-frame');
+        iframe.src = "data:application/pdf;base64," + base64Data;
+    }
+</script>

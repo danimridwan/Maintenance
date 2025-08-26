@@ -48,11 +48,11 @@ else
     {
         authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
 
-        await LoadPumps();
+        await LoadPPMStatusByYear();
         ConfigurePieConfig();
     }
 
-    private async Task LoadPumps()
+    private async Task LoadPPMStatusByYear()
     {
         try
         {

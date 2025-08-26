@@ -74,11 +74,11 @@ namespace MaintenanceWebApp.Services
 
             try
             {
-                var basePath = Path.Combine(_env.WebRootPath, "uploads", "images", subFolderName);
+                var basePath = Path.Combine(_env.WebRootPath, "uploads", subFolderName);
 
                 if (string.IsNullOrWhiteSpace(basePath))
                 {
-                    UploadErrorMessage = "Konfigurasi 'FileStorageInventories' tidak ditemukan atau kosong. Hubungi administrator.";
+                    UploadErrorMessage = "Konfigurasi 'Root' tidak ditemukan atau kosong. Hubungi administrator.";
                     return;
                 }
 
@@ -142,7 +142,7 @@ namespace MaintenanceWebApp.Services
                 return;
             }
 
-            var basePath = Path.Combine(_env.WebRootPath, "uploads", "images", subFolderName);
+            var basePath = Path.Combine(_env.WebRootPath, "uploads", subFolderName);
 
             if (string.IsNullOrWhiteSpace(basePath))
             {

@@ -1,73 +1,241 @@
+﻿/* Sidebar container */
+.nav-scrollable {
+    background-color: #0d2b59; /* Main deep blue color for a professional brand feel */
+    color: #ecf0f1; /* Light gray text for better contrast on dark background */
+    height: 100vh; /* Full viewport height */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #2980b9 #34495e; /* Blue thumb on dark gray track */
+}
+
+    /* Custom Scrollbar for Webkit browsers */
+    .nav-scrollable::-webkit-scrollbar {
+        width: 8px; /* Sleek scrollbar width */
+    }
+
+    .nav-scrollable::-webkit-scrollbar-track {
+        background: #34495e; /* Dark gray track matching submenu background */
+        border-radius: 4px;
+    }
+
+    .nav-scrollable::-webkit-scrollbar-thumb {
+        background-color: #2980b9; /* Accent blue thumb */
+        border-radius: 4px;
+        border: 1px solid #3498db; /* Light border for separation */
+    }
+
+        .nav-scrollable::-webkit-scrollbar-thumb:hover {
+            background-color: #3498db; /* Brighter blue on hover for feedback */
+        }
+
+/* Navigation Link Base */
+.nav-link {
+    display: flex;
+    align-items: center;
+    color: #ecf0f1; /* White-ish text for contrast */
+    border-radius: 8px; /* Soft edges for modern feel */
+    font-weight: 500;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    padding: 12px 20px; /* Balanced spacing */
+    font-family: 'Poppins', sans-serif; /* Professional and clean font */
+}
+
+    .nav-link:hover,
+    .nav-link.active {
+        background-color: #2980b9; /* Hover state with accent blue */
+        color: #ffffff; /* Keep text white on hover/active */
+    }
+
+/* Navigation Label Text */
+.nav-list {
+    font-size: 14px; /* Improved readability */
+}
+
+/* Collapsed Card Container (Submenu) */
+.collapse .card {
+    background-color: #34495e; /* Dark submenu for separation */
+    border: none;
+    border-radius: 8px;
+    margin: 4px 0;
+}
+
+/* Submenu Nav Links */
+.card .nav-link {
+    font-size: 13px; /* Slightly smaller for hierarchy */
+    padding: 10px 20px;
+}
+
+    .card .nav-link:hover {
+        background-color: #3498db; /* Lighter blue on hover */
+    }
+
+/* Logo Styling */
+#nav-logo img {
+    max-height: 48px; /* Slightly larger for visual prominence */
+}
+
+/* Header Title */
+#nav-title label {
+    font-size: 16px; /* Bigger title text */
+    font-weight: bold;
+    color: #ecf0f1; /* Light for contrast */
+}
+
+/* Logo Hover Effect */
 .nav-logo img:hover {
-    background-color: rgba(255,255,255,0.5);
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle white overlay on hover */
     border-radius: 5px;
     cursor: pointer;
 }
 
+/* Toggler Styling */
 .navbar-toggler {
     background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Top Row / Navbar */
 .top-row {
-    height: 3.5rem;
-    background-color: rgba(0,0,0,0.4);
+    height: 4rem; /* Consistent header height */
+    background-color: rgba(0, 0, 0, 0.5); /* Transparent black for focus */
 }
 
 .navbar-brand {
-    font-size: 1.1rem;
+    font-size: 1.5rem;
 }
 
+/* Icon Styling */
 .oi {
-    width: 2rem;
-    font-size: 1.1rem;
-    vertical-align: text-top;
-    top: -2px;
+    width: 1.75rem;
+    font-size: 1.1rem; /* Unified icon sizing */
+    margin-right: 0.5rem;
+    color: #bbbbbb; /* Subtle neutral icon tone */
+    transition: all 0.2s ease;
 }
 
-.nav-link :hover {
-    cursor: pointer;
-}
-
+/* Nav Item Container */
 .nav-item {
-    font-size: 0.9rem;
-    padding-bottom: 0.5rem;
+    font-size: 0.95rem;
+    margin: 0.5rem 1rem;
+    transition: all 0.3s ease-in-out;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.05); /* Soft background box for nav item */
 }
+
+    .nav-item:hover {
+        background-color: rgba(41, 128, 185, 0.2); /* Blue tint on hover */
+        cursor: pointer;
+    }
 
     .nav-item:first-of-type {
-        padding-top: 1rem;
+        margin-top: 1.5rem; /* Padding top first item */
     }
 
     .nav-item:last-of-type {
-        padding-bottom: 1rem;
+        margin-bottom: 1.5rem; /* Padding bottom last item */
     }
 
+    /* Deep styling for nested links */
     .nav-item ::deep a {
-        color: #d7d7d7;
-        border-radius: 4px;
-        height: 3rem;
+        color: #e0e0e0;
+        height: auto;
+        min-height: 3rem;
         display: flex;
         align-items: center;
-        line-height: 3rem;
+        text-decoration: none;
+        position: relative;
+        z-index: 1;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+        border-left: 3px solid transparent;
     }
 
-.nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.25);
-    color: white;
+        .nav-item ::deep a:hover {
+            background-color: rgba(41, 128, 185, 0.15); /* Blue hover background */
+            color: #ffffff;
+            border-left-color: rgba(41, 128, 185, 0.5); /* Indicator border */
+        }
+
+        .nav-item ::deep a.active {
+            background-color: rgba(41, 128, 185, 0.25);
+            border-left-color: #2980b9; /* Strong indicator for active */
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        /* Fancy background hover effect */
+        .nav-item ::deep a::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(41, 128, 185, 0.3), transparent);
+            transition: width 0.3s ease;
+            z-index: -1;
+        }
+
+        .nav-item ::deep a:hover::before {
+            width: 100%;
+        }
+
+        /* Icon state changes on hover & active */
+        .nav-item ::deep a.active .oi,
+        .nav-item ::deep a:hover .oi {
+            color: #ffffff;
+            transform: scale(1.1); /* Slight pop on hover/active */
+        }
+
+/* Submenu item spacing */
+.collapse .nav-item {
+    margin: 0.15rem 0;
 }
 
-.nav-item ::deep a:hover {
-    background-color: rgba(255,255,255,0.1);
-    color: white;
+    /* Submenu nav link inside collapse */
+    .collapse .nav-item ::deep a {
+        padding-left: 2rem; /* Left indent to show nesting */
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+
+        .collapse .nav-item ::deep a:hover {
+            background-color: rgba(41, 128, 185, 0.1);
+        }
+
+/* Bullet for submenu items */
+.sub-menu .nav-item .nav-list:before {
+    content: '•';
+    margin-right: 0.5rem;
+    color: #2980b9;
+    font-size: 0.85rem;
+    line-height: 0;
 }
 
+/* Collapse indicator (arrow ▼) */
+[data-toggle="collapse"]::after {
+    content: '▼';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%) rotate(0);
+    font-size: 0.65rem;
+    color: #bbbbbb;
+    transition: all 0.3s ease;
+}
+
+[aria-expanded="true"]::after {
+    transform: translateY(-50%) rotate(180deg); /* Flip arrow when expanded */
+}
+
+/* Responsive adjustments */
 @media (min-width: 641px) {
     .navbar-toggler {
-        display: none;
+        display: none; /* Hide toggler on wide screens */
     }
-    
+
     .nav-scrollable {
-        /* Allow sidebar to scroll for tall menus */
-        height: calc(100vh - 3.5rem);
+        height: calc(100vh - 4rem); /* Subtract top-row height */
         overflow-y: auto;
     }
 }

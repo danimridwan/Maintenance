@@ -14,97 +14,120 @@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
 
 <div class="card">
-
     <div class="card-body">
-        @if (breatherValve == null)
+        @if (isDataLoading)
         {
-            <p><em>Memuat Data Breather Valve...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p>Memuat data breather valve...</p>
+            </div>
+        }
+        else if (breatherValve == null)
+        {
+            <div class="text-center py-3">
+                <p>Data breather valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
             <h3>Hapus Breather Valve</h3>
-
             <hr />
-
             <p>Anda yakin ingin menghapus Breather Valve dengan Tangki: <b>@breatherValve.Tank</b> ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeleteBreatherValve">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <button type="button" class="btn btn-danger me-2" @onclick="DeleteBreatherValveAsync">Hapus</button>
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
     [Parameter]
     public int BreatherValveID { get; set; }
-    private BreatherValve breatherValve;
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    private BreatherValve? breatherValve;
+    private bool isDataLoading = true;
 
-    //File
-    private string subFolderName = "Inventories";
-    private string folderName = "Breather Valve";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+    private const string FOLDER_NAME = "Breather Valve";
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        await LoadBreatherValve();
+        await LoadBreatherValveAsync();
+        isDataLoading = false;
     }
 
-    //Read Data Breather Valve
-    private async Task LoadBreatherValve()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadBreatherValveAsync()
     {
         try
         {
-            //Read Breather Valve using Service
+            // Membaca data Breather Valve berdasarkan ID.
             breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
+            if (breatherValve == null)
+            {
+                await NotificationService.AlertMessage("Data breather valve tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data Breather Valve. Hubungi administrator.";
-            logMessage = $"Gagal memuat data Breather Valve\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data breather valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data breather valve dengan ID {BreatherValveID}. Detail: {ex.Message}");
+            breatherValve = null; // Memastikan objek null agar UI menampilkan pesan error
         }
     }
 
-    //Delete Data Breather Valve
-    private async Task DeleteBreatherValve()
+    private async Task DeleteBreatherValveAsync()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(breatherValve);
-
-        //File Delete using File Upload Service
-        await UploadService.FileChange(breatherValve.Image, subFolderName);
-        breatherValve.Image = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (breatherValve == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Data breather valve tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        NavigationManager.NavigateTo("/BreatherValveList?status=DeleteSuccess");
+        try
+        {
+            // Menghapus file terkait sebelum menghapus data dari database.
+            await DeleteAssociatedFileAsync();
+
+            // Melakukan penghapusan record dari database.
+            await CRUDService.DeleteAsync(breatherValve);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data breather valve dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data breather valve dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            // Arahkan kembali ke halaman daftar dengan status sukses.
+            NavigationManager.NavigateTo("/BreatherValveList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus breather valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus breather valve dengan ID {breatherValve.BreatherValveID}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteAssociatedFileAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(breatherValve?.Image))
+        {
+            await UploadService.FileChange(breatherValve.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
+                NotificationService.LogMessage($"Gagal menghapus file '{breatherValve.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
     {
         NavigationManager.NavigateTo("/BreatherValveList");
-    }
-
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
-    {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
     }
 }

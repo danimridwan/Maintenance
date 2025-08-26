@@ -126,6 +126,29 @@ namespace MaintenanceWebApp.Services
                 CRUDErrorMessage = $"Error deleting entity: {ex.Message}";
             }
         }
+
+        public async Task<int> CountAsync<T>(Expression<Func<T, bool>>? filter = null) where T : class
+        {
+            try
+            {
+                using (var context = new DataContext(_options))
+                {
+                    IQueryable<T> query = context.Set<T>();
+
+                    if (filter != null)
+                    {
+                        query = query.Where(filter);
+                    }
+                    return await query.CountAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                CRUDErrorMessage = $"Error counting entities: {ex.Message}";
+                return 0;
+            }
+        }
+
     }
 
     // Perlu menambahkan PredicateBuilder untuk mendukung OrElse pada Expression<Func<T, bool>>

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Configuration;
 using UploadFilesLibrary;
+using NuGet.Packaging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +21,7 @@ builder.Services.AddScoped<TableService>();
 builder.Services.AddScoped<PPMWorkflowService>();
 builder.Services.AddScoped<IdentityService>();
 
+
 //Mailer
 builder.Services.Configure<SMTPSettings>(builder.Configuration.GetSection("Mailer"));
 builder.Services.AddSingleton<IMailerService, MailerService>();
@@ -29,7 +31,6 @@ builder.Services.AddDbContextFactory<DataContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<DataContext>();
-
 
 builder.Services.AddIdentity<User, IdentityRole>(options =>
 {

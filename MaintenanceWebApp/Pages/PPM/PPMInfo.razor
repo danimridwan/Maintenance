@@ -8,6 +8,8 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.IO
+@using System.Threading.Tasks
+@inject IWebHostEnvironment _webHostEnvironment
 @inject IDbContextFactory<DataContext> DbFactory
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
@@ -19,392 +21,473 @@
 @inject NotificationService NotificationService
 @inject PPMWorkflowService PPMWorkflowService
 
-@* Roles Authorize *@
 @attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-<div class="card">
+@if (_isLoading)
+{
+    <div class="text-center py-4">
+        <div class="spinner-border text-primary mb-2" role="status"></div>
+        <p class="text-muted">Memuat Data PPM...</p>
+    </div>
+}
+else
+{
     @if (ppmTask != null && supervisor != null)
     {
-        <div class="card-header bg-light border-primary">
-            @* Tab Header *@
-            <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
-                <li class="nav-item">
-                    <a href="PPMList" class="nav-link" aria-label="Kembali ke Daftar PPM">
-                        <span class="oi oi-chevron-left"></span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link active" id="permintaan-tab" data-bs-toggle="tab" data-bs-target="#permintaan" type="button" role="tab" aria-controls="permintaan" aria-selected="true">
-                        Permintaan
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="pelaksanaan-tab" data-bs-toggle="tab" data-bs-target="#pelaksanaan" type="button" role="tab" aria-controls="pelaksanaan" aria-selected="true">
-                        Pelaksanaan
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="true">
-                        History
-                    </button>
-                </li>
-            </ul>
-        </div>
-        <div class="card-body">
-            @* Informasi PPM *@
-            <div class="tab-content" id="ppmTabContent">
-                @* Tab Permintaan *@
-                <div class="tab-pane fade show active" id="permintaan" role="tabpanel" aria-labelledby="permintaan-tab">
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <h5 class="display-6">Permintaan</h5><hr />
-                            <table width="100%">
-                                <tr>
-                                    <td width="15%" class="td-first">ID</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">@ppmTask.PPMID</td>
-                                </tr>
-                                <tr>
-                                    <td width="15%" class="td-first">Status PPM</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">
-                                        @if (ppmTask.Level == PPMStatusLevel.Request)
-                                        {
-                                            <label class="btn btn-warning">Request</label>
-                                        }
-                                        else if (ppmTask.Level == PPMStatusLevel.ApprovedByManager || ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
-                                        {
-                                            <label class="btn btn-info">Pending Approval</label>
-                                        }
-                                        else if (ppmTask.Level == PPMStatusLevel.OnProgress)
-                                        {
-                                            <label class="btn btn-info">On Progress</label>
-                                        }
-                                        else if (ppmTask.Level == PPMStatusLevel.Checking)
-                                        {
-                                            <label class="btn btn-secondary">Checking</label>
-                                        }
-                                        else if (ppmTask.Level == PPMStatusLevel.Completed)
-                                        {
-                                            <label class="btn btn-success">Completed</label>
-                                        }
-                                        else if (ppmTask.Level == PPMStatusLevel.Rejected)
-                                        {
-                                            <label class="btn btn-danger">Rejected</label>
-                                        }
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td width="15%" class="td-first">Pemohon</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">@supervisor.FullName</td>
-                                </tr>
-                                <tr>
-                                    <td width="15%" class="td-first">Section</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">@supervisor.Section</td>
-                                </tr>
-                                <tr>
-                                    <td width="15%" class="td-first">Divisi</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">@supervisor.RoleCategory</td>
-                                </tr>
-                                <tr>
-                                    <td width="15%" class="td-first">Jenis Pekerjaan</td>
-                                    <td width="5%"> : </td>
-                                    <td width="80%" class="td-last">@ppmTask.JobCategory</td>
-                                </tr>
-                            </table>
-                            <br />
-                            <b>Deskripsi Pekerjaan :</b><br />
-                            <label>@ppmTask.JobDescription</label>
-                            <br /><br />
-                            <b>Foto Awal</b><br />
-                            @if (!string.IsNullOrWhiteSpace(ppmTask.ImageBefore))
+        <div class="card">
+            <div class="card-header bg-light border-primary">
+                @* Tab Header *@
+                <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                    <li class="nav-item">
+                        <a @onclick="NavigateToPPMList" class="nav-link" aria-label="Kembali ke Daftar PPM">
+                            <span class="oi oi-chevron-left"></span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link active" id="permintaan-tab" data-bs-toggle="tab" data-bs-target="#permintaan" type="button" role="tab" aria-controls="permintaan" aria-selected="true">
+                            Permintaan
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="pelaksanaan-tab" data-bs-toggle="tab" data-bs-target="#pelaksanaan" type="button" role="tab" aria-controls="pelaksanaan" aria-selected="false">
+                            Pelaksanaan
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                            Riwayat
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                @* Informasi PPM *@
+                <div class="tab-content" id="ppmTabContent">
+                    <div class="tab-pane fade show active" id="permintaan" role="tabpanel" aria-labelledby="permintaan-tab">
+                        <div class="container">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h5 class="mb-3 display-6">Permintaan</h5>
+                                </div>
+                                <div style="align-content: center;" class="col-md-4">
+                                    @* Tombol Print *@
+                                    @if (CanPrint())
+                                    {
+                                        <button style="float: right;" type="button" class="btn btn-sm btn-danger mx-2" @onclick="ExportToPdf">
+                                            <span class="oi oi-document" aria-hidden="true"></span> Export to PDF
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            <hr />
+
+                            <div class="row mb-2">
+                                <div class="col-md-4 font-weight-bold">ID</div>
+                                <div class="col-md-8">@ppmTask.PPMID</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4 font-weight-bold">Status PPM</div>
+                                <div class="col-md-8">
+                                    <span class="badge @GetStatusCssClass(ppmTask)">
+                                        @GetStatusText(ppmTask)
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4 font-weight-bold">Pemohon</div>
+                                <div class="col-md-8">@supervisor.FullName</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-4 font-weight-bold">Section</div>
+                                <div class="col-md-8">@supervisor.Section</div>
+                            </div>
+
+                            <div class="row mb-4">
+                                <div class="col-md-4 font-weight-bold">Jenis Pekerjaan</div>
+                                <div class="col-md-8">@ppmTask.JobCategory</div>
+                            </div>
+
+                            <hr />
+
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <h6 class="mb-2">Deskripsi Pekerjaan</h6>
+                                    <p>@(string.IsNullOrWhiteSpace(ppmTask.JobDescription) ? "Tidak ada Deskripsi" : ppmTask.JobDescription)</p>
+
+                                    <h6 class="mt-4">Dokumen</h6>
+                                    @if (!string.IsNullOrWhiteSpace(ppmTask.Document))
+                                    {
+                                        <a class="btn btn-outline-primary btn-sm" href="@CreateFilePath(ppmTask.Document)" target="_blank">
+                                            <i class="bi bi-file-earmark-text"></i> @ppmTask.Document
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">Tidak ada dokumen terlampir.</p>
+                                    }
+
+                                    <h6 class="mb-2 mt-3">Foto Awal</h6>
+                                    @if (!string.IsNullOrWhiteSpace(ppmTask.ImageBefore))
+                                    {
+                                        <img class="img-fluid rounded border shadow-sm" style="max-height: 300px;" src="@CreateFilePath(ppmTask.ImageBefore)" alt="Image Before" />
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">Tidak ada foto.</p>
+                                    }
+
+                                    @if (!string.IsNullOrWhiteSpace(ppmTask.RejectionNote))
+                                    {
+                                        <div class="alert alert-danger mt-3" role="alert">
+                                            <h6>Alasan Penolakan</h6>
+                                            <hr />
+                                            <p>@ppmTask.RejectionNote</p>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            @* Tombol Aksi *@
+                            @if (CanShowActionButtons())
                             {
-                                <img style="max-height: 300px;" src="@CreateFilePath(ppmTask.ImageBefore)" alt="Image Before" />
+                                <div class="text-end">
+                                    @* Tombol Reject *@
+                                    @if (CanReject())
+                                    {
+                                        <button type="button" class="btn btn-danger mx-2" data-bs-toggle="modal" data-bs-target="#rejectionModal">
+                                            Tolak
+                                        </button>
+                                    }
+
+                                    @* Tombol Approve/Complete *@
+                                    @if (CanApproveOrComplete())
+                                    {
+                                        <button type="button" class="btn btn-success mx-2" data-bs-toggle="modal" data-bs-target="#approvalModal">
+                                            @(IsMaintenanceOnProgress ? "Selesai" : "Setuju")
+                                        </button>
+                                    }
+
+                                    @* Tombol Cancel *@
+                                    @if (CanCancel())
+                                    {
+                                        <button type="button" class="btn btn-danger mx-2" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                            Batal
+                                        </button>
+                                    }
+                                </div>
                             }
-                            <br /><br />
-                            <b>Dokumen :</b><br />
-                            <a href="@CreateFilePath(ppmTask.Document)" target="_blank">@ppmTask.Document</a>
                         </div>
                     </div>
-                </div>
 
-                @* Tab Pelaksanaan *@
-                <div class="tab-pane fade" id="pelaksanaan" role="tabpanel" aria-labelledby="pelaksanaan-tab">
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <h5 class="display-6">Pelaksanaan</h5><hr />
-                            <b>Target Tanggal Penyelesaian :</b><br />
-                            <label>@(ppmTask.TargetDate?.ToShortDateString() ?? "Belum ditentukan")</label>
-                            <br /><br />
-                            <b>Kesesuaian Terhadap Target :</b>
-                            <label>@(ppmTask.TargetCompletion.HasValue ? (ppmTask.TargetCompletion.Value ? "Ya" : "Tidak") : "-")</label>
-                            <br /><br />
-                            <b>Catatan (MTD) :</b><br />
-                            <label>@(string.IsNullOrWhiteSpace(ppmTask.MTDNote) ? "-" : ppmTask.MTDNote)</label>
-                            <br /><br />
-                            <b>Evaluasi :</b><br />
-                            <label>@(string.IsNullOrWhiteSpace(ppmTask.EvaluationNote) ? "-" : ppmTask.EvaluationNote)</label>
-                            <br /><br />
-                            <b>Catatan (Pemohon) :</b><br />
-                            <label>@(string.IsNullOrWhiteSpace(ppmTask.RequestorNote) ? "-" : ppmTask.RequestorNote)</label>
-                            <br /><br />
-                            <b>Foto Akhir</b><br />
+                    @* Tab Pelaksanaan *@
+                    <div class="tab-pane fade" id="pelaksanaan" role="tabpanel" aria-labelledby="pelaksanaan-tab">
+                        <div class="container">
+                            <h5 class="mb-3 display-6">Pelaksanaan</h5>
+                            <hr />
+
+                            <div class="row mb-2">
+                                <div class="col-md-3"><h6>Target Tanggal Penyelesaian</h6></div>
+                                <div class="col-md-9">: @(ppmTask.TargetDate?.ToShortDateString() ?? "Belum ditentukan")</div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3"><h6>Kesesuaian Terhadap Target</h6></div>
+                                <div class="col-md-9">: @(ppmTask.TargetCompletion.HasValue ? (ppmTask.TargetCompletion.Value ? "Ya" : "Tidak") : "-")</div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <h6 class="mb-2">Catatan (MTD)</h6>
+                                    <p>@(string.IsNullOrWhiteSpace(ppmTask.MTDNote) ? "Tidak ada catatan" : ppmTask.MTDNote)</p>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <h6 class="mb-2">Evaluasi</h6>
+                                    <p>@(string.IsNullOrWhiteSpace(ppmTask.EvaluationNote) ? "Tidak ada catatan evaluasi" : ppmTask.EvaluationNote)</p>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <h6 class="mb-2">Catatan (Pemohon)</h6>
+                                    <p>@(string.IsNullOrWhiteSpace(ppmTask.RequestorNote) ? "Tidak ada catatan" : ppmTask.RequestorNote)</p>
+                                </div>
+                            </div>
+
+                            <h6 class="mb-2 mt-3">Foto Akhir</h6>
                             @if (!string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
                             {
-                                <img style="max-height: 300px;" src="@CreateFilePath(ppmTask.ImageAfter)" alt="Image After" />
+                                <img class="img-fluid rounded border shadow-sm" style="max-height: 300px;" src="@CreateFilePath(ppmTask.ImageAfter)" alt="Image After" />
                             }
                             else
                             {
-                                <p>Tidak ada foto akhir.</p>
+                                <p class="text-muted">Tidak ada foto.</p>
                             }
                         </div>
                     </div>
-                </div>
 
-                @* Tab History *@
-                <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-                    <div class="form-group row">
-                        <div class="col-sm-12">
-                            <h5 class="display-6">Riwayat PPM</h5>
-                            <hr />
-                            @if (ppmHistoryList != null && ppmHistoryList.Any())
-                            {
-                                <table class="table table-bordered table-striped">
-                                    <tbody>
-                                        @foreach (var history in ppmHistoryList)
-                                        {
+                    @* Tab Riwayat *@
+                    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                        <div class="form-group row">
+                            <div class="col-sm-12">
+                                <h5 class="display-6">Riwayat PPM</h5>
+                                <hr />
+                                @if (ppmHistoryList != null && ppmHistoryList.Any())
+                                {
+                                    <table width="100%" class="table table-bordered table-striped">
+                                        <thead>
                                             <tr>
-                                                <td>@history.Description</td>
+                                                <th width="12%">Tanggal</th>
+                                                <th width="8%">Jam</th>
+                                                <th width="80%">Deskripsi</th>
                                             </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-                            else
-                            {
-                                <p>Belum ada riwayat untuk PPM ini.</p>
-                            }
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var history in ppmHistoryList)
+                                            {
+                                                <tr>
+                                                    <td>@history.DateUpdated.ToString("yyyy-MM-dd")</td>
+                                                    <td>@history.DateUpdated.ToString("HH:mm")</td>
+                                                    <td>@history.Description</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <p>Belum ada riwayat untuk PPM ini.</p>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            @* Tombol Aksi (di luar tab, agar tidak duplikasi) *@
-            <div class="text-end">
-                @if (ppmTask.Level != PPMStatusLevel.Completed && ppmTask.Level != PPMStatusLevel.Rejected)
-                {
-                    // Tombol Reject (jika ada peran yang bisa reject dari status saat ini)
-                    @if ((dataPermissionManager && ppmTask.Level == PPMStatusLevel.Request) ||
-            (dataPermissionTerminalManager && ppmTask.Level == PPMStatusLevel.ApprovedByManager) ||
-            (dataPermissionMaintenanceSupervisor && ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager) ||
-            (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking))
-                    {
-                        <!-- Button trigger modal -->
-                        <button type="button" class="btn btn-danger mx-2" data-toggle="modal" data-target="#rejectionModal">
-                            Tolak
-                        </button>
-                    }
-
-                    @* Rejection Modal (Contoh, Anda bisa tambahkan ini) *@
-                    <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="rejectionModalLabel">Tolak PPM</h5>
-                                    <button style="border: transparent; background-color: transparent;" type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <EditForm Model="ppmTask" OnValidSubmit='(() => HandleAction("Reject"))'>
-                                        <DataAnnotationsValidator />
-                                        <ValidationSummary />
-
-                                        <label for="RejectionNote" class="col-form-label">Alasan Penolakan<span class="required">*</span></label>
-                                        <InputTextArea id="RejectionNote" @bind-Value="ppmTask.RejectionNote" class="form-control" required />
-                                        <ValidationMessage For="@(() => ppmTask.RejectionNote)" />
-
-                                        <div class="modal-footer mt-4">
-                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                                            <button type="submit" class="btn btn-danger">Tolak</button>
-                                        </div>
-                                    </EditForm>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    // Tombol Approve / Complete (sesuai peran dan level)
-                    @if ((dataPermissionManager && ppmTask.Level == PPMStatusLevel.Request) ||
-            (dataPermissionTerminalManager && ppmTask.Level == PPMStatusLevel.ApprovedByManager) ||
-            (dataPermissionMaintenanceSupervisor && ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager) ||
-            (dataPermissionMaintenance && ppmTask.Level == PPMStatusLevel.OnProgress) ||
-            (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking))
-                    {
-                        <!-- Button trigger modal -->
-                        <button type="button" class="btn btn-success mx-2" data-toggle="modal" data-target="#approvalModal">
-                            @(dataPermissionMaintenance && ppmTask.Level == PPMStatusLevel.OnProgress ? "Selesai" : "Setuju")
-                        </button>
-                    }
-
-                    @* Approval Modal *@
-                    <div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="approvalModalLabel" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="approvalModalLabel">Konfirmasi Aksi PPM</h5>
-                                    <button style="border: transparent; background-color: transparent;" type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <EditForm Model="ppmTask" OnValidSubmit='(() => HandleAction("Approve"))'>
-                                        <DataAnnotationsValidator />
-                                        <ValidationSummary />
-
-                                        @if (dataPermissionManager)
-                                        {
-                                            <label>Anda ingin menyetujui PPM ini?</label>
-                                        }
-                                        @if (dataPermissionTerminalManager)
-                                        {
-                                            <label for="TargetDate" class="col-form-label">Target Penyelesaian<span class="required">*</span></label>
-                                            <InputDate id="TargetDate" @bind-Value="ppmTask.TargetDate" class="form-control" required />
-                                            <ValidationMessage For="@(() => ppmTask.TargetDate)" />
-                                        }
-                                        @if (dataPermissionMaintenanceSupervisor)
-                                        {
-                                            <label for="KategoriMaintenance" class="col-form-label">Kategori Maintenance<span class="required">*</span></label>
-                                            <InputSelect id="KategoriMaintenance" @bind-Value="maintenanceSelectCategory" class="form-control" required>
-                                                <option value="">Pilih Kategori</option>
-                                                @foreach (var cat in maintenanceCategory)
-                                                {
-                                                    <option value="@cat">@cat</option>
-                                                }
-                                            </InputSelect>
-                                            <ValidationMessage For="@(() => maintenanceSelectCategory)" />
-
-                                            if (!string.IsNullOrEmpty(maintenanceSelectCategory))
-                                            {
-                                                ppmTask.MaintenanceCategory = maintenanceSelectCategory;
-                                                LoadMaintenancePIC();
-                                            }
-
-                                            @if (MaintenancePICs.Any())
-                                            {
-                                                <label for="MaintenancePIC" class="col-form-label mt-3">Maintenance PIC<span class="required">*</span></label>
-                                                <InputSelect id="MaintenancePIC" @bind-Value="ppmTask.MaintenancePIC" class="form-control" required>
-                                                    <option value="">Pilih PIC</option>
-                                                    @foreach (var maintenance in MaintenancePICs)
-                                                    {
-                                                        <option value="@maintenance.FullName">@maintenance.FullName</option>
-                                                    }
-                                                </InputSelect>
-                                                <ValidationMessage For="@(() => ppmTask.MaintenancePIC)" />
-                                            }
-                                            else
-                                            {
-                                                <p class="text-danger mt-2">Tidak ada PIC Maintenance untuk kategori ini.</p>
-                                            }
-                                        }
-                                        @if (dataPermissionMaintenance)
-                                        {
-                                            <p>Target Penyelesaian : <b>@(ppmTask.TargetDate?.ToShortDateString() ?? "N/A")</b></p>
-                                            <p>
-                                                Kesesuaian Terhadap Target :
-                                                @if (IsTargetDatePassed())
-                                                {
-                                                    <b class="text-danger"> Tidak</b>
-                                                }
-                                                else
-                                                {
-                                                    <b> Ya</b>
-                                                }
-                                            </p>
-
-                                            <label for="EvaluasiPelaksanaan" class="col-form-label">Evaluasi Pelaksanaan</label>
-                                            <InputTextArea id="EvaluasiPelaksanaan" @bind-Value="ppmTask.EvaluationNote" class="form-control" />
-                                            <ValidationMessage For="@(() => ppmTask.EvaluationNote)" />
-
-                                            <label for="CatatanMTD" class="col-form-label mt-3">Catatan MTD</label>
-                                            <InputTextArea id="CatatanMTD" @bind-Value="ppmTask.MTDNote" class="form-control" />
-                                            <ValidationMessage For="@(() => ppmTask.MTDNote)" />
-
-                                            <div class="col-sm-12 mb-3 mt-3">
-                                                <label for="Foto" class="col-form-label">Foto Kondisi Akhir<span class="required">*</span></label>
-                                                @if (string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
-                                                {
-                                                    <InputFile id="Foto" class="form-control"
-                                                    accept=".jpg,.jpeg,.png"
-                                                    OnChange="HandleFileUpload" />
-                                                    <ValidationMessage For="@(() => ppmTask.ImageAfter)" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="d-flex align-items-center">
-                                                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(ppmTask.ImageAfter)" alt="Image After"><br />
-                                                        <button @onclick="HandleFileChange" type="button" class="btn btn-secondary btn-sm ms-3">Ubah Foto</button>
-                                                    </div>
-
-                                                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-                                                    {
-                                                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
-                                                    }
-                                                }
-                                            </div>
-                                        }
-                                        @if (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking)
-                                        {
-                                            <label for="CatatanPemohon" class="col-form-label">Catatan</label>
-                                            <InputTextArea id="CatatanPemohon" @bind-Value="ppmTask.RequestorNote" class="form-control" />
-                                            <ValidationMessage For="@(() => ppmTask.RequestorNote)" />
-
-                                            <br /><label><b>Anda ingin menyetujui PPM ini sebagai selesai?</b></label>
-                                        }
-                                        
-                                        <div class="modal-footer mt-4">
-                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                                            <button type="submit" class="btn btn-success">
-                                                @(dataPermissionMaintenance && ppmTask.Level == PPMStatusLevel.OnProgress ? "Selesaikan" : "Setuju")
-                                            </button>
-                                        </div>
-                                    </EditForm>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-
         </div>
 
+        @* Rejection Modal *@
+        <div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="rejectionModalLabel">Tolak PPM</h5>
+                        <button style="border: transparent; background-color: transparent;" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="ppmTask" OnValidSubmit='(() => HandleAction("Reject"))'>
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <label for="RejectionNote" class="col-form-label">Alasan Penolakan<span class="required">*</span></label>
+                            <InputTextArea id="RejectionNote" @bind-Value="ppmTask.RejectionNote" class="form-control" required />
+                            <ValidationMessage For="@(() => ppmTask.RejectionNote)" />
+
+                            <div class="modal-footer mt-4">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-danger">Tolak</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Approval Modal *@
+        <div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="approvalModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="approvalModalLabel">Konfirmasi Aksi PPM</h5>
+                        <button style="border: transparent; background-color: transparent;" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="ppmTask" OnValidSubmit='(() => HandleAction("Approve"))'>
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            @if (CanApproveWithTargetDate())
+                            {
+                                <label for="TargetDate" class="col-form-label">Target Penyelesaian<span class="required">*</span></label>
+                                <InputDate id="TargetDate" @bind-Value="ppmTask.TargetDate" class="form-control" min="@todayDate" required />
+                                <ValidationMessage For="@(() => ppmTask.TargetDate)" />
+                            }
+                            else if (CanApproveWithMaintenancePIC())
+                            {
+                                <label for="KategoriMaintenance" class="col-form-label">Kategori Maintenance<span class="required">*</span></label>
+                                <InputSelect id="KategoriMaintenance" @bind-Value="maintenanceSelectCategory" class="form-control" required>
+                                    <option value="">Pilih Kategori</option>
+                                    @foreach (var cat in maintenanceCategory)
+                                    {
+                                        <option value="@cat">@cat</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => maintenanceSelectCategory)" />
+
+                                @if (!string.IsNullOrEmpty(maintenanceSelectCategory))
+                                {
+                                    ppmTask.MaintenanceCategory = maintenanceSelectCategory;
+                                    LoadMaintenancePIC();
+
+                                    @if (MaintenancePICs.Any())
+                                    {
+                                        <label for="MaintenancePIC" class="col-form-label mt-3">Maintenance PIC<span class="required">*</span></label>
+                                        <InputSelect id="MaintenancePIC" @bind-Value="ppmTask.MaintenancePIC" class="form-control" required>
+                                            <option value="" selected>Pilih PIC</option>
+                                            @foreach (var maintenance in MaintenancePICs)
+                                            {
+                                                <option value="@maintenance.FullName">@maintenance.FullName</option>
+                                            }
+                                        </InputSelect>
+                                        <ValidationMessage For="@(() => ppmTask.MaintenancePIC)" />
+                                    }
+                                    else
+                                    {
+                                        <p class="text-danger mt-2">Tidak ada PIC Maintenance untuk kategori ini.</p>
+                                    }
+                                }
+                            }
+                            else if (CanComplete())
+                            {
+                                <p>Target Penyelesaian : <b>@(ppmTask.TargetDate?.ToShortDateString() ?? "N/A")</b></p>
+                                <p>
+                                    Kesesuaian Terhadap Target :
+                                    <b>@(IsTargetDatePassed() ? "Tidak" : "Ya")</b>
+                                </p>
+
+                                <label for="EvaluasiPelaksanaan" class="col-form-label">Evaluasi Pelaksanaan</label>
+                                <InputTextArea id="EvaluasiPelaksanaan" @bind-Value="ppmTask.EvaluationNote" class="form-control" />
+                                <ValidationMessage For="@(() => ppmTask.EvaluationNote)" />
+
+                                <label for="CatatanMTD" class="col-form-label mt-3">Catatan MTD</label>
+                                <InputTextArea id="CatatanMTD" @bind-Value="ppmTask.MTDNote" class="form-control" />
+                                <ValidationMessage For="@(() => ppmTask.MTDNote)" />
+
+                                <div class="col-sm-12 mb-3 mt-3">
+                                    <label for="Foto" class="col-form-label">Foto Kondisi Akhir<span class="required">*</span></label>
+                                    @if (!imageAfterStatus)
+                                    {
+                                        <InputFile id="Foto" class="form-control"
+                                        accept=".jpg,.jpeg,.png"
+                                        OnChange="HandleFileUpload" />
+                                        <ValidationMessage For="@(() => imageAfterPath)" />
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(imageAfterPath)" alt="Image After">
+                                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                                        {
+                                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                                        }
+                                    }
+                                </div>
+                            }
+                            else if (CanCheckAndComplete())
+                            {
+                                <label for="CatatanPemohon" class="col-form-label">Catatan</label>
+                                <InputTextArea id="CatatanPemohon" @bind-Value="ppmTask.RequestorNote" class="form-control" />
+                                <ValidationMessage For="@(() => ppmTask.RequestorNote)" />
+
+                                <br />
+
+                                <label><b>Anda ingin menyetujui PPM ini sebagai selesai?</b></label>
+                            }
+                            else
+                            {
+                                <label>Anda ingin menyetujui PPM ini?</label>
+                            }
+
+                            <div class="modal-footer mt-4">
+                                <button @onclick="DeletePpmFiles" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                <button type="submit" class="btn btn-success">
+                                    @(IsMaintenanceOnProgress ? "Selesaikan" : "Setuju")
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Cancel Modal *@
+        <div class="modal fade" id="cancelModal" tabindex="-1" role="dialog" aria-labelledby="cancelModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cancelModalLabel">Konfirmasi Aksi PPM</h5>
+                        <button style="border: transparent; background-color: transparent;" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label>Anda yakin ingin membatalkan laporan PPM ini?</label>
+
+                        <div class="modal-footer mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tidak</button>
+                            <button @onclick="HandleCancel" type="button" class="btn btn-danger">
+                                Ya, Batalkan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
     else
     {
-        <p>Memuat Data PPM...</p>
+        <div class="alert alert-light text-center mt-4">
+            <i class="bi bi-folder-x fs-4 d-block mb-2"></i>
+            <strong>Tidak ada data PPM ditemukan</strong><br />
+        </div>
     }
-</div>
+}
 
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     [Parameter]
-    public string TaskID { get; set; }
+    public string TaskID { get; set; } = string.Empty;
 
-    private string? maintenanceSelectCategory;
+    // Properti Halaman
+    private DotNetObjectReference<PPMInfo> dotNetHelper = default!;
 
     private PPMTask? ppmTask;
-    private PPMTaskHistory ppmTaskHistory = new PPMTaskHistory();
-    private List<PPMTaskHistory>? ppmHistoryList;
     private User? supervisor; // Pemohon PPM
     private User? userInfo; // Pengguna yang sedang login
+    private List<PPMTaskHistory>? ppmHistoryList;
+    private PPMTaskHistory newPpmHistoryList = new();
     private List<User> MaintenancePICs = new List<User>();
-    private string? userId; // ID pengguna yang sedang login
-    private string? userSection; // Section pengguna yang sedang login
+
+    private int totalApprovedPPM;
+    private int totalRejectedPPM;
+
+    private string? userId;
+    private string? userSection;
     private string _webPPMRoot = string.Empty;
+    private string todayDate = string.Empty;
 
-    private EditContext? editContext;
-
+    private bool _isLoading = true;
     private List<string> maintenanceCategory = new() { "Electrical", "Mechanical", "Civil", "IT" };
+    private string? _maintenanceSelectCategory;
+    private string? maintenanceSelectCategory
+    {
+        get => _maintenanceSelectCategory;
+        set
+        {
+            if (_maintenanceSelectCategory != value)
+            {
+                _maintenanceSelectCategory = value;
+                // Reset nilai PPM PIC saat kategori berubah
+                ppmTask.MaintenancePIC = null;
+            }
+        }
+    }
 
     // Permissions based on roles
     private bool dataPermissionSupervisor;
@@ -414,143 +497,147 @@
     private bool dataPermissionMaintenance;
 
     // File upload related
+    private string? originalImageAfterPath;
+    private string? imageAfterPath;
+    private bool imageAfterStatus;
     private string subFolderName = "PPM";
-    private string fileCategory = "img";
     private string folderName = "Image";
-
-    // Notification related
-    private string? alertMessage;
-    private string? logMessage;
 
     protected override async Task OnInitializedAsync()
     {
-        await Authorization(); // Ambil info peran dan pengguna yang login
+        _isLoading = true;
+        todayDate = DateTime.Now.ToString("yyyy-MM-dd");
 
+        await Authorization();
         if (string.IsNullOrEmpty(userId))
         {
-            // Ini seharusnya dihandle oleh [Authorize] attribute,
-            // tapi sebagai fallback jika ada masalah pada claim.
             NavigationManager.NavigateTo("/");
             return;
         }
 
-        await LoadPPM(); // Load detail PPM berdasarkan TaskID
+        await LoadPPMDetails();
         if (ppmTask == null)
         {
-            // Redirect atau tampilkan pesan jika PPM tidak ditemukan
             NavigationManager.NavigateTo("/PPMList");
             return;
         }
 
-        await LoadPPMHistory();
+        await LoadSupervisorAndHistory();
 
-        await LoadSupervisor(ppmTask.CreatedBy); // Load info pemohon PPM
-
-        try
+        if (!string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
         {
-            _webPPMRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
+            imageAfterStatus = true;
+            originalImageAfterPath = ppmTask.ImageAfter;
+            imageAfterPath = ppmTask.ImageAfter;
         }
-        catch (Exception ex)
+        else
         {
-            alertMessage = "Gagal memuat konfigurasi '_webPPMRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webPPMRoot'\nDetail :\n{ex}";
-            ShowNotification(alertMessage, logMessage);
+            imageAfterStatus = false;
+            originalImageAfterPath = null;
+            imageAfterPath = null;
         }
 
-        editContext = new EditContext(ppmTask);
-        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+        _webPPMRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
+
+        _isLoading = false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            // Panggil fungsi JS untuk menginisialisasi tab Bootstrap
-            await JSRuntime.InvokeVoidAsync("initBootstrapTabs");
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
         }
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await DeletePpmFiles();
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+
+        await JSRuntime.InvokeVoidAsync("hideModal", "approvalModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "rejectionModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "cancelModal");
     }
 
     private async Task Authorization()
     {
-        if (authenticationStateTask != null)
+        if (authenticationStateTask == null) return;
+
+        var authenticationState = await authenticationStateTask;
+        var userPrincipal = authenticationState.User;
+
+        dataPermissionSupervisor = userPrincipal.IsInRole("Supervisor");
+        dataPermissionManager = userPrincipal.IsInRole("Manager");
+        dataPermissionTerminalManager = userPrincipal.IsInRole("Terminal Manager");
+        dataPermissionMaintenanceSupervisor = userPrincipal.IsInRole("Maintenance Supervisor");
+        dataPermissionMaintenance = userPrincipal.IsInRole("Maintenance");
+
+        if (userPrincipal.Identity?.IsAuthenticated == true)
         {
-            var authenticationState = await authenticationStateTask;
-            var userPrincipal = authenticationState.User; // Menggunakan nama variabel yang berbeda
+            userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
 
-            dataPermissionSupervisor = userPrincipal.IsInRole("Supervisor");
-            dataPermissionManager = userPrincipal.IsInRole("Manager");
-            dataPermissionTerminalManager = userPrincipal.IsInRole("Terminal Manager");
-            dataPermissionMaintenanceSupervisor = userPrincipal.IsInRole("Maintenance Supervisor");
-            dataPermissionMaintenance = userPrincipal.IsInRole("Maintenance");
-
-            if (userPrincipal.Identity?.IsAuthenticated == true)
+            if (!string.IsNullOrEmpty(userId))
             {
-                userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
-
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    try
-                    {
-                        userInfo = await CRUDService.ReadSingleAsync<User, string>(userId);
-                        userSection = userInfo?.Section; // Menggunakan ?. untuk null-safety
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error loading userInfo for logged in user: {ex.Message}");
-                    }
-                }
+                userInfo = await CRUDService.ReadSingleAsync<User, string>(userId);
+                userSection = userInfo?.Section;
             }
         }
     }
 
-    private async Task LoadPPM()
+    private async Task LoadPPMDetails()
     {
         ppmTask = await CRUDService.ReadSingleAsync<PPMTask, string>(TaskID);
-
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
-            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            NotificationService.AlertMessage($"Gagal mengakses data PPM. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}");
+            ppmTask = null;
         }
+    }
+
+    private async Task LoadSupervisorAndHistory()
+    {
+        await Task.WhenAll(
+            LoadPPMHistory(),
+            LoadSupervisor(ppmTask?.CreatedBy)
+        );
     }
 
     private async Task LoadPPMHistory()
     {
-        ppmHistoryList = (await CRUDService.ReadAllAsync<PPMTaskHistory>(
-                filter: h => h.PPMID == ppmTask.PPMID,
-                orderBy: q => q.OrderBy(h => h.DateUpdated)
-            )).ToList();
+        if (ppmTask == null) return;
 
+        ppmHistoryList = (await CRUDService.ReadAllAsync<PPMTaskHistory>(
+            filter: h => h.PPMID == ppmTask.TaskID,
+            orderBy: q => q.OrderBy(h => h.DateUpdated)
+        )).ToList();
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
-            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            NotificationService.AlertMessage("Gagal mengakses riwayat PPM. Hubungi Administrator.");
         }
     }
 
-    private async Task LoadSupervisor(string supervisorIdToLoad)
+    private async Task LoadSupervisor(string? supervisorIdToLoad)
     {
-        supervisor = await CRUDService.ReadSingleAsync<User, string>(supervisorIdToLoad);
+        if (supervisorIdToLoad == null) return;
 
+        supervisor = await CRUDService.ReadSingleAsync<User, string>(supervisorIdToLoad);
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
-            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            NotificationService.AlertMessage("Gagal mengakses data pemohon. Hubungi Administrator.");
         }
     }
 
     private async Task LoadMaintenancePIC()
     {
-        
         MaintenancePICs = (await CRUDService.ReadAllAsync<User>(
                 filter: p => p.RoleCategory.Contains(maintenanceSelectCategory),
                 orderBy: q => q.OrderBy(p => p.FullName),
@@ -559,10 +646,7 @@
 
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
-            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            NotificationService.AlertMessage($"Gagal mengakses data Maintenance member. Detail: \n{CRUDService.CRUDErrorMessage}");
             return;
         }
     }
@@ -573,125 +657,413 @@
         {
             return false;
         }
-        DateOnly now = DateOnly.FromDateTime(DateTime.Today);
-        return now.CompareTo(ppmTask.TargetDate.Value) > 0;
+        return DateOnly.FromDateTime(DateTime.Today) > ppmTask.TargetDate.Value;
     }
 
     private string CreateFilePath(string relativePath)
     {
-        if (!string.IsNullOrWhiteSpace(relativePath))
+        return string.IsNullOrWhiteSpace(relativePath) ? string.Empty : Path.Combine(_webPPMRoot, relativePath).Replace("\\", "/");
+    }
+
+    private async Task UploadNewPPMHistory(string actionType)
+    {
+        newPpmHistoryList.PPMID = ppmTask.TaskID;
+        newPpmHistoryList.UpdateBy = userInfo.FullName;
+        newPpmHistoryList.DateUpdated = DateTime.Now;
+
+        if (actionType == "Approve")
         {
-            return Path.Combine(_webPPMRoot, relativePath).Replace("\\", "/");
+            if (ppmTask.Level == PPMStatusLevel.Request || ppmTask.Level == PPMStatusLevel.ApprovedByManager)
+            {
+                newPpmHistoryList.UpdateType = "Approve";
+                newPpmHistoryList.Description = $"{userInfo.FullName} menyetujui PPM.";
+            }
+            else if (ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+            {
+                newPpmHistoryList.UpdateType = "Assign";
+                newPpmHistoryList.Description = $"{userInfo.FullName} menugaskan {ppmTask.MaintenancePIC} dari bagian {ppmTask.MaintenanceCategory} sebagai PIC.";
+            }
+            else if (ppmTask.Level == PPMStatusLevel.OnProgress)
+            {
+                newPpmHistoryList.UpdateType = "Report";
+                newPpmHistoryList.Description = $"{userInfo.FullName} melaporkan penyelesaian PPM.";
+            }
+            else if (ppmTask.Level == PPMStatusLevel.Checking)
+            {
+                newPpmHistoryList.UpdateType = "Completion";
+                newPpmHistoryList.Description = $"{userInfo.FullName} sudah melakukan pengecekan dan menyelesaikan PPM.";
+            }
         }
-        return string.Empty;
+        else if (actionType == "Reject")
+        {
+            newPpmHistoryList.UpdateType = "Reject";
+
+            if (ppmTask.Level == PPMStatusLevel.Checking)
+            {
+                newPpmHistoryList.Description = $"{userInfo.FullName} sudah melakukan pengecekan PPM namun masih terdapat perbaikan yang kurang.";
+            }
+            else
+            {
+                newPpmHistoryList.Description = $"{userInfo.FullName} tidak menyetujui PPM";
+            }
+        }
+        else if (actionType == "Cancel")
+        {
+            newPpmHistoryList.UpdateType = "Cancel";
+            newPpmHistoryList.Description = $"{userInfo.FullName} membatalkan PPM.";
+        }
+
+        await CRUDService.CreateAsync(newPpmHistoryList);
     }
 
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
-        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
+        //File Upload using Service
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, "img");
+
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
-            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-            ShowNotification(alertMessage, logMessage);
+            NotificationService.AlertMessage($"Gagal upload gambar. Detail: {UploadService.UploadErrorMessage}");
+
+            imageAfterPath = null;
             return;
         }
-        ppmTask.ImageAfter = UploadService.FilePath;
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.ImageAfter));
+
+        imageAfterPath = UploadService.FilePath;
+        imageAfterStatus = true;
     }
 
     private async Task HandleFileChange()
     {
-        if (!string.IsNullOrWhiteSpace(ppmTask.ImageAfter))
+        if (imageAfterStatus)
         {
-            await UploadService.FileChange(ppmTask.ImageAfter, subFolderName);
-        }
-        ppmTask.ImageAfter = string.Empty;
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => ppmTask.ImageAfter));
-        StateHasChanged();
-    }
-
-    // Metode tunggal untuk Approve/Complete/Reject
-    private async Task HandleAction(string actionType)
-    {
-        if (editContext != null && editContext.Validate())
-        {
-            var authState = await authenticationStateTask;
-            var currentUser = authState.User;
-
-            // Create PPM Task History
-            ppmTaskHistory.PPMID = ppmTask.PPMID;
-            ppmTaskHistory.UpdateBy = userInfo.FullName;
-            ppmTaskHistory.DateUpdated = DateTime.Now;
-
-            if(actionType == "Reject")
+            if (imageAfterPath != originalImageAfterPath && imageAfterPath != null)
             {
-                ppmTaskHistory.UpdateType = PPMStatus.Rejected.ToString();
-                ppmTaskHistory.Description = $"{userInfo.FullName} tidak menyetujui PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
-            }
-            else
-            {
-                if (ppmTask.Level == PPMStatusLevel.Request)
-                {
-                    ppmTaskHistory.UpdateType = PPMStatus.ApprovedByManager.ToString();
-                    ppmTaskHistory.Description = $"{userInfo.FullName} menyetujui PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
-                }
-                else if (ppmTask.Level == PPMStatusLevel.ApprovedByManager)
-                {
-                    ppmTaskHistory.UpdateType = PPMStatus.ApprovedByTerminalManager.ToString();
-                    ppmTaskHistory.Description = $"{userInfo.FullName} menyetujui PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
-                }
-                else if (ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
-                {
-                    ppmTaskHistory.UpdateType = PPMStatus.OnProgress.ToString();
-                    ppmTaskHistory.Description = $"{userInfo.FullName} menyetujui PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}, Dan menugaskan {ppmTask.MaintenancePIC} bagian {ppmTask.MaintenanceCategory} sebagai PIC Maintenance.";
-                }
-                else if (ppmTask.Level == PPMStatusLevel.OnProgress)
-                {
-                    ppmTask.MaintenanceCompletionDate = DateTime.Now;
-                    ppmTask.TargetCompletion = IsTargetDatePassed();
-                    ppmTaskHistory.UpdateType = PPMStatus.Checking.ToString();
-                    ppmTaskHistory.Description = $"{userInfo.FullName} melaporkan penyelesaian PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
-                }
-                else if (ppmTask.Level == PPMStatusLevel.Checking)
-                {
-                    ppmTask.CompletionDate = DateTime.Now;
-                    ppmTaskHistory.UpdateType = PPMStatus.Completed.ToString();
-                    ppmTaskHistory.Description = $"{userInfo.FullName} sudah melakukan pengecekan PPM, dan menyelesaikan laporan PPM pada {DateTime.Now.ToString("dd-MMMM-yyyy")} pukul {DateTime.Now.ToString("HH:mm")}.";
-                }
+                await UploadService.FileChange(imageAfterPath, subFolderName);
+                imageAfterPath = null;
             }
 
-            var result = await PPMWorkflowService.ProcessPPMAction(ppmTask, currentUser, actionType);
-
-            if (result.IsSuccess)
-            {
-                IJSObjectReference approvalModal = await JSRuntime.InvokeAsync<IJSObjectReference>("jQuery", "#approvalModal");
-                IJSObjectReference rejectionModal = await JSRuntime.InvokeAsync<IJSObjectReference>("jQuery", "#rejectionModal");
-
-                await approvalModal.InvokeVoidAsync("modal", "hide");
-                await rejectionModal.InvokeVoidAsync("modal", "hide");
-
-                await CRUDService.CreateAsync(ppmTaskHistory);
-
-                await Task.Delay(400);
-
-                NavigationManager.NavigateTo($"/PPMList?status={actionType}Success", forceLoad: false);
-            }
-            else
-            {
-                // Tampilkan pesan kesalahan dari service
-                ShowNotification(result.ErrorMessage, $"Gagal proses PPM: {result.ErrorMessage}");
-            }
+            imageAfterStatus = false;
         }
         else
         {
-            ShowNotification("Validasi gagal. Harap periksa input Anda.", $"Validasi form {actionType} gagal.");
+            imageAfterStatus = true;
         }
     }
 
-    private async Task ShowNotification(string alert, string log)
+    private async Task HandleAction(string actionType)
     {
-        await NotificationService.AlertMessage(alert);
-        NotificationService.LogMessage(log);
+        if (ppmTask == null || authenticationStateTask == null) return;
+
+        var authState = await authenticationStateTask;
+        var currentUser = authState.User;
+
+        if (actionType == "Approve")
+        {
+            if (ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+            {
+                await GetApprovedPPMTotal();
+                totalApprovedPPM = ++totalApprovedPPM;
+
+                // Initialize PPMID
+                ppmTask.PPMID = $"{totalApprovedPPM}/{GetRoleAbbreviation(ppmTask.PPMSection)}/{GetMonthRomansNumeral(DateTime.Now.Month)}/{DateTime.Now.ToString("yyyy")}";
+            }
+
+            if (ppmTask.Level == PPMStatusLevel.OnProgress)
+            {
+                @if (IsTargetDatePassed())
+                {
+                    ppmTask.TargetCompletion = false;
+                }
+                else
+                {
+                    ppmTask.TargetCompletion = true;
+                }
+
+                if (imageAfterStatus)
+                {
+                    if (imageAfterPath != originalImageAfterPath)
+                    {
+                        if (!string.IsNullOrWhiteSpace(originalImageAfterPath))
+                        {
+                            //Update Image File
+                            await UploadService.FileChange(originalImageAfterPath, subFolderName);
+                        }
+                        ppmTask.ImageAfter = imageAfterPath;
+                    }
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(originalImageAfterPath))
+                    {
+                        //Update Image File
+                        await UploadService.FileChange(originalImageAfterPath, subFolderName);
+                    }
+                    ppmTask.ImageAfter = null;
+                }
+            }
+        }
+        else if (actionType == "Reject" && ppmTask.Level != PPMStatusLevel.Checking)
+        {
+            await GetRejectedPPMTotal();
+            totalRejectedPPM = ++totalRejectedPPM;
+
+            // Initialize PPMID
+            ppmTask.PPMID = $"REJ-{totalRejectedPPM}/{GetRoleAbbreviation(ppmTask.PPMSection)}/{GetMonthRomansNumeral(DateTime.Now.Month)}/{DateTime.Now.ToString("yyyy")}";
+        }
+
+        if (!string.IsNullOrEmpty(maintenanceSelectCategory))
+        {
+            ppmTask.MaintenanceCategory = maintenanceSelectCategory;
+        }
+
+        var result = await PPMWorkflowService.ProcessPPMAction(ppmTask, currentUser, actionType);
+
+        if (result.IsSuccess)
+        {
+            await UploadNewPPMHistory(actionType);
+
+            await JSRuntime.InvokeVoidAsync("hideModal", "approvalModal");
+            await JSRuntime.InvokeVoidAsync("hideModal", "rejectionModal");
+            NavigationManager.NavigateTo($"/PPMList?status={actionType}Success", forceLoad: true);
+        }
+        else
+        {
+            NotificationService.AlertMessage(result.ErrorMessage);
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        if (ppmTask == null) return;
+
+        if (!CanCancel())
+        {
+            NavigationManager.NavigateTo("/PPMList");
+            return;
+        }
+
+        try
+        {
+            await UploadNewPPMHistory("Cancel");
+
+            await CRUDService.DeleteAsync(ppmTask);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal membatalkan PPM dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal membatalkan PPM dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            await JSRuntime.InvokeVoidAsync("hideModal", "cancelModal");
+
+            NavigationManager.NavigateTo("/PPMList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Error canceling PPM: {ex.Message}");
+        }
+    }
+
+    private async Task DeletePpmFiles()
+    {
+        if (ppmTask == null) return;
+
+        if (ppmTask.Level == PPMStatusLevel.OnProgress)
+        {
+            if (!string.IsNullOrEmpty(imageAfterPath))
+            {
+                await UploadService.FileChange(imageAfterPath, subFolderName);
+                ppmTask.ImageAfter = null;
+                await CRUDService.UpdateAsync(ppmTask);
+
+                imageAfterPath = null;
+                imageAfterStatus = false;
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task NavigateToPPMList()
+    {
+        NavigationManager.NavigateTo("/PPMList");
+    }
+
+    private async Task GetApprovedPPMTotal()
+    {
+        try
+        {
+            // Get All Data using CRUD Service
+            var approvedPpmList = await CRUDService.ReadAllAsync<PPMTask>(filter: p => !p.PPMID.Contains("REQ") && !p.PPMID.Contains("REJ"));
+            totalApprovedPPM = approvedPpmList.Count();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Tidak dapat memuat data approved PPM. Detail: {ex}");
+        }
+    }
+
+    private async Task GetRejectedPPMTotal()
+    {
+        try
+        {
+            var rejectedPpmList = await CRUDService.ReadAllAsync<PPMTask>(filter: p => p.PPMID.Contains("REJ"));
+            totalRejectedPPM = rejectedPpmList.Count();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Tidak dapat memuat data rejected PPM. Detail: {ex}");
+        }
+    }
+
+    private string GetRoleAbbreviation(string role)
+    {
+        switch (role)
+        {
+            case "Operation": return "OPS";
+            case "Formalities": return "FRM";
+            case "Security": return "SEC";
+            case "HSE": return "HSE";
+            case "HR/GA": return "HR-GA";
+            default: return string.Empty; // Return Empty String
+        }
+    }
+
+    private string GetMonthRomansNumeral(int monthNumber)
+    {
+        switch (monthNumber)
+        {
+            case 1: return "I";
+            case 2: return "II";
+            case 3: return "III";
+            case 4: return "IV";
+            case 5: return "V";
+            case 6: return "VI";
+            case 7: return "VII";
+            case 8: return "VIII";
+            case 9: return "IX";
+            case 10: return "X";
+            case 11: return "XI";
+            case 12: return "XII";
+            default: return string.Empty; // Return Empty String
+        }
+    }
+
+    // Helper methods for UI logic
+    private string GetStatusText(PPMTask task) => task.Level switch
+    {
+        PPMStatusLevel.Request => "Request",
+        PPMStatusLevel.ApprovedByManager => "Approved by Manager",
+        PPMStatusLevel.ApprovedByTerminalManager => "Approved by Terminal Manager",
+        PPMStatusLevel.OnProgress => "On Progress",
+        PPMStatusLevel.Checking => "Checking",
+        PPMStatusLevel.Completed => "Completed",
+        PPMStatusLevel.Rejected => "Rejected",
+        _ => "Unknown"
+    };
+
+    private string GetStatusCssClass(PPMTask task) => task.Level switch
+    {
+        PPMStatusLevel.Request => "bg-warning text-dark",
+        PPMStatusLevel.ApprovedByManager => "bg-info text-dark",
+        PPMStatusLevel.ApprovedByTerminalManager => "bg-info text-dark",
+        PPMStatusLevel.OnProgress => "bg-primary",
+        PPMStatusLevel.Checking => "bg-secondary",
+        PPMStatusLevel.Completed => "bg-success",
+        PPMStatusLevel.Rejected => "bg-danger",
+        _ => "bg-light text-dark"
+    };
+
+    private bool CanShowActionButtons()
+    {
+        if (ppmTask == null) return false;
+        return ppmTask.Level != PPMStatusLevel.Completed && ppmTask.Level != PPMStatusLevel.Rejected;
+    }
+
+    private bool CanReject()
+    {
+        if (ppmTask == null || userInfo == null) return false;
+        return (dataPermissionManager && ppmTask.PPMSection == userInfo.Section && ppmTask.Level == PPMStatusLevel.Request)
+            || (dataPermissionTerminalManager && ppmTask.Level == PPMStatusLevel.ApprovedByManager)
+            || (dataPermissionMaintenanceSupervisor && ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+            || (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking);
+    }
+
+    private bool CanApproveOrComplete()
+    {
+        if (ppmTask == null || userInfo == null) return false;
+        return (dataPermissionManager && ppmTask.PPMSection == userInfo.Section && ppmTask.Level == PPMStatusLevel.Request)
+            || (dataPermissionTerminalManager && ppmTask.Level == PPMStatusLevel.ApprovedByManager)
+            || (dataPermissionMaintenanceSupervisor && ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+            || (dataPermissionMaintenance && ppmTask.MaintenancePIC == userInfo.FullName && ppmTask.Level == PPMStatusLevel.OnProgress)
+            || (dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking);
+    }
+
+    private bool CanApproveWithTargetDate()
+    {
+        if (ppmTask == null) return false;
+        return dataPermissionTerminalManager && ppmTask.Level == PPMStatusLevel.ApprovedByManager;
+    }
+
+    private bool CanApproveWithMaintenancePIC()
+    {
+        if (ppmTask == null) return false;
+        return dataPermissionMaintenanceSupervisor && ppmTask.Level == PPMStatusLevel.ApprovedByTerminalManager;
+    }
+
+    private bool CanComplete()
+    {
+        if (ppmTask == null || userInfo == null) return false;
+        return dataPermissionMaintenance && ppmTask.MaintenancePIC == userInfo.FullName && ppmTask.Level == PPMStatusLevel.OnProgress;
+    }
+
+    private bool CanPrint()
+    {
+        if (ppmTask == null || userInfo == null) return false;
+        return ppmTask.Level == PPMStatusLevel.Completed;
+    }
+
+    private bool CanCheckAndComplete()
+    {
+        if (ppmTask == null) return false;
+        return dataPermissionSupervisor && ppmTask.Level == PPMStatusLevel.Checking;
+    }
+
+    private bool IsMaintenanceOnProgress => dataPermissionMaintenance && ppmTask?.Level == PPMStatusLevel.OnProgress;
+
+    private bool CanCancel()
+    {
+        if (ppmTask == null || userInfo == null || !dataPermissionSupervisor) return false;
+        return (ppmTask.Level == PPMStatusLevel.Request && (userInfo.Section == "Operation" || userInfo.Section == "HSE")) ||
+               (ppmTask.Level == PPMStatusLevel.ApprovedByManager && (userInfo.Section == "Formalities" || userInfo.Section == "Security" || userInfo.Section == "HR/GA"));
+    }
+
+    private async Task ExportToPdf()
+    {
+        NavigationManager.NavigateTo($"/PDFViewer/{ppmTask.TaskID}", true);
+    }
+
+    // Metode baru untuk mendapatkan jalur sistem file absolut dari jalur relatif
+    private string GetFileSystemPath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            NotificationService.AlertMessage("Tidak dapat memuat gambar. Detail: Tidak ada relativePath.");
+        }
+        return relativePath.TrimStart('/');
     }
 }
+
+<script>
+    function initBootstrapTabs() {
+        var triggerTabList = [].slice.call(document.querySelectorAll('#nav-tab a'));
+        triggerTabList.forEach(function (triggerEl) {
+            var tabTrigger = new bootstrap.Tab(triggerEl);
+            triggerEl.addEventListener('click', function (event) {
+                event.preventDefault();
+                tabTrigger.show();
+            });
+        });
+    }
+</script>

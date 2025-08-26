@@ -1,3 +1,6 @@
+/* ======================== */
+/* General Layout Styles */
+/* ======================== */
 .page {
     position: relative;
     display: flex;
@@ -9,22 +12,15 @@ main {
     background-color: #f7f7f7;
 }
 
-::deep .quickgrid tbody tr:not([aria-rowindex]) {
-    display: none;
-}
-
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(16 42 84) 100%, #3a0647 0%);
+    background-image: linear-gradient(180deg, #102a54 100%, #3a0647 0%);
     transition: 0.5s;
     overflow-x: hidden;
 }
 
-.top-row a:hover {
-    background-color: rgba(0,0,0,0.2);
-    border-radius: 5px;
-    cursor: pointer;
-}
-
+/* ======================== */
+/* Top Navigation Styles */
+/* ======================== */
 .top-row {
     background-color: white;
     border-bottom: 1px solid #d6d5d5;
@@ -34,15 +30,102 @@ main {
     align-items: center;
 }
 
-.top-row ::deep a, .top-row .btn-link {
-    white-space: nowrap;
+    /* Adjusting space between links and buttons */
+    .top-row > div:not(:last-child) {
+        margin-right: .5rem;
+    }
+
+    .top-row a:hover {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .top-row ::deep a, .top-row .btn-link {
+        white-space: nowrap;
+    }
+
+    .top-row a:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+/* ======================== */
+/* Dropdown & Icon Elements Styles */
+/* ======================== */
+.icon-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: transparent;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+    border: none;
+    color: var(--bs-body-color);
 }
 
-.top-row a:first-child {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    .icon-btn:hover {
+        background-color: var(--bs-gray-200);
+    }
+
+    .icon-btn:focus:not(:focus-visible),
+    .icon-btn:active {
+        background-color: var(--bs-gray-300);
+        box-shadow: 0 0 0 0.25rem var(--bs-gray-200);
+    }
+
+    .icon-btn .oi {
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+/* Notification badge styles */
+.notification-badge {
+    padding: .5em .5em;
 }
 
+/* Profile picture styles */
+.dropdown-profile-photo {
+    max-width: 100px;
+    clip-path: circle();
+}
+
+.dropdown-menu .dropdown-item,
+.dropdown-menu .dropdown-header {
+    font-size: 1rem;
+}
+
+    .dropdown-menu .dropdown-item .oi {
+        font-size: 1.1rem;
+    }
+
+.dropdown-item {
+    font-size: 1rem; 
+    padding: 0.5rem 1rem; 
+    display: flex; 
+    align-items: center; 
+}
+
+    .dropdown-item .oi {
+        font-size: 1rem;
+        margin-right: 0.75rem; 
+        width: 1.1rem; 
+    }
+
+.dropdown-menu .small {
+    font-size: 0.8rem; 
+}
+
+.dropdown-menu .fw-bold {
+    font-size: 1.1rem; 
+}
+
+/* ======================== */
+/* Responsive Styles */
+/* ======================== */
 @media (max-width: 640.98px) {
     .top-row:not(.auth) {
         display: none;

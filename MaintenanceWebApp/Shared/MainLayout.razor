@@ -3,6 +3,8 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using System.Security.Claims
+@using System.Linq.Expressions
+@using Microsoft.EntityFrameworkCore
 @inject IConfiguration Configuration
 
 @* Services *@
@@ -17,45 +19,101 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <div class="dropdown">
-                <button class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    <span class="oi oi-bell" aria-hidden="true"></span>
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    <a class="dropdown-item" href="#">Action</a>
-                    <a class="dropdown-item" href="#">Another action</a>
-                    <a class="dropdown-item" href="#">Something else here</a>
+        @if (isLoading)
+        {
+            <div class="text-center p-5">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Memuat...
+            </div>
+        }
+        else
+        {
+            <div class="top-row px-4">
+                <div class="dropdown me-2">
+                    <button class="btn icon-btn" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="oi oi-bell position-relative" aria-hidden="true">
+                            @if (notificationCount > 0)
+                            {
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
+                                    <span class="visually-hidden">notifikasi yang belum dibaca</span>
+                                </span>
+                            }
+                        </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end p-2" aria-labelledby="dropdownMenuButton">
+                        <h6 class="dropdown-header fw-bold text-uppercase pb-2 border-bottom mb-2">Pemberitahuan</h6>
+                        @if (notificationCount > 0)
+                        {
+                            <a class="dropdown-item py-2" href="PPMList">
+                                <div class="d-flex w-100 align-items-center">
+                                    <div class="flex-grow-1">
+                                        <p class="mb-0 fw-bold">PPM</p>
+                                        <small class="text-muted">
+                                            Ada <span class="fw-bold text-danger">@ppmApprovalTotal</span> PPM yang perlu segera diproses.
+                                        </small>
+                                    </div>
+                                </div>
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="d-flex w-100 align-items-center">
+                                <div class="flex-grow-1 text-center">
+                                    <small class="text-muted">
+                                        Tidak ada pemberitahuan
+                                    </small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="btn icon-btn" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <span class="oi oi-menu" aria-hidden="true"></span>
+                    </button>
+
+                    <div style="padding: 1rem;" class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+                        @if (user != null)
+                        {
+                            <div class="text-center mb-2">
+                                @if (!string.IsNullOrEmpty(user.UserPhoto))
+                                {
+                                    <img class="dropdown-profile-photo" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
+                                }
+                                else
+                                {
+                                    <img class="dropdown-profile-photo" src="../noprofile_pict.png" alt="No Profile Picture">
+                                }
+                                <h6 class="fw-bold mt-2 mb-0">@user.FullName</h6>
+                                <p class="text-muted small">
+                                    @user.Role @if (!string.IsNullOrEmpty(user.Section))
+                                    {
+                                        <span>- @user.Section</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(user.RoleCategory))
+                                    {
+                                        <span> (@user.RoleCategory)</span>
+                                    }
+                                </p>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                        }
+
+                        <a class="dropdown-item" href="/UserInfo/@user.Id"><span class="oi oi-person" aria-hidden="true"></span>&nbsp;Profil Anda</a>
+                        <a class="dropdown-item" href="/UserEdit/@user.Id"><span class="oi oi-pencil" aria-hidden="true"></span>&nbsp;Edit Data Pribadi</a>
+                        <a class="dropdown-item" href="/ChangePassword"><span class="oi oi-key" aria-hidden="true"></span>&nbsp;Ubah Password</a>
+
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item" href="/logout"><span class="oi oi-account-logout" aria-hidden="true"></span>&nbsp;Logout</a>
+                    </div>
                 </div>
             </div>
-            <div class="dropdown">
-                <button style="padding-top: 0 px; padding-bottom: 0px;" class="btn" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    @if (user != null && !string.IsNullOrEmpty(user.UserPhoto))
-                    {
-                        <img style="max-height: 50px; clip-path: circle();" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
-                    }
-                    else
-                    {
-                        <img style="max-height: 35px; clip-path: circle();" src="../noprofile_pict.png" alt="No Profile Picture">
-                    }
-                </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
-                    @if (user != null)
-                    {
-                        <a class="dropdown-item" href="/UserInfo/@user.Id"><span class="oi oi-person" aria-hidden="true"></span>&ensp;Profil Anda</a>
 
-                        <hr />
-                        <a class="dropdown-item" href="/UserEdit/@user.Id"><span class="oi oi-pencil" aria-hidden="true"></span>&ensp;Edit Data Pribadi</a>
-                    }
-                    <a class="dropdown-item" href="/ChangePassword"><span class="oi oi-key" aria-hidden="true"></span>&ensp;Ubah Password</a><hr />
-                    <a class="dropdown-item" href="/logout"><span class="oi oi-account-logout" aria-hidden="true"></span>&ensp;Logout</a>
-                </div>
-            </div>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
+            <article class="content px-4">
+                @Body
+            </article>
+        }
     </main>
 </div>
 
@@ -63,16 +121,35 @@
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
 
+    private class Permissions
+    {
+        public bool IsSupervisor { get; set; }
+        public bool IsManager { get; set; }
+        public bool IsTerminalManager { get; set; }
+        public bool IsMaintenanceSupervisor { get; set; }
+        public bool IsMaintenance { get; set; }
+        public bool IsAdmin { get; set; }
+    }
+
     private User? user;
-    private string _webUserRoot = string.Empty;
     private string? userId;
+    private Permissions userPermissions = new();
+
+    private string _webUserRoot = string.Empty;
+    private bool isLoading = true;
+
+    private int ppmApprovalTotal;
+    private int notificationCount; 
 
     private string? alertMessage;
     private string? logMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        isLoading = true;
+
         await Authorization();
+        await GetApprovalPPMTotal();
 
         try
         {
@@ -84,6 +161,8 @@
             logMessage = $"Gagal memuat konfigurasi '_webUserRoot'\nDetail :\n{ex}";
             ShowNotification(alertMessage, logMessage);
         }
+
+        isLoading = false;
     }
 
     private string CreateFilePath(string relativePath)
@@ -93,27 +172,75 @@
 
     private async Task Authorization()
     {
-        if (authenticationStateTask != null)
+        if (authenticationStateTask == null) return;
+
+        var authenticationState = await authenticationStateTask;
+        var userPrincipal = authenticationState.User;
+        var Id = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+
+        if (userPrincipal.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(Id))
         {
-            var authenticationState = await authenticationStateTask;
-            var userPrincipal = authenticationState.User; // Menggunakan nama variabel yang berbeda
+            userPermissions.IsSupervisor = userPrincipal.IsInRole("Supervisor");
+            userPermissions.IsManager = userPrincipal.IsInRole("Manager");
+            userPermissions.IsTerminalManager = userPrincipal.IsInRole("Terminal Manager");
+            userPermissions.IsMaintenanceSupervisor = userPrincipal.IsInRole("Maintenance Supervisor");
+            userPermissions.IsMaintenance = userPrincipal.IsInRole("Maintenance");
+            userPermissions.IsAdmin = userPrincipal.IsInRole("Admin");
 
-            if (userPrincipal.Identity?.IsAuthenticated == true)
+            try
             {
-                userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
-
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    try
-                    {
-                        user = await CRUDService.ReadSingleAsync<User, string>(userId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error loading userInfo for logged in user: {ex.Message}");
-                    }
-                }
+                user = await CRUDService.ReadSingleAsync<User, string>(Id);
             }
+            catch (Exception ex)
+            {
+                NotificationService.LogMessage($"Error loading UserInfo for logged in user: {ex.Message}");
+                NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda. Silakan coba lagi atau hubungi administrator.");
+            }
+        }
+    }
+
+    private Expression<Func<PPMTask, bool>>? GetPPMFilterExpression()
+    {
+        if (userPermissions.IsSupervisor && user != null)
+        {
+            return p => p.CreatedBy == user.Id && p.Level == PPMStatusLevel.Checking;
+        }
+        if (userPermissions.IsManager && user?.Section != null)
+        {
+            return p => p.PPMSection == user.Section && p.Level == PPMStatusLevel.Request;
+        }
+        if (userPermissions.IsTerminalManager)
+        {
+            return p => p.Level == PPMStatusLevel.ApprovedByManager;
+        }
+        if (userPermissions.IsMaintenanceSupervisor)
+        {
+            return p => p.Level == PPMStatusLevel.ApprovedByTerminalManager;
+        }
+        if (userPermissions.IsMaintenance && user?.FullName != null)
+        {
+            return p => p.MaintenancePIC == user.FullName &&
+                        (p.Level == PPMStatusLevel.OnProgress || p.Level == PPMStatusLevel.Checking);
+        }
+        return p => false;
+    }
+
+    private async Task GetApprovalPPMTotal()
+    {
+        try
+        {
+            Expression<Func<PPMTask, bool>>? combinedFilter = GetPPMFilterExpression();
+
+            ppmApprovalTotal = await CRUDService.CountAsync<PPMTask>(filter: combinedFilter);
+
+            notificationCount = ppmApprovalTotal;
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage("Gagal memuat data PPM. Hubungi administrator.");
+            NotificationService.LogMessage($"Error loading filtered PPM: {ex.Message}");
+            ppmApprovalTotal = 0;
+            notificationCount = 0;
         }
     }
 

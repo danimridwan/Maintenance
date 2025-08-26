@@ -14,117 +14,96 @@
 @* Roles Authorize *@
 @attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-<div class="card">
-    @* Loading *@
-    @if (_isLoading)
+<div class="card shadow-sm">
+    @* Header Halaman *@
+    <div class="card-header bg-light border-primary d-flex justify-content-between align-items-center">
+        <ul class="nav nav-tabs card-header-tabs">
+            <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor">
+                <Authorized>
+                    <li class="nav-item">
+                        <a style="cursor: pointer;" @onclick="NavigateToUserList" class="nav-link" aria-label="Kembali ke Daftar Pengguna">
+                            <span class="oi oi-chevron-left"></span>
+                        </a>
+                    </li>
+                </Authorized>
+            </AuthorizeView>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Pengguna</span>
+            </li>
+        </ul>
+        <button class="btn btn-warning btn-sm" @onclick="GoToUserEdit">
+            <span class="oi oi-pencil"></span> Edit
+        </button>
+    </div>
+
+    @* Status Pemuatan *@
+    @if (isLoading)
     {
-        <div class="text-center py-3">
+        <div class="card-body text-center py-5">
             <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+                <span class="visually-hidden">Memuat...</span>
             </div>
-            <p>Memuat Data User...</p>
+            <p class="mt-2">Memuat data pengguna...</p>
         </div>
     }
-    @* No Data *@
-    else if (user == null)
+    @* Status Data Tidak Ditemukan *@
+    else if (user is null)
     {
-        <div class="text-center py-3">
-            <p>Tidak ada User dengan ID ini atau terjadi kesalahan saat memuat.</p>
+        <div class="card-body text-center py-5">
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Data Tidak Ditemukan!</h4>
+                <p>Pengguna dengan ID yang diberikan tidak ada atau terjadi kesalahan saat memuat data.</p>
+                <hr>
+                <p class="mb-0">Mohon cek kembali ID pengguna atau hubungi administrator.</p>
+            </div>
         </div>
     }
-    @* User Information *@
+    @* Detail Pengguna *@
     else
     {
-        <div class="card-header bg-light border-primary">
-            @* Tab Header *@
-            <ul class="nav nav-tabs card-header-tabs">
-                <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor">
-                    <Authorized>
-                        <li class="nav-item">
-                            <a style="cursor: pointer;" @onclick="GoBack" class="nav-link" aria-label="Kembali">
-                                <span class="oi oi-chevron-left"></span>
-                            </a>
-                        </li>
-                    </Authorized>
-                </AuthorizeView>
-                <li class="nav-item">
-                    <a class="nav-link active" aria-label="Informasi User">Informasi User</a>
-                </li>
-            </ul>
-        </div>
         <div class="card-body">
-            @* User Information Section *@
-            <div class="form-group row">
-                <div class="col-sm-5">
-                    @if (string.IsNullOrWhiteSpace(user.UserPhoto) == false)
-                    {
-                        <img style="align-content:center;" width="100%" src="@CreateFilePath(user.UserPhoto)" alt="User Profile Photo">
-                    }
-                    else
-                    {
-                        <img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
-                    }
+            <div class="row align-items-start">
+                @* Bagian Foto Profil *@
+                <div class="col-md-4 text-center mb-4">
+                    <div class="profile-photo-container">
+                        <img class="img-fluid rounded-circle shadow-sm" src="@CreateFilePath(user.UserPhoto)" alt="Foto Profil Pengguna" style="max-width: 200px; height: auto;" />
+                    </div>
                 </div>
 
-                <div style="align-content: center;" class="col-sm-7">
-                    <table width="100%">
-                        <tr>
-                            <td class="td-first">Nama</td>
-                            <td> : </td>
-                            <td class="td-last">@user.FullName</td>
-                        </tr>
-                        <tr>
-                            <td class="td-first">Email</td>
-                            <td> : </td>
-                            <td class="td-last">@user.Email</td>
-                        </tr>
-                        <tr>
-                            <td class="td-first">Nomor Telepon</td>
-                            <td> : </td>
-                            <td class="td-last">@user.PhoneNumber</td>
-                        </tr>
-                        <tr>
-                            <td class="td-first">Section</td>
-                            <td> : </td>
-                            <td class="td-last">@user.Section</td>
-                        </tr>
-                        <tr>
-                            <td class="td-first">Role</td>
-                            <td> : </td>
-                            <td class="td-last">@user.Role</td>
-                        </tr>
-                        @if (user.Role == "Supervisor")
+                @* Bagian Informasi Detail *@
+                <div class="col-md-8">
+                    <h4 class="mb-3">@user.FullName</h4>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item">
+                            <i class="oi oi-envelope-closed me-2"></i> <b>Email:</b> @user.Email
+                        </li>
+                        <li class="list-group-item">
+                            <i class="oi oi-phone me-2"></i> <b>Nomor Telepon:</b> @user.PhoneNumber
+                        </li>
+                        <li class="list-group-item">
+                            <i class="oi oi-person me-2"></i> <b>Role:</b> @user.Role
+                        </li>
+                        @if (!string.IsNullOrEmpty(user.Section))
                         {
-                            <tr>
-                                <td class="td-first">Divisi</td>
-                                <td> : </td>
-                                <td class="td-last">@user.RoleCategory</td>
-                            </tr>
+                            <li class="list-group-item">
+                                <i class="oi oi-briefcase me-2"></i> <b>Section:</b> @user.Section
+                            </li>
                         }
-                        @if (user.Role != "Admin")
+                        @if (!string.IsNullOrEmpty(user.RoleCategory))
                         {
-                            <tr>
-                                <td class="td-first" colspan="3">Tanda Tangan</td>
-                            </tr>
+                            <li class="list-group-item">
+                                <i class="oi oi-tag me-2"></i> <b>Divisi:</b> @user.RoleCategory
+                            </li>
+                        }
+                    </ul>
 
-                            @if (string.IsNullOrWhiteSpace(user.Signature) == false)
-                            {
-                                <tr>
-                                    <td colspan="3">
-                                        <img style="max-width: 150px;" src="@CreateFilePath(user.Signature)" alt="User Signature">
-                                    </td>
-                                </tr>
-                            }
-                            else
-                            {
-                                <tr>
-                                    <td colspan="3">
-                                        <img style="max-width: 150px;" src="/noimg.png" alt="No Image Available">
-                                    </td>
-                                </tr>
-                            }
-                        }
-                    </table>
+                    @if (user.Role != "Admin")
+                    {
+                        <div class="signature-section border-top pt-4">
+                            <h5 class="mb-3">Tanda Tangan Digital</h5>
+                            <img class="img-fluid border rounded shadow-sm" src="@CreateFilePath(user.Signature)" alt="Tanda Tangan Pengguna" style="max-height: 150px;" />
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -132,71 +111,83 @@
 </div>
 
 @code {
+    // Parameter dari URL
     [Parameter]
-    public string Id { get; set; }
+    public string Id { get; set; } = default!;
 
+    // Properti State
     private User? user;
-    private string _webUserRoot = string.Empty;
-    private bool _isLoading = true;
+    private bool isLoading = true;
+    private string? previousId;
 
-    private string? alertMessage;
-    private string? logMessage;
+    // Konstanta
+    private string webUserRoot = string.Empty;
+    private const string NO_IMAGE_PATH = "/noimg.png";
+    private const string USER_LIST_PATH = "/UserList";
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            _webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
-        }
-        catch (Exception ex)
-        {
-            alertMessage = "Gagal memuat konfigurasi '_webUserRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webUserRoot'\nDetail :\n{ex}";
-            ShowNotification(alertMessage, logMessage);
-        }
-
-        await base.OnInitializedAsync();
-    }
-
-    private async Task GoBack()
-    {
-        await JSRuntime.InvokeVoidAsync("history.back");
+        await LoadConfigurationAsync();
     }
 
     protected override async Task OnParametersSetAsync()
     {
-            _isLoading = true;
-            user = null;
-            StateHasChanged();
-
-            await LoadUser();
-
-            _isLoading = false;
-            StateHasChanged();
-    }
-    
-    private async Task LoadUser()
-    {
-        user = await CRUDService.ReadSingleAsync<User, string>(Id);
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (Id != previousId)
         {
-            alertMessage = $"Gagal mengakses data user. Hubungi Administrator.\n{CRUDService.CRUDErrorMessage}";
-            logMessage = $"Gagal data user\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            isLoading = true;
+            previousId = Id;
+            await LoadUserAsync();
         }
     }
 
-    private string CreateFilePath(string relativePath)
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
     {
-        return Path.Combine(_webUserRoot, relativePath).Replace("\\", "/");
+        try
+        {
+            webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebUserRoot`. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebUserRoot`: {ex}");
+        }
     }
 
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    private async Task LoadUserAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
+        user = await CRUDService.ReadSingleAsync<User, string>(Id);
+        isLoading = false;
+
+        if (!string.IsNullOrEmpty(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage($"Gagal memuat data pengguna: {CRUDService.CRUDErrorMessage}");
+            NotificationService.LogMessage($"Gagal memuat data pengguna dengan ID {Id}: {CRUDService.CRUDErrorMessage}");
+        }
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return NO_IMAGE_PATH;
+        }
+        string fullPath = Path.Combine(webUserRoot, relativePath);
+        return fullPath.Replace("\\", "/");
+    }
+
+    // Navigasi
+    private void GoToUserEdit()
+    {
+        if (user != null)
+        {
+            NavigationManager.NavigateTo($"/UserEdit/{user.Id}");
+        }
+    }
+
+    private void NavigateToUserList()
+    {
+        NavigationManager.NavigateTo(USER_LIST_PATH);
     }
 }
