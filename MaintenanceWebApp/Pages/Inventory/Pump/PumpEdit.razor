@@ -320,8 +320,7 @@
             pump.CapacityUnit = null;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.CapacityValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.CapacityUnit));
+        NavigationManager.NavigateTo("/PumpList?status=EditSuccess");
     }
 
     // Metode Penanganan Submit
@@ -396,10 +395,6 @@
         await CancelAsync();
     }
 
-    // Implementasi IDisposable untuk membersihkan sumber daya
-    public void Dispose()
-    {
-        dotNetHelper?.Dispose();
-        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+        NavigationManager.NavigateTo("/PumpList");
     }
 }

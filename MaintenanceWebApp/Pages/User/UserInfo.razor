@@ -185,6 +185,13 @@
     }
 
     // Navigasi
+    private void GoToUserEdit()
+    {
+        if (user != null)
+        {
+            NavigationManager.NavigateTo($"/UserEdit/{user.Id}");
+        }
+    }
 
     private void NavigateToUserList()
     {

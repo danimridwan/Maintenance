@@ -21,6 +21,10 @@
         <div class="card-body">
             <h5 class="card-title">PPM Performance</h5>
                 <select id="flt-ppm-year" class="form-control" @onchange="@HandleChange">
+                    @foreach (var option in OptionsList)
+                    {
+                        <option value="@option.Value">@option.Text</option>
+                    }
                 </select>
             <ChartJs.Blazor.Chart Config="_pieConfig"></ChartJs.Blazor.Chart>
         </div>
@@ -44,6 +48,7 @@ else
     public PieConfig _pieConfig;
     private bool firstRender = true;
     private int ddlYear = DateTime.Now.Year;
+    public List<SelectOption> OptionsList = new List<SelectOption>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,6 +86,13 @@ else
             }
         };
         _pieConfig.Data.Datasets.Add(dataset);
+
+        for (int i = DateTime.Now.Year; i >= 2024; i--)
+        {
+            var newValue = new SelectOption { Value = i.ToString(), Text = i.ToString() };
+            OptionsList.Add(newValue);
+        }
+
         StateHasChanged();
     }
 
@@ -132,21 +144,16 @@ else
         }
         StateHasChanged();
     }
+
+    public class SelectOption
+    {
+        public string Value { get; set; }
+        public string Text { get; set; }
+    }
 }
 <script type="text/javascript">
     window.onload = function() {
         $(document).ready(function () {
-         //render year filter
-         var d = new Date();
-         var year = d.getFullYear();
-         $("#flt-ppm-year").val(year).change();
-         for (i = 2024; i <= year; i++) {
-             var option = document.createElement("option");
-             option.text = i;
-             option.value = i;
-             $("#flt-ppm-year").append(option);
-         };
-         $("#flt-ppm-year").val(year).change();
         });
     };
 </script>

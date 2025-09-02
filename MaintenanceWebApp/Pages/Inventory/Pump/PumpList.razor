@@ -254,19 +254,16 @@
 
     private void NavigateToPumpInfo(Pump pump)
     {
-        // Navigasi ke halaman detail informasi pompa berdasarkan ID.
-        NavigationManager.NavigateTo(string.Format(PUMP_INFO_PATH, pump.PumpID));
+        NavigationManager.NavigateTo($"/PumpInfo/{pump.PumpID}");
     }
 
     private void NavigateToEditPump(Pump pump)
     {
-        // Navigasi ke halaman untuk mengedit data pompa berdasarkan ID.
-        NavigationManager.NavigateTo(string.Format(PUMP_EDIT_PATH, pump.PumpID));
+        NavigationManager.NavigateTo($"/PumpEdit/{pump.PumpID}");
     }
 
     private void NavigateToDeletePump(Pump pump)
     {
-        // Navigasi ke halaman untuk menghapus data pompa berdasarkan ID.
-        NavigationManager.NavigateTo(string.Format(PUMP_DELETE_PATH, pump.PumpID));
+        NavigationManager.NavigateTo($"/PumpDelete/{pump.PumpID}");
     }
 }

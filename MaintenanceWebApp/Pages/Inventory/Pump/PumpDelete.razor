@@ -153,17 +153,10 @@
         }
     }
 
-    private async Task DeleteAssociatedFileAsync()
+    //Cancel Delete
+    private void CancelDelete()
     {
-        if (!string.IsNullOrWhiteSpace(pump?.Image))
-        {
-            await UploadService.FileChange(pump.Image, SUBFOLDER_NAME);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-            {
-                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
-                NotificationService.LogMessage($"Gagal menghapus file '{pump.Image}'. Detail: {UploadService.UploadErrorMessage}");
-            }
-        }
+        NavigationManager.NavigateTo("/PumpList");
     }
 
     private void GoBack()
