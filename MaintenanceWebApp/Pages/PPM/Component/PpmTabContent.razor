@@ -1,0 +1,225 @@
+﻿@using MaintenanceWebApp.Data
+@using System.IO
+
+<div class="tab-content" id="ppmTabContent">
+
+    @* --- Tab Permintaan --- *@
+    <div class="tab-pane fade show active" id="permintaan" role="tabpanel" aria-labelledby="permintaan-tab">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8">
+                    <h5 class="mb-3 display-6">Permintaan</h5>
+                </div>
+                <div style="align-content: center;" class="col-md-4">
+                    @if (CanPrint())
+                    {
+                        <button style="float: right;" type="button" class="btn btn-sm btn-danger mx-2" @onclick="OnExportToPdf">
+                            <span class="oi oi-document" aria-hidden="true"></span> Export to PDF
+                        </button>
+                    }
+                </div>
+            </div>
+            <hr />
+
+            <div class="row mb-2">
+                <div class="col-md-4 font-weight-bold">ID</div>
+                <div class="col-md-8">@PpmTask.PPMID</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-4 font-weight-bold">Status PPM</div>
+                <div class="col-md-8">
+                    <span class="badge @GetStatusCssClass(PpmTask)">
+                        @GetStatusText(PpmTask)
+                    </span>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-4 font-weight-bold">Pemohon</div>
+                <div class="col-md-8">@Supervisor.FullName</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-4 font-weight-bold">Section</div>
+                <div class="col-md-8">@Supervisor.Section</div>
+            </div>
+            <div class="row mb-4">
+                <div class="col-md-4 font-weight-bold">Jenis Pekerjaan</div>
+                <div class="col-md-8">@PpmTask.JobCategory</div>
+            </div>
+            <hr />
+
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <h6 class="mb-2">Deskripsi Pekerjaan</h6>
+                    <p>@(string.IsNullOrWhiteSpace(PpmTask.JobDescription) ? "Tidak ada Deskripsi" : PpmTask.JobDescription)</p>
+
+                    <h6 class="mt-4">Dokumen</h6>
+                    @if (!string.IsNullOrWhiteSpace(PpmTask.Document))
+                    {
+                        <a class="btn btn-outline-primary btn-sm" href="@CreateFilePath(PpmTask.Document)" target="_blank">
+                            <i class="bi bi-file-earmark-text"></i> @PpmTask.Document
+                        </a>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Tidak ada dokumen terlampir.</p>
+                    }
+
+                    <h6 class="mb-2 mt-3">Foto Awal</h6>
+                    @if (!string.IsNullOrWhiteSpace(PpmTask.ImageBefore))
+                    {
+                        <img class="img-fluid rounded border shadow-sm" style="max-height: 300px;" src="@CreateFilePath(PpmTask.ImageBefore)" alt="Image Before" />
+                    }
+                    else
+                    {
+                        <p class="text-muted">Tidak ada foto.</p>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(PpmTask.RejectionNote))
+                    {
+                        <div class="alert alert-danger mt-3" role="alert">
+                            <h6>Alasan Penolakan</h6>
+                            <hr />
+                            <p>@PpmTask.RejectionNote</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* Tombol Aksi (dirender oleh komponen induk) *@
+            @ActionButtons
+        </div>
+    </div>
+
+    @* --- Tab Pelaksanaan --- *@
+    <div class="tab-pane fade" id="pelaksanaan" role="tabpanel" aria-labelledby="pelaksanaan-tab">
+        <div class="container">
+            <h5 class="mb-3 display-6">Pelaksanaan</h5>
+            <hr />
+            <div class="row mb-2">
+                <div class="col-md-3"><h6>Target Tanggal Penyelesaian</h6></div>
+                <div class="col-md-9">: @(PpmTask.TargetDate?.ToShortDateString() ?? "Belum ditentukan")</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-md-3"><h6>Kesesuaian Terhadap Target</h6></div>
+                <div class="col-md-9">: @(PpmTask.TargetCompletion.HasValue ? (PpmTask.TargetCompletion.Value ? "Ya" : "Tidak") : "-")</div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <h6 class="mb-2">Catatan (MTD)</h6>
+                    <p>@(string.IsNullOrWhiteSpace(PpmTask.MTDNote) ? "Tidak ada catatan" : PpmTask.MTDNote)</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <h6 class="mb-2">Evaluasi</h6>
+                    <p>@(string.IsNullOrWhiteSpace(PpmTask.EvaluationNote) ? "Tidak ada catatan evaluasi" : PpmTask.EvaluationNote)</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <h6 class="mb-2">Catatan (Pemohon)</h6>
+                    <p>@(string.IsNullOrWhiteSpace(PpmTask.RequestorNote) ? "Tidak ada catatan" : PpmTask.RequestorNote)</p>
+                </div>
+            </div>
+            <h6 class="mb-2 mt-3">Foto Akhir</h6>
+            @if (!string.IsNullOrWhiteSpace(PpmTask.ImageAfter))
+            {
+                <img class="img-fluid rounded border shadow-sm" style="max-height: 300px;" src="@CreateFilePath(PpmTask.ImageAfter)" alt="Image After" />
+            }
+            else
+            {
+                <p class="text-muted">Tidak ada foto.</p>
+            }
+        </div>
+    </div>
+
+    @* --- Tab Riwayat --- *@
+    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+        <div class="form-group row">
+            <div class="col-sm-12">
+                <h5 class="display-6">Riwayat PPM</h5>
+                <hr />
+                @if (PpmHistoryList != null && PpmHistoryList.Any())
+                {
+                    <table width="100%" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th width="12%">Tanggal</th>
+                                <th width="8%">Jam</th>
+                                <th width="80%">Deskripsi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var history in PpmHistoryList)
+                            {
+                                <tr>
+                                    <td>@history.DateUpdated.ToString("yyyy-MM-dd")</td>
+                                    <td>@history.DateUpdated.ToString("HH:mm")</td>
+                                    <td>@history.Description</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p>Belum ada riwayat untuk PPM ini.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // --- Parameter yang Diterima dari Induk ---
+    [Parameter, EditorRequired] public PPMTask PpmTask { get; set; } = null!;
+    [Parameter, EditorRequired] public User Supervisor { get; set; } = null!;
+    [Parameter] public List<PPMTaskHistory>? PpmHistoryList { get; set; }
+    [Parameter] public string WebPPMRoot { get; set; } = "/";
+    [Parameter] public RenderFragment? ActionButtons { get; set; }
+
+    // --- Event Callbacks ke Induk ---
+    [Parameter] public EventCallback OnExportToPdf { get; set; }
+
+    // --- Metode Helper yang Dipindahkan dari Induk ---
+    private string CreateFilePath(string relativePath)
+    {
+        return string.IsNullOrWhiteSpace(relativePath) ? "" : Path.Combine(WebPPMRoot, relativePath).Replace("\\", "/");
+    }
+
+    private string GetStatusText(PPMTask task) => task.Level switch
+    {
+        PPMStatusLevel.ApprovedByManager when IsRequestStatus(task) => "Request",
+        PPMStatusLevel.Request => "Request",
+        PPMStatusLevel.ApprovedByManager => "Approved by Manager",
+        PPMStatusLevel.ApprovedByTerminalManager => "Approved by Terminal Manager",
+        PPMStatusLevel.OnProgress => "On Progress",
+        PPMStatusLevel.Checking => "Checking",
+        PPMStatusLevel.Completed => "Completed",
+        PPMStatusLevel.Rejected => "Rejected",
+        _ => "Unknown"
+    };
+
+    private string GetStatusCssClass(PPMTask task) => task.Level switch
+    {
+        PPMStatusLevel.ApprovedByManager when IsRequestStatus(task) => "bg-warning text-dark",
+        PPMStatusLevel.Request => "bg-warning text-dark",
+        PPMStatusLevel.ApprovedByManager => "bg-info text-dark",
+        PPMStatusLevel.ApprovedByTerminalManager => "bg-info text-dark",
+        PPMStatusLevel.OnProgress => "bg-primary",
+        PPMStatusLevel.Checking => "bg-secondary",
+        PPMStatusLevel.Completed => "bg-success",
+        PPMStatusLevel.Rejected => "bg-danger",
+        _ => "bg-light text-dark"
+    };
+
+    private bool IsRequestStatus(PPMTask ppm)
+    {
+        return ppm.PPMSection == "Formalities" || ppm.PPMSection == "Security" || ppm.PPMSection == "HR/GA";
+    }
+
+    private bool CanPrint()
+    {
+        return PpmTask.Level == PPMStatusLevel.Completed;
+    }
+}

@@ -1,103 +1,107 @@
-﻿<div class="top-row navbar navbar-dark">
-    <div style="margin-left: 2%;" class="row">
+﻿<div id="sidebar" class="sidebar-container">
+    <div class="top-row navbar navbar-dark">
+        <div style="margin-left: 2%;" class="row">
             <div id="nav-logo" class="col-md-2 nav-logo" style="padding: 2px;">
                 <a onclick="sidebar()"><img style="max-height: 40px; padding: 5px;" src="../RPULogo-g.png" alt="RPU Logo"></a>
             </div>
             <div id="nav-title" style="align-content:center;" class="col-md-10">
-                <label id="nav-title" style="font-size:medium; color:white;"><b style="font-weight: bold;">RPU Web App</b></label>
+                <label id="nav-title" style="font-size:medium; color:white; margin-left: 10px;"><b style="font-weight: bold;">RPU Web App</b></label>
             </div>
+        </div>
     </div>
-</div>
 
-<div class="nav-scrollable">
-    <nav class="flex-column">
+    <div class="nav-scrollable">
+        <nav class="flex-column">
+            @*Maintenance*@
+            <div class="nav-item">
+                <NavLink class="nav-link" href="./Dashboard">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span><label class="nav-list">Dashboard</label>
+                </NavLink>
+            </div>
 
-        @*Maintenance*@
-        <div class="nav-item">
-            <NavLink class="nav-link" href="MaintenanceTaskList">
-                <span class="oi oi-task" aria-hidden="true"></span><label class="nav-list">Maintenance</label>
-            </NavLink>
-        </div>
+            @*PPM*@
+            <div class="nav-item">
+                <NavLink class="nav-link" href="./PPMList">
+                    <span class="oi oi-document" aria-hidden="true"></span><label class="nav-list">PPM</label>
+                </NavLink>
+            </div>
 
-        @*PPM*@
-        <div class="nav-item">
-            <NavLink class="nav-link" href="PPMList">
-                <span class="oi oi-document" aria-hidden="true"></span><label class="nav-list">PPM</label>
-            </NavLink>
-        </div>
-
-        @*Authorize : Admin, Terminal Manager, Maintenance Supervisor, Maintenance*@
-        <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor, Maintenance">
-            <Authorized>
-                @*Inventory*@
-                <div class="nav-item">
-                    <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#InventoryList" aria-expanded="false" aria-controls="collapseExample">
-                        <span class="oi oi-wrench" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Inventory</label>
-                    </a>
-                    <div class="collapse sub-menu" id="InventoryList" style="background-color: #0d2b59;">
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="PumpList">
-                                <label class="nav-list">Pompa</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="ElectricPanelList">
-                                <label class="nav-list">Panel Listrik</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="Tank">
-                                <label class="nav-list">Tangki</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="ITList">
-                                <label class="nav-list">IT</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="FlowMeterList">
-                                <label class="nav-list">Flow Meter</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="ValveList">
-                                <label class="nav-list">Valve</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="PRVValveList">
-                                <label class="nav-list">PRV Valve</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="PCVValveTankList">
-                                <label class="nav-list">PCV Valve Tank</label>
-                            </NavLink>
-                        </div>
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="BreatherValveList">
-                                <label class="nav-list">Breather Valve</label>
-                            </NavLink>
+            @*Authorize : Admin, Terminal Manager, Maintenance Supervisor, Maintenance*@
+            <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor, Maintenance">
+                <Authorized>
+                    @*Inventory*@
+                    <div class="nav-item">
+                        <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#InventoryList" aria-expanded="false" aria-controls="collapseExample">
+                            <span class="oi oi-wrench" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Inventory</label>
+                        </a>
+                        <div class="collapse sub-menu" id="InventoryList" style="background-color: #0d2b59;">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./PumpList">
+                                    <label class="nav-list">Pompa</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./ElectricPanelList">
+                                    <label class="nav-list">Panel Listrik</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./Tank">
+                                    <label class="nav-list">Tangki</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./ITList">
+                                    <label class="nav-list">IT</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./FlowMeterList">
+                                    <label class="nav-list">Flow Meter</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./ValveList">
+                                    <label class="nav-list">Valve</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./PRVValveList">
+                                    <label class="nav-list">PRV Valve</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./PCVValveTankList">
+                                    <label class="nav-list">PCV Valve Tank</label>
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./BreatherValveList">
+                                    <label class="nav-list">Breather Valve</label>
+                                </NavLink>
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                @*Administrator*@
-                <div class="nav-item">
-                    <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#AdministratorConfig" aria-expanded="false" aria-controls="collapseExample">
-                        <span class="oi oi-cog" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Administrator</label>
-                    </a>
-                    <div class="collapse" id="AdministratorConfig">
-                        <div class="nav-item">
-                            <NavLink class="nav-link" href="UserList">
-                                <span class="oi oi-person" aria-hidden="true"></span><label class="nav-list">Pengguna</label>
-                            </NavLink>
+                </Authorized>
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Admin, Terminal Manager, Maintenance Supervisor">
+                <Authorized>
+                    @*Administrator*@
+                    <div class="nav-item">
+                        <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#AdministratorConfig" aria-expanded="false" aria-controls="collapseExample">
+                            <span class="oi oi-cog" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Administrator</label>
+                        </a>
+                        <div class="collapse" id="AdministratorConfig">
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="./UserList">
+                                    <span class="oi oi-person" aria-hidden="true"></span><label class="nav-list">Pengguna</label>
+                                </NavLink>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-
-    </nav>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+    </div>
 </div>

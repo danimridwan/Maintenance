@@ -1,5 +1,4 @@
 ﻿@page "/PPMList"
-
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.AspNetCore.Components
@@ -7,7 +6,6 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using System.Security.Claims
 @using System.Linq.Expressions
-
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
@@ -17,24 +15,25 @@
 @inject UrlStatusService UrlStatusService
 @inject TableService TableService
 
+@* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-@* Notifikasi Status *@
-@if (!string.IsNullOrEmpty(statusMessage))
-{
-    <div class="container px-0">
-        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
-            @statusMessage
-            <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+@* Komponen Daftar Breather Valve *@
+<div class="card p-3">
+    @* Notifikasi Status *@
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="container px-0">
+            <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+                @statusMessage
+                <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            </div>
         </div>
-    </div>
-}
+    }
 
-<div class="card shadow-sm rounded p-4">
-    <div class="row align-items-center mb-3">
-        <div class="col-md-6">
+    <div class="row">
+        <div class="col-sm-5 form-group">
             <h5 class="mb-2 display-6">PPM</h5>
-
             @if (HasAnyPPM)
             {
                 <div class="d-inline-flex align-items-center gap-2 mt-2">
@@ -57,59 +56,67 @@
 
         @if (canAddPPM)
         {
-            <div class="col-md-6 text-end">
-                <button class="btn btn-primary px-4" @onclick="NavigateToAddPPM">
+            <div class="col-sm-7 d-flex justify-content-end align-items-center">
+                <button class="btn btn-primary" @onclick="NavigateToAddPPM">
                     + Tambah PPM
                 </button>
             </div>
         }
     </div>
 
-    @if (isLoading)
-    {
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary mb-2" role="status"></div>
-            <p class="text-muted">Memuat Data PPM...</p>
-        </div>
-    }
-    else
-    {
-        <div class="row align-items-center mb-3">
-            <div class="col-md-8">
-                <div class="btn-group" role="group">
-                    <button @onclick="() => SetTableChoice(TableChoice.All)"
-                            class="btn @(tableChoice == TableChoice.All ? "btn-outline-primary active" : "btn-outline-secondary")">
-                        Semua
-                    </button>
-                    @if (!userPermissions.IsAdmin)
-                    {
-                        <button @onclick="() => SetTableChoice(TableChoice.Approval)"
-                                class="btn @(tableChoice == TableChoice.Approval ? "btn-outline-primary active" : "btn-outline-secondary") ms-2">
-                            @(userPermissions.IsMaintenance ? "On Going" : "Butuh Persetujuan")
-                        </button>
-                    }
-                </div>
-            </div>
-            <div class="col-md-4">
-                <input type="search" class="form-control" placeholder="Cari ID PPM atau Jenis Pekerjaan..."
-                       @bind="filterText" @bind:event="oninput" />
-            </div>
-        </div>
-
-        @if (!HasAnyPPM)
+    <div>
+    @* Tampilan Data PPM *@
+        @if (isLoading)
         {
-            <div class="alert alert-light text-center mt-4">
-                <i class="bi bi-folder-x fs-4 d-block mb-2"></i>
-                <strong>Tidak ada data ditemukan</strong><br />
-                @(string.IsNullOrWhiteSpace(filterText) ? "Belum ada data PPM tersedia." : "Pencarian tidak ditemukan.")
+            @* Memuat Data *@
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p>Memuat Data PPM...</p>
+            </div>
+        }
+        else if (!HasAnyPPM)
+        {
+            @* Tidak Ada Data *@
+            <hr />
+            <div class="text-center py-3">
+                <p>Tidak ada data PPM ditemukan.</p>
+                @if (!string.IsNullOrEmpty(searchFilter))
+                {
+                    <button class="btn btn-link" @onclick="ClearFilter">Hapus Filter</button>
+                }
             </div>
         }
         else
         {
-            <QuickGrid Items="@(CurrentPpmData)"
-                       Virtualize="false"
-                       Pagination="@pagination"
-                       Class="table table-striped table-hover table-bordered">
+            @* Table Select *@
+            <div class="row align-items-center mb-3">
+                <div class="col-md-8">
+                    <div class="btn-group" role="group">
+                        <button @onclick="() => SetTableChoice(TableChoice.All)"
+                                class="btn @(tableChoice == TableChoice.All ? "btn-outline-primary active" : "btn-outline-secondary")">
+                            Semua
+                        </button>
+                        @if (!userPermissions.IsAdmin)
+                        {
+                            <button @onclick="() => SetTableChoice(TableChoice.Approval)"
+                                    class="btn @(tableChoice == TableChoice.Approval ? "btn-outline-primary active" : "btn-outline-secondary") ms-2">
+                                @(userPermissions.IsMaintenance ? "On Going" : "Butuh Persetujuan")
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                @* Kotak Pencarian *@
+                <div class="col-md-4">
+                    <input type="search" class="form-control" placeholder="Cari ID PPM atau Jenis Pekerjaan..."
+                           @bind="searchFilter" @bind:event="oninput" />
+                </div>
+            </div>
+
+            @* Tabel Data PPM *@
+            <QuickGrid Items="@(CurrentPpmData)" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">
                 <TemplateColumn Title="ID" Sortable="true">
                     <a class="text-decoration-none fw-semibold text-primary" style="cursor:pointer;"
                        @onclick="() => NavigateToPPM(context, PpmPage.Info)">
@@ -130,21 +137,45 @@
 
             <Paginator State="@pagination" />
         }
-    }
+    </div>
 </div>
 
-
 @code {
+    // Cascading Parameter
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    // Properti State
+    private IQueryable<PPMTask>? _allPpm;
+    private User? userInfo;
+    private bool isLoading = true;
+    private string statusMessage = string.Empty;
+
     // Konstanta
     private const int MaxItemsPerPageAll = 50;
-
-    // Enumerasi untuk pilihan tabel
-    private enum TableChoice { All, Approval }
-
-    // Enumerasi untuk halaman navigasi
+    
+    // Pagination State
+    private PaginationState pagination = new() { ItemsPerPage = 10 };
     private enum PpmPage { Info, Add }
 
-    // Kelas untuk menyimpan status otorisasi pengguna
+    // Properti Terkomputasi
+    private bool HasAnyPPM => PpmCount > 0;
+    private int PpmCount => tableChoice == TableChoice.All ? (_allPpm?.Count() ?? 0) : (_filteredApprovalPpm?.Count() ?? 0);
+
+    // Properti untuk Filtering
+    private string searchFilter = string.Empty;
+
+    private IQueryable<PPMTask> CurrentPpmData =>
+        tableChoice == TableChoice.All
+            ? ApplyFilter(_allPpm)
+            : ApplyFilter(_filteredApprovalPpm);
+
+    private IQueryable<PPMTask>? _filteredApprovalPpm;
+    private TableChoice tableChoice = TableChoice.All;
+    private enum TableChoice { All, Approval }
+
+    // Properti Otorisasi
+    private UserPermissions userPermissions = new();
     private class UserPermissions
     {
         public bool IsSupervisor { get; set; }
@@ -154,31 +185,6 @@
         public bool IsMaintenance { get; set; }
         public bool IsAdmin { get; set; }
     }
-
-    // Properti dan State
-    [CascadingParameter]
-    private Task<AuthenticationState>? authenticationStateTask { get; set; }
-
-    private User? userInfo;
-    private UserPermissions userPermissions = new();
-    private IQueryable<PPMTask>? _allPpm;
-    private IQueryable<PPMTask>? _filteredApprovalPpm;
-    private string statusMessage = string.Empty;
-    private bool isLoading = true;
-    private string filterText = string.Empty;
-    private TableChoice tableChoice = TableChoice.All;
-    private PaginationState pagination = new() { ItemsPerPage = 10 };
-
-    // Properti Terkomputasi untuk membaca data yang sudah difilter
-    private IQueryable<PPMTask> CurrentPpmData =>
-        tableChoice == TableChoice.All
-            ? ApplyFilter(_allPpm)
-            : ApplyFilter(_filteredApprovalPpm);
-
-    // Properti Terkomputasi untuk menampilkan jumlah data
-    private int PpmCount => tableChoice == TableChoice.All ? (_allPpm?.Count() ?? 0) : (_filteredApprovalPpm?.Count() ?? 0);
-
-    private bool HasAnyPPM => PpmCount > 0;
     private bool canAddPPM => userPermissions.IsSupervisor;
 
     // Lifecycle Methods
@@ -201,11 +207,10 @@
 
     public void Dispose()
     {
-        // Menekan finalisasi objek
         GC.SuppressFinalize(this);
     }
 
-    // Metode untuk memuat data
+    // Metode Bantuan (Helper Methods)
     private async Task LoadUserPermissionsAndInfoAsync()
     {
         if (authenticationStateTask == null) return;
@@ -238,13 +243,12 @@
 
     private async Task LoadPpmDataAsync()
     {
-        // Memuat data PPM secara paralel untuk efisiensi
         var loadAllTask = LoadAllPpmAsync();
         var loadApprovalTask = LoadApprovalPpmAsync();
         await Task.WhenAll(loadAllTask, loadApprovalTask);
 
         // Mengatur ulang filter dan paginasi setelah data dimuat
-        filterText = string.Empty;
+        searchFilter = string.Empty;
         pagination = new PaginationState { ItemsPerPage = pagination.ItemsPerPage };
     }
 
@@ -296,17 +300,16 @@
         }
     }
 
-    // Metode Bantuan (Helper Methods)
     private IQueryable<PPMTask> ApplyFilter(IQueryable<PPMTask>? data)
     {
-        if (string.IsNullOrWhiteSpace(filterText))
+        if (string.IsNullOrWhiteSpace(searchFilter))
         {
             return data ?? Enumerable.Empty<PPMTask>().AsQueryable();
         }
 
         return data?.Where(p =>
-            p.PPMID.Contains(filterText, StringComparison.OrdinalIgnoreCase) ||
-            p.JobCategory.Contains(filterText, StringComparison.OrdinalIgnoreCase)
+            p.PPMID.Contains(searchFilter, StringComparison.OrdinalIgnoreCase) ||
+            p.JobCategory.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)
         ) ?? Enumerable.Empty<PPMTask>().AsQueryable();
     }
 
@@ -347,12 +350,19 @@
 
     private void LoadUrlStatus()
     {
-        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+        statusMessage = UrlStatusService.GetStatus();
         if (!string.IsNullOrEmpty(statusMessage))
         {
             var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
             NavigationManager.NavigateTo(uri.AbsolutePath, replace: true);
         }
+    }
+
+    // Event Handler dan Navigasi
+    private void ClearFilter()
+    {
+        // Mengatur ulang filter pencarian menjadi string kosong.
+        searchFilter = string.Empty;
     }
 
     private void SetTableChoice(TableChoice newChoice)
@@ -412,7 +422,7 @@
         // Kondisi khusus untuk status "Request"
         if (IsRequestStatus(ppm))
         {
-            return "bg-warning";
+            return "bg-warning text-dark";
         }
 
         return ppm.Level switch
@@ -431,7 +441,7 @@
     private bool IsRequestStatus(PPMTask ppm)
     {
         // Logika untuk menampilkan status "Request" secara khusus di UI
-        return ppm.Level == PPMStatusLevel.Request &&
+        return ppm.Level == PPMStatusLevel.ApprovedByManager &&
                (ppm.PPMSection == "Formalities" || ppm.PPMSection == "Security" || ppm.PPMSection == "HR/GA");
     }
 }

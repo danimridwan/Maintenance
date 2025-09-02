@@ -3,25 +3,52 @@
     padding: 2.5rem;
 }
 
-.profile-photo-container {
-    clip-path: circle();
-    display: inline-block;
+.btn-warning,
+.edit-profile-button {
+    color: black;
+    border: none;
+    font-weight: 500;
+    padding: 7px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
 }
 
-    .profile-photo-container img {
-        clip-path: circle();
-        object-fit: cover;
+    .btn-warning:hover,
+    .edit-profile-button:hover {
+        background-color: #dca500;
     }
 
-.list-group-item i.oi {
-    width: 20px;
-    text-align: center;
+.info-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1rem;
 }
 
+.profile-photo-container img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.list-group-item {
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+}
+
+    .list-group-item i.oi {
+        color: #007bff; /* Primary color */
+        font-size: 18px;
+    }
+
+/* Signature Section */
 .signature-section img {
-    padding: 10px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
+    padding: 8px;
+    max-height: 120px;
 }
 
 /* Penyesuaian untuk tampilan responsif */
@@ -143,29 +170,6 @@
     justify-content: flex-end;
 }
 
-.edit-profile-button {
-    padding: 10px 20px;
-    border: 1px solid #d0d0d0;
-    border-radius: 5px;
-    background-color: transparent;
-    color: #007bff;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-    .edit-profile-button:hover {
-        background-color: #007bff;
-        color: white;
-    }
-
 .signature-photo {
     max-height: 150px;
-    border: 1px solid #d0d0d0;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }

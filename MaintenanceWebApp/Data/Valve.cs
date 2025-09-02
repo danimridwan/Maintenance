@@ -1,10 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using MaintenanceWebApp.Pages.Inventory.Breather_Valve;
+using static Org.BouncyCastle.Asn1.Cmp.Challenge;
 
 namespace MaintenanceWebApp.Data
 {
-    public class Valve
+    public class Valve : IInventoryItem
     {
+        public string DisplayItem => $"{Type} - Jalur {ValveEntry} ke {ValveExit} {ValveTrack}";
+        public string ItemId => $"{ValveID}";
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int ValveID { get; set; }

@@ -5,21 +5,22 @@
 @using Microsoft.EntityFrameworkCore
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject UploadFilesService UploadService
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
 <div class="card">
     <div class="card-header bg-light border-primary">
-            @* Tab Header *@
+        @* Header Halaman *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar PCV Valve Tank">
+                <a @onclick="CancelAsync" class="nav-link" aria-label="Kembali ke Daftar PCV Valve Tank">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -31,8 +32,8 @@
     <div class="card-body">
         @if (pcvValveTank != null)
         {
-            @* Form Edit *@
-            <EditForm Model="pcvValveTank" OnValidSubmit="HandleUpdatePCVValveTank" OnInvalidSubmit="HandleInvalidSubmit">
+            @* Formulir Edit Data *@
+            <EditForm Model="pcvValveTank" OnValidSubmit="HandleUpdatePCVValveTank" OnInvalidSubmit="HandleInvalidSubmitAsync">
                 <DataAnnotationsValidator />
 
                 <div class="col-sm-12 mb-3">
@@ -53,7 +54,6 @@
                         </InputSelect>
                         <ValidationMessage For="@(() => pcvValveTank.Brand)" />
                     </div>
-
                     <div class="col-sm-6 mb-3">
                         <label for="Tipe" class="col-form-label">Tipe</label>
                         <InputSelect id="Tipe" @bind-Value="pcvValveTank.Type" class="form-control">
@@ -82,8 +82,8 @@
                 <div class="col-sm-12 mb-3">
                     <div class="row">
                         <div style="align-content: end;" class="col-sm-3">
-                            <label for="Tekanan Desain" class="col-form-label">Tekkanan Desain</label>
-                            <InputNumber class="form-control" id="Kapasitas" @bind-Value="pcvValveTank.DesignPressureValue1" @oninput="OnDesignPressureInputChanged" />
+                            <label for="Tekanan Desain" class="col-form-label">Tekanan Desain</label>
+                            <InputNumber class="form-control" id="TekananDesain" @bind-Value="pcvValveTank.DesignPressureValue1" @oninput="OnDesignPressureInputChanged" />
                             <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue1)" />
                         </div>
                         <div style="align-content:end; font-size: xx-large;" class="col-sm-1">
@@ -151,27 +151,22 @@
                     @if (!fileStatus)
                     {
                         <InputFile id="Foto" class="form-control"
-                        accept=".jpg,.jpeg,.png"
-                        OnChange="HandleFileUpload" />
+                                   accept=".jpg,.jpeg,.png"
+                                   OnChange="HandleFileUploadAsync" />
                         <ValidationMessage For="@(() => filePath)" />
                     }
                     else
                     {
                         <div class="d-flex align-items-center">
-                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath)" alt="PCV Valve Tank Image">
-                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="PCV Valve Tank Image">
+                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
-
-                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-                        {
-                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
-                        }
                     }
                 </div>
 
-                @* Submit Button *@
+                @* Tombol Aksi *@
                 <div class="float-end mt-3">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </EditForm>
@@ -184,143 +179,132 @@
 </div>
 
 @code {
-    //Page
-    private PCVValveTank pcvValveTank;
+    // Parameter Halaman
     [Parameter]
     public int PCVValveTankID { get; set; }
-    private EditContext? editContext;
-    private string _webStorageRoot = string.Empty;
-    private bool uploadErrorStatus;
 
-    //Form
-    private bool IsDiameterUnitDisabled = true;
+    // Properti Halaman
+    private PCVValveTank? pcvValveTank;
+    private EditContext? editContext;
+    private DotNetObjectReference<PCVValveTankEdit>? dotNetHelper;
+    private string _webStorageRoot = string.Empty;
+
+    // State Formulir
     private bool IsDesignPressureUnitDisabled = true;
     private bool IsDesignPressureValueSecondDisabled;
-    private List<string> pcvValveTankBrand = new() { "KSPC / Blanketing Device", "SHAND & JURS" };
-    private List<string> pcvValveTankType = new() { "Blanketing DST-100", "Blanketing Valve 94270" };
-    private List<string> pcvValveTankMaterial = new() { "Stainless Steel" };
-    private List<string> diameterUnits = new() { "inch" };
-    private List<string> designPressureUnits = new() { "mmH20" };
+    private bool IsDiameterUnitDisabled = true;
 
-    //File
+    private List<string> pcvValveTankBrand = new() { "GOYAL", "ARTEC" };
+    private List<string> pcvValveTankType = new() { "GOYAL", "ARTEC" };
+    private List<string> pcvValveTankMaterial = new() { "GOYAL", "ARTEC" };
+    private List<string> designPressureUnits = new() { "MMH20", "PSIG", "BAR", "MMHG" };
+    private List<string> diameterUnits = new() { "Inch", "MM" };
+
+    // State File
     private string? originalFilePath;
     private string? filePath;
     private bool fileStatus;
-    private string subFolderName = "Inventories";
-    private string fileCategory = "img";
-    private string folderName = "PCV Valve Tank";
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string FILE_CATEGORY = "img";
+    private const string FOLDER_NAME = "PCV Valve Tank";
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        //Read PCV Valve Tank using Service
-        pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(PCVValveTankID);
+        await LoadConfigurationAsync();
+        await LoadPCVValveTankDataAsync();
+    }
 
-        if (pcvValveTank == null)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            NavigationManager.NavigateTo("/PCVValveTankList", forceLoad: true);
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
         }
+    }
 
-        editContext = new EditContext(pcvValveTank);
-        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
-        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
-
-        uploadErrorStatus = false;
-
-        if (!string.IsNullOrWhiteSpace(pcvValveTank.Image))
-        {
-            fileStatus = true;
-            originalFilePath = pcvValveTank.Image;
-            filePath = pcvValveTank.Image;
-        }
-        else
-        {
-            fileStatus = false;
-            originalFilePath = null;
-            filePath = null;
-        }
-
-        if(!pcvValveTank.DesignPressureValue2.HasValue)
-        {
-            IsDesignPressureValueSecondDisabled = true;
-        }
-        else
-        {
-            IsDesignPressureValueSecondDisabled = false;
-        }
-
-        if (string.IsNullOrWhiteSpace(pcvValveTank.DiameterUnit))
-        {
-            IsDiameterUnitDisabled = true;
-        }
-        else
-        {
-            IsDiameterUnitDisabled = false;
-        }
-
-        if (string.IsNullOrWhiteSpace(pcvValveTank.DesignPressureUnit))
-        {
-            IsDesignPressureUnitDisabled = true;
-        }
-        else
-        {
-            IsDesignPressureUnitDisabled = false;
-        }
-
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
         try
         {
-            // Get Path Root
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`. Detail: {ex.Message}");
         }
     }
 
-    //File Upload
-    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    private async Task LoadPCVValveTankDataAsync()
     {
-        //File Upload using Service
-        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(PCVValveTankID);
+        if (pcvValveTank == null)
         {
-            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-
-            filePath = null;
-
-            return;
+            await NotificationService.AlertMessage("Data PCV Valve Tank tidak ditemukan.");
+            NavigationManager.NavigateTo("./PCVValveTankList", forceLoad: true);
         }
+        else
+        {
+            // Inisialisasi EditContext dan status file
+            editContext = new EditContext(pcvValveTank);
+            editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+            editContext.OnFieldChanged += (sender, e) => StateHasChanged();
 
-        filePath = UploadService.FilePath;
-        fileStatus = true;
+            InitializeFileStatus(pcvValveTank.Image);
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+            // Inisialisasi status validasi
+            IsDesignPressureUnitDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
+            IsDesignPressureValueSecondDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
+            IsDiameterUnitDisabled = !pcvValveTank.DiameterValue.HasValue || pcvValveTank.DiameterValue.Value <= 0;
+        }
     }
 
-    //Handle File Change
-    private async Task HandleFileChange()
+    private void InitializeFileStatus(string? imagePath)
+    {
+        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
+        originalFilePath = imagePath;
+        filePath = imagePath;
+    }
+
+    // Metode Unggah File
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
+            if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
+                filePath = null;
+                return;
+            }
+
+            filePath = UploadService.FilePath;
+            fileStatus = true;
+            editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileChangeAsync()
     {
         if (fileStatus)
         {
+            // Hapus file lama jika filePath berubah
             if (filePath != originalFilePath)
             {
-                //Update Image File
-                FileChange(filePath);
+                await DeleteOldFileAsync(filePath);
             }
-
             fileStatus = false;
         }
         else
@@ -329,149 +313,66 @@
         }
     }
 
-    // File Change
-    private async Task FileChange(string ImagePath)
+    private async Task DeleteOldFileAsync(string? path)
     {
-        //File Change using Service
-        await UploadService.FileChange(ImagePath, subFolderName);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        if (!string.IsNullOrWhiteSpace(path))
         {
-            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
-            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            await UploadService.FileChange(path, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus file lama. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menghapus file lama. Detail: {UploadService.UploadErrorMessage}");
+            }
         }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank.Image));
     }
 
-    //Create File Path
     private string CreateFilePath(string relativePath)
     {
-        if (!string.IsNullOrWhiteSpace(relativePath))
+        if (string.IsNullOrWhiteSpace(relativePath))
         {
-            return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+            return "/noimg.png";
         }
-        return null;
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
     }
 
-    //Update Data PCV Valve Tank
-    private async Task HandleUpdatePCVValveTank()
-    {
-        // Custom Design Pressure Validation
-        if (pcvValveTank.DesignPressureValue1.HasValue && pcvValveTank.DesignPressureValue1.Value > 0 && string.IsNullOrWhiteSpace(pcvValveTank.DesignPressureUnit))
-        {
-            alertMessage = "Jika Tekanan Desain diisi, Satuan Tekanan Desain harus dipilih.";
-            logMessage = $"Validasi kustom gagal: Satuan Tekanan Desain tidak dipilih saat nilai Tekanan Desain ada.";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        // Custom Power Value Validation
-        if (pcvValveTank.DiameterValue.HasValue && pcvValveTank.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(pcvValveTank.DiameterUnit))
-        {
-            alertMessage = "Jika Diameter diisi, Satuan Diameter harus dipilih.";
-            logMessage = $"Validasi kustom gagal: Satuan Diameter tidak dipilih saat nilai Diameter ada.";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        //File Check
-        if (fileStatus)
-        {
-            if (uploadErrorStatus)
-            {
-                alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-                logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-                uploadErrorStatus = false;
-
-                ShowNotification(alertMessage, logMessage);
-                return;
-            }
-
-            if (filePath != originalFilePath)
-            {
-                if (!string.IsNullOrWhiteSpace(originalFilePath))
-                {
-                    //Update Image File
-                    FileChange(originalFilePath);
-                }
-                pcvValveTank.Image = filePath;
-            }
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(originalFilePath))
-            {
-                FileChange(originalFilePath);
-            }
-            pcvValveTank.Image = null;
-        }
-
-        //Update using Services
-        await CRUDService.UpdateAsync<PCVValveTank>(pcvValveTank);
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
-        {
-            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
-            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        NavigationManager.NavigateTo("/PCVValveTankList?status=EditSuccess");
-    }
-
-    //Invalid Submit
-    private async Task HandleInvalidSubmit()
-    {
-        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
-        logMessage = $"Formulir PCVValveTankEdit disubmit dengan input tidak valid.";
-
-        ShowNotification(alertMessage, logMessage);
-    }
-
-    //Design Pressure Validation
+    // Metode Validasi Input
     private void OnDesignPressureInputChanged(ChangeEventArgs args)
     {
         if (double.TryParse(args.Value?.ToString(), out double currentDesignPressureInputValue))
         {
-            pcvValveTank.DesignPressureValue1 = currentDesignPressureInputValue;
+            pcvValveTank!.DesignPressureValue1 = currentDesignPressureInputValue;
         }
         else
         {
-            pcvValveTank.DesignPressureValue1 = null;
+            pcvValveTank!.DesignPressureValue1 = null;
         }
 
         IsDesignPressureUnitDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
+        IsDesignPressureValueSecondDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
 
         if (IsDesignPressureUnitDisabled)
         {
             pcvValveTank.DesignPressureUnit = null;
         }
+        if (IsDesignPressureValueSecondDisabled)
+        {
+            pcvValveTank.DesignPressureValue2 = null;
+        }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank.DesignPressureValue1));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank.DesignPressureUnit));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureValue1));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureValue2));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureUnit));
     }
 
-    //Diameter Validation
     private void OnDiameterValveInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentpcvValveTankInputValue))
+        if (double.TryParse(args.Value?.ToString(), out double currentDiameterValveInputValue))
         {
-            pcvValveTank.DiameterValue = currentpcvValveTankInputValue;
+            pcvValveTank!.DiameterValue = currentDiameterValveInputValue;
         }
         else
         {
-            pcvValveTank.DiameterValue = null;
+            pcvValveTank!.DiameterValue = null;
         }
 
         IsDiameterUnitDisabled = !pcvValveTank.DiameterValue.HasValue || pcvValveTank.DiameterValue.Value <= 0;
@@ -481,25 +382,72 @@
             pcvValveTank.DiameterUnit = null;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank.DiameterValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank.DiameterUnit));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DiameterValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DiameterUnit));
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    // Metode Penanganan Submit
+    private async Task HandleUpdatePCVValveTank()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
-    }
+        if (pcvValveTank == null) return;
 
-    //Cancel
-    private void Cancel()
-    {
+        // Sinkronisasi path file sebelum update
+        pcvValveTank.Image = fileStatus ? filePath : null;
+
+        // Jika ada perubahan file, hapus file lama
         if (filePath != originalFilePath)
         {
-            FileChange(filePath);
+            await DeleteOldFileAsync(originalFilePath);
         }
 
-        NavigationManager.NavigateTo("/PCVValveTankList");
+        try
+        {
+            await CRUDService.UpdateAsync(pcvValveTank);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menyimpan data. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menyimpan data. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            NavigationManager.NavigateTo("./PCVValveTankList?status=EditSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan tak terduga saat memperbarui data. Silakan coba lagi.");
+            NotificationService.LogMessage($"Kesalahan saat memperbarui data PCV Valve Tank. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleInvalidSubmitAsync()
+    {
+        await NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+        NotificationService.LogMessage($"Pengiriman formulir PCVValveTankEdit tidak valid.");
+    }
+
+    // Metode Navigasi
+    private async Task CancelAsync()
+    {
+        // Bersihkan file temporer jika ada
+        if (filePath != originalFilePath)
+        {
+            await DeleteOldFileAsync(filePath);
+        }
+
+        NavigationManager.NavigateTo("./PCVValveTankList");
+    }
+
+    // Metode untuk JavaScript Interop
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Implementasi IDisposable untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
     }
 }

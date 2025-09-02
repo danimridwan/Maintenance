@@ -10,101 +10,164 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
-<div class="card">
-
+<div class="card p-4 shadow-sm border-0">
     <div class="card-body">
-        @if (electricPanel == null)
+        @if (isLoading)
         {
-            <p><em>Memuat Data Panel Listrik...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p class="mt-2 text-muted">Memuat data panel listrik...</p>
+            </div>
+        }
+        else if (electricPanel == null)
+        {
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data panel listrik tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus Panel Listrik</h3>
-
+            <h3 class="card-title text-danger mb-3">Hapus Panel Listrik</h3>
             <hr />
+            <p class="text-muted">Anda yakin ingin menghapus Panel Listrik : <b>@electricPanel.Name</b> ?</p>
 
-            <p>Anda yakin ingin menghapus Panel Listrik : <b>@electricPanel.Name</b> ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeleteElectricPanel">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            </div>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
+    // Parameter Rute
     [Parameter]
     public int PanelID { get; set; }
-    private ElectricPanel electricPanel;
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // State
+    private ElectricPanel? electricPanel;
+    private bool isLoading = true;
 
-    //File
-    private string subFolderName = "Inventories";
-    private string folderName = "Pump";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+    private const string FOLDER_NAME = "Electric Panel";
 
+    // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
-        await LoadPump();
+        await LoadElectricPanelAsync();
+        isLoading = false;
     }
 
-    //Read Data Electric Panel
-    private async Task LoadPump()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadElectricPanelAsync()
     {
         try
         {
-            //Read Electric Panel using Service
+            // Memuat data Electric Panel berdasarkan ID
             electricPanel = await CRUDService.ReadSingleAsync<ElectricPanel, int>(PanelID);
+            if (electricPanel == null)
+            {
+                await NotificationService.AlertMessage("Data panel listrik tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data panel listrik. Hubungi administrator.";
-            logMessage = $"Gagal memuat data panel listrik\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data panel listrik. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data panel listrik dengan ID {PanelID}. Detail: {ex.Message}");
+            electricPanel = null;
         }
     }
 
-    //Delete Data Pump
-    private async Task DeleteElectricPanel()
+    private async Task HandleDeleteAsync()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(electricPanel);
-
-        //File Delete using File Upload Service
-        await UploadService.FileChange(electricPanel.Image, subFolderName);
-        electricPanel.Image = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (electricPanel == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Data panel listrik tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        NavigationManager.NavigateTo("/ElectricPanelList?status=DeleteSuccess");
+        try
+        {
+            // Hapus file terkait sebelum menghapus data dari database
+            await DeleteAssociatedFileAsync();
+
+            // Lakukan penghapusan record dari database
+            await CRUDService.DeleteAsync(electricPanel);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data panel listrik dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data panel listrik dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == electricPanel.PanelID);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data Inventory Maintenance History. Detail: {CRUDService.CRUDErrorMessage}");
+            }
+
+            // Navigasi kembali ke halaman daftar dengan status sukses
+            NavigationManager.NavigateTo("./ElectricPanelList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus panel listrik. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus panel listrik dengan ID {PanelID}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
     {
-        NavigationManager.NavigateTo("/ElectricPanelList");
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == electricPanel.PanelID);
+
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        NotificationService.AlertMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
+        }
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    private async Task DeleteAssociatedFileAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
+        if (!string.IsNullOrWhiteSpace(electricPanel?.Image))
+        {
+            await UploadService.FileChange(electricPanel.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
+                NotificationService.LogMessage($"Gagal menghapus file '{electricPanel.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("./ElectricPanelList");
     }
 }

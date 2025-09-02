@@ -1,0 +1,393 @@
+﻿@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using System.IO
+@implements IDisposable
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+@* Input Maintenance History Modal *@
+<div class="modal fade" id="inputMaintenanceHistoryModal" tabindex="-1" role="dialog" aria-labelledby="inputMaintenanceHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <EditForm Model="newInventoryMaintenanceHistory" OnValidSubmit="HandleCreateInventoryMaintenanceHistory">
+                <DataAnnotationsValidator />
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inputMaintenanceHistoryModalLabel">Input Data Riwayat Pemeliharaan</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="col-12">
+                        <div class="form-floating mb-3">
+                            <InputSelect id="KategoriItem" @bind-Value="SelectedInventoryCategory" class="form-select" required>
+                                <option value="" selected disabled>Pilih Kategori Item</option>
+                                @foreach (var category in INVENTORY_CATEGORY_LIST)
+                                {
+                                    <option value="@category">@category</option>
+                                }
+                            </InputSelect>
+                            <label for="KategoriItem">Kategori Item<span class="required">*</span></label>
+                            <ValidationMessage For="@(() => SelectedInventoryCategory)" />
+                        </div>
+                    </div>
+
+                    @if (_isLoadingItems)
+                    {
+                        <div class="text-center my-3">
+                            <div class="spinner-border spinner-border-sm" role="status"></div>
+                            <span class="ms-2">Memuat item...</span>
+                        </div>
+                    }
+                    else if (currentInventoryItems != null && currentInventoryItems.Any())
+                    {
+                        <div class="col-12">
+                            <div class="form-floating mb-3" style="position: relative;" @ref="_searchContainer">
+                                <input type="text" id="itemSearchInput" class="form-control" placeholder="Ketik untuk mencari item..." value="@_searchText" @oninput="UpdateSearch" @onfocus="ShowDropdown" autocomplete="off" />
+
+                                <label for="itemSearchInput">Item<span class="required">*</span></label>
+
+                                @if (_isDropdownVisible && _filteredItems != null && _filteredItems.Any())
+                                {
+                                    <div class="search-results">
+                                        @foreach (var item in _filteredItems)
+                                        {
+                                            <div class="search-result-item" @onclick="() => SelectItem(item)">
+                                                @item.DisplayItem
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (currentInventoryItems != null)
+                    {
+                        <div class="col-12">
+                            <p class="text-center text-muted border p-3 rounded">
+                                Tidak ada item yang tersedia untuk kategori ini.
+                            </p>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(SelectedInventoryCategory) && currentInventoryItems != null && currentInventoryItems.Any())
+                    {
+                        <div class="col-12">
+                            <div class="form-floating mb-3">
+                                <InputSelect id="MaintenanceCategory" @bind-Value="selectedMaintenanceHistoryCategory" class="form-select" required>
+                                    <option value="" selected disabled>Pilih Jenis Pemeliharaan</option>
+                                    @foreach (var category in MAINTENANCE_HISTORY_CATEGORY_LIST)
+                                    {
+                                        <option value="@category">@category</option>
+                                    }
+                                </InputSelect>
+                                <label for="MaintenanceCategory">Jenis Pemeliharaan<span class="required">*</span></label>
+                                <ValidationMessage For="@(() => selectedMaintenanceHistoryCategory)" />
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-floating mb-3">
+                                <InputTextArea id="MaintenanceHistoryDescription" @bind-Value="newInventoryMaintenanceHistory.Description" class="form-control" placeholder="Tuliskan deskripsi pemeliharaan..." style="height: 100px;" required />
+                                <label for="MaintenanceHistoryDescription">Deskripsi Pemeliharaan<span class="required">*</span></label>
+                                <ValidationMessage For="@(() => newInventoryMaintenanceHistory.Description)" />
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="Foto" class="col-form-label">Foto</label>
+                                @if (string.IsNullOrWhiteSpace(newInventoryMaintenanceHistory.Photo))
+                                {
+                                    <InputFile id="Foto" class="form-control"
+                                    accept=".jpg,.jpeg,.png"
+                                    OnChange="HandleFileMaintenanceHistoryUpload" />
+                                    <small class="form-text text-muted">Opsional: Unggah foto (JPG, JPEG, PNG).</small>
+                                    <ValidationMessage For="@(() => newInventoryMaintenanceHistory.Photo)" />
+                                }
+                                else
+                                {
+                                    <div class="d-flex align-items-center">
+                                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFileInventoryPath(newInventoryMaintenanceHistory.Photo)" alt="Inventory Image">
+                                        <button @onclick="() => HandleFileMaintenanceHistoryChangeAsync(newInventoryMaintenanceHistory.Photo)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer mt-4">
+                    <button @onclick="HandleCancel" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                        @if (_isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            <span class="visually-hidden">Menyimpan...</span>
+                        }
+                        else
+                        {
+                            <span>Simpan</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Parameter & Event Callbacks
+    [Parameter] public string? PpmId { get; set; }
+    [Parameter] public User? CurrentUser { get; set; }
+    [Parameter] public EventCallback OnSaveSuccess { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    // Properti untuk Pengelolaan State Internal
+    private InventoryMaintenanceHistory newInventoryMaintenanceHistory = new();
+    private string? selectedMaintenanceHistoryCategory;
+    private bool _isSaving = false;
+    private IEnumerable<IInventoryItem>? currentInventoryItems;
+    private bool _isLoadingItems = false;
+
+    // Properti untuk Komponen Pencarian Kustom
+    private IInventoryItem? _selectedInventoryItemObject;
+    private string _searchText = string.Empty;
+    private IEnumerable<IInventoryItem>? _filteredItems;
+    private bool _isDropdownVisible = false;
+
+    // Referensi untuk JS Interop & Elemen
+    private ElementReference _searchContainer;
+    private DotNetObjectReference<InputMaintenanceHistoryModal> _dotNetHelper;
+
+    // Properti & Konstanta Lainnya
+    private string _webInventoryRoot = string.Empty;
+    private readonly List<string> INVENTORY_CATEGORY_LIST = new() { "Breather Valve", "Electric Panel", "Flow Meter", "IT", "PCV Valve Tank", "PRV Valve", "Pump", "Valve", "Tank" };
+    private readonly List<string> MAINTENANCE_HISTORY_CATEGORY_LIST = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
+
+    // Properti untuk binding kategori item terpilih, sekaligus pemicu pemuatan data
+    private string? selectedInventoryCategory;
+    private string? SelectedInventoryCategory
+    {
+        get => selectedInventoryCategory;
+        set
+        {
+            if (selectedInventoryCategory != value)
+            {
+                selectedInventoryCategory = value;
+                ResetSearch(); // Reset pencarian saat kategori diganti
+                InvokeAsync(() => LoadInventoryItemsAsync(selectedInventoryCategory));
+            }
+        }
+    }
+
+    // --- Metode Lifecycle ---
+
+    protected override void OnInitialized()
+    {
+        // Mengambil path root dari konfigurasi
+        _webInventoryRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        // Membuat referensi .NET yang bisa dipanggil dari JavaScript
+        _dotNetHelper = DotNetObjectReference.Create(this);
+    }
+
+    // Membersihkan referensi dan event listener saat komponen dihancurkan untuk mencegah kebocoran memori (memory leak)
+    public void Dispose()
+    {
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
+        _dotNetHelper?.Dispose();
+    }
+
+    // --- Metode untuk JS Interop ---
+
+    // Metode ini dipanggil dari JavaScript ketika terjadi klik di luar komponen pencarian
+    [JSInvokable]
+    public async Task CloseDropdownOnOutsideClick()
+    {
+        _isDropdownVisible = false;
+        await JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
+        StateHasChanged();
+    }
+
+    // --- Metode Pemuatan Data ---
+
+    // Memuat daftar item inventaris berdasarkan kategori yang dipilih
+    private async Task LoadInventoryItemsAsync(string inventoryType)
+    {
+        _isLoadingItems = true;
+        currentInventoryItems = null;
+        StateHasChanged();
+        try
+        {
+            switch (inventoryType)
+            {
+                case "Breather Valve": currentInventoryItems = await CRUDService.ReadAllAsync<BreatherValve>(); break;
+                case "Electric Panel": currentInventoryItems = await CRUDService.ReadAllAsync<ElectricPanel>(); break;
+                case "Flow Meter": currentInventoryItems = await CRUDService.ReadAllAsync<FlowMeter>(); break;
+                case "IT": currentInventoryItems = await CRUDService.ReadAllAsync<IT>(); break;
+                case "PCV Valve Tank": currentInventoryItems = await CRUDService.ReadAllAsync<PCVValveTank>(); break;
+                case "PRV Valve": currentInventoryItems = await CRUDService.ReadAllAsync<PRVValve>(); break;
+                case "Pump": currentInventoryItems = await CRUDService.ReadAllAsync<Pump>(); break;
+                case "Valve": currentInventoryItems = await CRUDService.ReadAllAsync<Valve>(); break;
+                default: currentInventoryItems = Enumerable.Empty<IInventoryItem>(); break;
+            }
+        }
+        finally
+        {
+            _isLoadingItems = false;
+            StateHasChanged();
+        }
+    }
+
+    // --- Metode untuk Logika Pencarian ---
+
+    // Menangani event input pada kotak pencarian untuk memfilter item
+    private void UpdateSearch(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            _filteredItems = currentInventoryItems; // Jika input kosong, tampilkan semua item
+        }
+        else
+        {
+            // Jika ada input, filter item berdasarkan teks (case-insensitive)
+            _filteredItems = currentInventoryItems?.Where(item =>
+                item.DisplayItem.ToLower().Contains(_searchText.ToLower())
+            );
+        }
+        if (!_isDropdownVisible)
+        {
+            _isDropdownVisible = true;
+        }
+    }
+
+    // Menangani pemilihan item dari daftar hasil pencarian
+    private async Task SelectItem(IInventoryItem item)
+    {
+        _selectedInventoryItemObject = item;
+        _searchText = item.DisplayItem;
+        _isDropdownVisible = false;
+        // Hapus event listener setelah item dipilih
+        await JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
+    }
+
+    // Menampilkan dropdown hasil pencarian saat input di-fokus
+    private async Task ShowDropdown()
+    {
+        if (_isDropdownVisible) return;
+
+        _filteredItems = currentInventoryItems;
+        _isDropdownVisible = true;
+        // Daftarkan event listener untuk mendeteksi klik di luar komponen
+        await JSRuntime.InvokeVoidAsync("blazorInterop.addOutsideClickHandler", _searchContainer, _dotNetHelper);
+    }
+
+    // --- Metode Penanganan Form (Submit & Cancel) ---
+
+    // Menangani submit form jika semua validasi berhasil
+    private async Task HandleCreateInventoryMaintenanceHistory()
+    {
+        if (newInventoryMaintenanceHistory == null || CurrentUser == null || string.IsNullOrEmpty(PpmId) || _selectedInventoryItemObject == null)
+        {
+            await NotificationService.AlertMessage("Mohon pastikan semua isian yang wajib telah dilengkapi.");
+            return;
+        }
+        _isSaving = true;
+
+        // Melengkapi data sebelum disimpan
+        newInventoryMaintenanceHistory.InventoryId = int.Parse(_selectedInventoryItemObject.ItemId);
+        newInventoryMaintenanceHistory.InventoryName = selectedInventoryCategory;
+        newInventoryMaintenanceHistory.MaintenanceDate = DateTime.Now;
+        newInventoryMaintenanceHistory.MaintenanceCategory = selectedMaintenanceHistoryCategory;
+        newInventoryMaintenanceHistory.Technician = CurrentUser.FullName;
+        newInventoryMaintenanceHistory.CreatedBy = CurrentUser.Id;
+        newInventoryMaintenanceHistory.PPMId = PpmId;
+
+        // Menyimpan data menggunakan service
+        await CRUDService.CreateAsync(newInventoryMaintenanceHistory);
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data riwayat. Silakan hubungi Administrator.");
+            _isSaving = false;
+            return;
+        }
+        _isSaving = false;
+        ResetForm();
+        await JSRuntime.InvokeVoidAsync("hideModal", "inputMaintenanceHistoryModal");
+        await OnSaveSuccess.InvokeAsync();
+    }
+
+    // Menangani pembatalan form
+    private async Task HandleCancel()
+    {
+        await CleanUpUnsavedFiles();
+        ResetForm();
+        await OnCancel.InvokeAsync();
+    }
+
+    // --- Metode Helper (File Upload, Reset, dll) ---
+
+    // Mengatur ulang state form dan pencarian ke kondisi awal
+    private void ResetSearch()
+    {
+        _searchText = string.Empty;
+        _filteredItems = null;
+        _selectedInventoryItemObject = null;
+        if (_isDropdownVisible)
+        {
+            _isDropdownVisible = false;
+            JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
+        }
+    }
+
+    private void ResetForm()
+    {
+        newInventoryMaintenanceHistory = new InventoryMaintenanceHistory();
+        selectedInventoryCategory = string.Empty;
+        selectedMaintenanceHistoryCategory = string.Empty;
+        ResetSearch();
+    }
+
+    // Menangani unggahan file foto
+    private async Task HandleFileMaintenanceHistoryUpload(InputFileChangeEventArgs e)
+    {
+        await UploadService.FilesUpload(e.File, SelectedInventoryCategory, "Inventories", "img");
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+            newInventoryMaintenanceHistory.Photo = null;
+            return;
+        }
+        newInventoryMaintenanceHistory.Photo = UploadService.FilePath;
+    }
+
+    // Menangani perubahan (penghapusan) file foto yang sudah diunggah
+    private async Task HandleFileMaintenanceHistoryChangeAsync(string photo)
+    {
+        if (!string.IsNullOrWhiteSpace(photo))
+        {
+            await UploadService.FileChange(photo, "Inventories");
+            newInventoryMaintenanceHistory.Photo = null;
+        }
+    }
+
+    // Membersihkan file yang sudah diunggah jika form dibatalkan
+    private async Task CleanUpUnsavedFiles()
+    {
+        if (!string.IsNullOrEmpty(newInventoryMaintenanceHistory.Photo))
+        {
+            await UploadService.FileChange(newInventoryMaintenanceHistory.Photo, "Inventories");
+            newInventoryMaintenanceHistory.Photo = null;
+        }
+    }
+
+    // Membuat path URL yang valid untuk menampilkan gambar
+    private string CreateFileInventoryPath(string relativePath)
+    {
+        return string.IsNullOrWhiteSpace(relativePath) ? string.Empty : Path.Combine(_webInventoryRoot, relativePath).Replace("\\", "/");
+    }
+}

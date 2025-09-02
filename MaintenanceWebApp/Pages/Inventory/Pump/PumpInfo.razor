@@ -3,167 +3,281 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Security.Claims
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject CRUDService CRUDService
+@inject UploadFilesService UploadService
 @inject NotificationService NotificationService
 
 @* Roles Authorize *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-<div class="card">
+@* Status Pemuatan *@
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Memuat...</span>
+        </div>
+        <p class="mt-2">Memuat informasi Pompa...</p>
+    </div>
+}
+@* Status Data Breather Valve Tidak Ditemukan *@
+else if (pump is null)
+{
+    <div class="text-center py-5">
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">Data Tidak Ditemukan!</h4>
+            <p>Pompa dengan ID yang diberikan tidak ada atau terjadi kesalahan saat memuat data.</p>
+            <hr>
+            <p class="mb-0">Mohon cek kembali ID Pompa atau hubungi administrator.</p>
+        </div>
+    </div>
+}
+@* Status Data User Tidak Ditemukan *@
+else if (user is null)
+{
+    <div class="text-center py-5">
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">User Tidak Ditemukan!</h4>
+            <p>User tidak ada atau terjadi kesalahan saat memuat data.</p>
+            <hr>
+            <p class="mb-0">Lakukan refresh halaman atau hubungi administrator.</p>
+        </div>
+    </div>
+}
+@* Detail Pompa *@
+else
+{
+    <div class="card">
+        @* Header Halaman *@
+        <div class="card-header bg-light border-primary">
+            <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                <li class="nav-item">
+                    <a style="cursor: pointer;" @onclick="NavigateToPumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                        <span class="oi oi-chevron-left"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link active" id="information-tab" data-bs-toggle="tab" data-bs-target="#information" type="button" role="tab" aria-controls="information" aria-selected="false">
+                        Informasi
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                        Riwayat
+                    </button>
+                </li>
+            </ul>
+        </div>
 
-	@if (pump != null){
-		<div class="card-header bg-light border-primary">
-			@* Tab Header *@
-			<ul class="nav nav-tabs card-header-tabs">
-				<li class="nav-item">
-					<a href="PumpList" class="nav-link" aria-label="Kembali ke Daftar Pompa">
-						<span class="oi oi-chevron-left"></span>
-					</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link active" aria-label="Informasi Pompa">Informasi Pompa</a>
-				</li>
-			</ul>
-		</div>
-		<div class="card-body">
-			@* Informasi Pompa *@
-			<div class="form-group row">
-				<div class="col-sm-5">
+        <div class="card-body">
 
-					@if (string.IsNullOrWhiteSpace(pump.Image) == false)
-					{
-						<img style="align-content:center;" width="100%" src="@CreateFilePath(pump.Image)" alt="Pump Image" class="pt-5">
-					}
-					else{
-						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available" class="pt-5">
-					}
-				</div>
+            @* Tab Informasi *@
+            <div class="tab-content" id="PumpTabContent">
+                <div class="tab-pane fade show active" id="information" role="tabpanel" aria-labelledby="information-tab">
+                    <div class="container">
+                        <div class="row align-items-center mt-3 mb-3">
 
-				<div class="col-sm-7">
-					<h5 class="display-6">@pump.Tag</h5><hr />
-					<table width="100%">
-						<tr>
-							<td class="td-first">Kategori</td>
-							<td> : </td>
-							<td class="td-last">@pump.Name</td>
-						</tr>
-						<tr>
-							<td class="td-first">Merk</td>
-							<td> : </td>
-							<td class="td-last">@pump.Brand</td>
-						</tr>
-						<tr>
-							<td class="td-first">Tahun</td>
-							<td> : </td>
-							<td class="td-last">@pump.Year</td>
-						</tr>
-						<tr>
-							<td class="td-first">Tipe</td>
-							<td> : </td>
-							<td class="td-last">@pump.Type</td>
-						</tr>
-						<tr>
-							<td class="td-first">Material</td>
-							<td> : </td>
-							<td class="td-last">@pump.Material</td>
-						</tr>
-						<tr>
-							<td class="td-first">Jenis</td>
-							<td> : </td>
-							<td class="td-last">@pump.Category</td>
-						</tr>
-						<tr>
-							<td class="td-first">Kapasitas</td>
-							<td> : </td>
-							<td class="td-last">@pump.CapacityValue @pump.CapacityUnit</td>
-						</tr>
-						<tr>
-							<td class="td-first">Lokasi</td>
-							<td> : </td>
-							<td class="td-last">@pump.Location</td>
-						</tr>
-						<tr>
-							<td class="td-first">Daya</td>
-							<td> : </td>
-							<td class="td-last">@pump.PowerValue @pump.PowerUnit</td>
-						</tr>
-						<tr>
-							<td class="td-first">Kode Explotion Proof</td>
-							<td> : </td>
-							<td class="td-last">@pump.ExplotionProofCode</td>
-						</tr>
-					</table>
-				</div>
+                            @* Bagian Foto Pompa *@
+                            <div class="col-md-4 d-flex justify-content-center">
+                                <div class="border rounded-lg overflow-hidden" style="max-width: 250px; height: auto;">
+                                    <img class="img-fluid" src="@CreateFilePath(pump.Image)" alt="Foto Pompa" />
+                                </div>
+                            </div>
 
-			</div>
 
-		</div>
-	}
-	else
-	{
-		<p>Memuat Data Pompa...</p>
-	}
-</div>
+                            @* Bagian Informasi Detail *@
+                            <div class="col-md-8">
+                                <h5 class="display-6 mb-2">@pump.Tag</h5><hr />
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label text-muted">Kategori</label>
+                                        <p class="info-text">@pump.Name</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Merk</label>
+                                        <p class="info-text">@pump.Brand</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Tipe</label>
+                                        <p class="info-text">@pump.Type</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Tahun</label>
+                                        <p class="info-text">@pump.Year</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Material</label>
+                                        <p class="info-text">@pump.Material</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Jenis</label>
+                                        <p class="info-text">@pump.Category</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Kapasitas</label>
+                                        <p class="info-text">@pump.CapacityValue @pump.CapacityUnit</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Lokasi</label>
+                                        <p class="info-text">@pump.Location</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Daya</label>
+                                        <p class="info-text">@pump.PowerValue @pump.PowerUnit</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Kode Explotion Proof</label>
+                                        <p class="info-text">@pump.ExplotionProofCode</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Tab Riwayat (belum ada implementasi logika) *@
+                <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                    <div class="container row">
+                        <div class="col-sm-12">
+                            <p>Belum ada riwayat untuk Pompa ini.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-	//Page
-	[Parameter]
-	public int PumpId { get; set; }
-	private Pump pump;
-	private string _webStorageRoot = string.Empty;
+    // Parameter dari URL
+    [Parameter]
+    public int PumpId { get; set; }
 
-	//Notification
-	private string? alertMessage;
-	private string? logMessage;
+    // Properti Halaman
+    private DotNetObjectReference<PumpInfo> dotNetHelper = default!;
+    private User? user;
+    private InventoryMaintenanceHistory newMaintenanceHistory = new();
+    private List<InventoryMaintenanceHistory>? pumpHistoryList;
+    private IQueryable<InventoryMaintenanceHistory>? _pumpHistories;
+    private InventoryMaintenanceHistory? selectedHistory;
+    private int selectedHistoryId;
 
-	protected override async Task OnInitializedAsync()
-	{
-		await LoadPump();
+    // Properti State
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private Pump? pump;
+    private bool isLoading = true;
+    private int? previousId;
+    private PaginationState pagination = new() { ItemsPerPage = 10 };
+    private string todayDate = string.Empty;
 
-		try
-		{
-			// Get Path Root
-			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+    // Konstanta
+    private string _webStorageRoot = string.Empty;
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string IMAGE_FILE_CATEGORY = "img";
+    private const string IMAGE_FOLDER_NAME = "Pump";
+    private const string NO_IMAGE_PATH = "/noimg.png";
+    private const string PUMP_LIST_PATH = "./PumpList";
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+    }
 
-	//Read Data Pump
-	private async Task LoadPump()
-	{
-		try
-		{
-			//Read Pump using Service
-			pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat data pompa. Hubungi administrator.";
-			logMessage = $"Gagal memuat data pompa\nDetail :\n{ex}";
+    protected override async Task OnParametersSetAsync()
+    {
+        // Pemuatan data hanya terjadi jika parameter ID berubah
+        if (PumpId != previousId)
+        {
+            isLoading = true;
+            todayDate = DateTime.Now.ToString("yyyy-MM-dd");
+            previousId = PumpId;
+            await LoadPumpAsync();
+            // await LoadPumpMaintenanceHistoryAsync();
+            await LoadUserAsync();
+            isLoading = false;
+        }
+    }
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            // Mengambil path root dari konfigurasi
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebStorageRoot`. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`: {ex}");
+        }
+    }
 
-	private string CreateFilePath(string relativePath)
-	{
-		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
-	}
+    // Metode untuk memuat data
+    private async Task LoadUserAsync()
+    {
+        if (authenticationStateTask == null) return;
+        var authenticationState = await authenticationStateTask;
+        var userPrincipal = authenticationState.User;
+        var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+        if (userPrincipal.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(userId))
+        {
+            try
+            {
+                // Memuat informasi pengguna dari database
+                user = await CRUDService.ReadSingleAsync<User, string>(userId);
+            }
+            catch (Exception ex)
+            {
+                NotificationService.LogMessage($"Terjadi kesalahan saat memuat info pengguna yang sedang masuk: {ex.Message}");
+                await NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda. Silakan coba lagi atau hubungi administrator.");
+            }
+        }
+    }
 
-	//Notification
-	private async Task ShowNotification(string alertMessage, string logMessage)
-	{
-		await NotificationService.AlertMessage(alertMessage);
-		NotificationService.LogMessage(logMessage);
-	}
+    private async Task LoadPumpAsync()
+    {
+        try
+        {
+            // Membaca data tunggal dari database berdasarkan ID
+            pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
+        }
+        catch (Exception ex)
+        {
+            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
+            await NotificationService.AlertMessage("Gagal memuat data Pompa. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat data Pompa dengan ID {PumpId}: {ex}");
+            pump = null;
+        }
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        // Memastikan relativePath tidak null atau kosong
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return NO_IMAGE_PATH;
+        }
+        // Menggabungkan path root dengan relative path
+        string fullPath = Path.Combine(_webStorageRoot, relativePath);
+        // Mengganti backslash dengan slash untuk URL
+        return fullPath.Replace("\\", "/");
+    }
+
+    // Navigasi
+    private void NavigateToPumpList()
+    {
+        // Navigasi kembali ke halaman daftar
+        NavigationManager.NavigateTo(PUMP_LIST_PATH);
+    }
 }

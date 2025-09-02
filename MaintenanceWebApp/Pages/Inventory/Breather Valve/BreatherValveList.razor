@@ -6,7 +6,6 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using Microsoft.AspNetCore.Components
 @inject NavigationManager NavigationManager
-@implements IDisposable
 
 @* Services *@
 @inject CRUDService CRUDService
@@ -14,7 +13,7 @@
 @inject TableService TableService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
+@* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
 @* Komponen Daftar Breather Valve *@
@@ -25,7 +24,8 @@
         <div class="container px-0">
             <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
                 @statusMessage
-                <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;" type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+                <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;"
+                        type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
             </div>
         </div>
     }
@@ -83,7 +83,7 @@
             @* Tidak Ada Data *@
             <hr />
             <div class="text-center py-3">
-                <p>Tidak ada Breather Valve ditemukan.</p>
+                <p>Tidak ada data breather valve ditemukan.</p>
                 @if (!string.IsNullOrEmpty(searchFilter))
                 {
                     <button class="btn btn-link" @onclick="ClearFilter">Hapus Filter</button>
@@ -132,22 +132,22 @@
 
     // Properti State
     private bool canEditData;
-    private IQueryable<BreatherValve>? allBreatherValves;
+    private IQueryable<BreatherValve>? _allBreatherValves;
     private bool isLoading = true;
     private string statusMessage = string.Empty;
 
     // Konstanta
-    private const string ADD_BREATHER_VALVE_PATH = "/BreatherValveAdd";
-    private const string BREATHER_VALVE_INFO_PATH = "/BreatherValveInfo/{0}";
-    private const string BREATHER_VALVE_EDIT_PATH = "/BreatherValveEdit/{0}";
-    private const string BREATHER_VALVE_DELETE_PATH = "/BreatherValveDelete/{0}";
+    private const string ADD_BREATHER_VALVE_PATH = "./BreatherValveAdd";
+    private const string BREATHER_VALVE_INFO_PATH = "./BreatherValveInfo/{0}";
+    private const string BREATHER_VALVE_EDIT_PATH = "./BreatherValveEdit/{0}";
+    private const string BREATHER_VALVE_DELETE_PATH = "./BreatherValveDelete/{0}";
 
     // Pagination State
     private PaginationState pagination = new() { ItemsPerPage = 5 };
 
     // Properti Terkomputasi
-    private bool HasBreatherValves => !isLoading && (allBreatherValves?.Any() ?? false);
-    private int BreatherValveCount => allBreatherValves?.Count() ?? 0;
+    private bool HasBreatherValves => !isLoading && (_allBreatherValves?.Any() ?? false);
+    private int BreatherValveCount => _allBreatherValves?.Count() ?? 0;
 
     // Properti untuk Filtering
     private string searchFilter
@@ -158,7 +158,6 @@
             if (TableService.NoFilter != value)
             {
                 TableService.NoFilter = value;
-                StateHasChanged();
             }
         }
     }
@@ -169,14 +168,10 @@
         {
             if (string.IsNullOrWhiteSpace(searchFilter))
             {
-                // Jika filter kosong, kembalikan semua data breather valve.
-                return allBreatherValves ?? Enumerable.Empty<BreatherValve>().AsQueryable();
+                return _allBreatherValves ?? Enumerable.Empty<BreatherValve>().AsQueryable();
             }
 
-            // Gunakan .AsEnumerable() sebelum .Where() untuk filtering di sisi klien.
-            // Metode ini efektif karena seluruh data sudah dimuat ke memori.
-            // Jika data sangat besar, pertimbangkan filtering di sisi server.
-            return allBreatherValves?.Where(valve =>
+            return _allBreatherValves?.Where(valve =>
                 (!string.IsNullOrEmpty(valve.Tank) && valve.Tank.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(valve.Brand) && valve.Brand.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(valve.Type) && valve.Type.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)))
@@ -193,12 +188,6 @@
         LoadUrlStatus();
     }
 
-    public void Dispose()
-    {
-        // Mengimplementasikan IDisposable untuk membersihkan sumber daya.
-        GC.SuppressFinalize(this);
-    }
-
     // Metode Bantuan (Helper Methods)
     private async Task CheckUserAuthorizationAsync()
     {
@@ -207,7 +196,7 @@
         {
             var authenticationState = await authenticationStateTask;
             var user = authenticationState.User;
-            canEditData = user.IsInRole("Admin") || user.IsInRole("Maintenance Supervisor");
+            canEditData = user.IsInRole("Admin") || user.IsInRole("Maintenance") || user.IsInRole("Maintenance Supervisor");
         }
     }
 
@@ -216,14 +205,14 @@
         // Mengambil semua data breather valve dari database secara asinkron.
         try
         {
-            allBreatherValves = (await CRUDService.ReadAllAsync<BreatherValve>(orderBy: q => q.OrderBy(v => v.BreatherValveID)))
+            _allBreatherValves = (await CRUDService.ReadAllAsync<BreatherValve>(orderBy: q => q.OrderBy(v => v.BreatherValveID)))
                 .ToList()
                 .AsQueryable();
         }
         catch (Exception ex)
         {
-            // Menangani kesalahan saat memuat data. Memberikan notifikasi dan mencatat error.
-            NotificationService.AlertMessage($"Terjadi kesalahan saat memuat data Breather Valve: {ex.Message}");
+            // Menangani kesalahan saat memuat data dengan notifikasi yang informatif.
+            NotificationService.AlertMessage($"Terjadi kesalahan saat memuat data Breather Valve. Silakan coba kembali nanti.");
             NotificationService.LogMessage($"Kesalahan saat memuat data Breather Valve: {ex.Message}");
         }
         finally
@@ -238,7 +227,7 @@
         // Mengambil dan menghapus pesan status dari URL jika ada.
         statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
 
-        // Jika ada pesan status, navigasi ulang untuk membersihkan URL.
+        // Jika ada pesan status, navigasi ulang untuk membersihkan URL agar tidak muncul lagi saat refresh.
         if (!string.IsNullOrEmpty(statusMessage))
         {
             NavigationManager.NavigateTo(NavigationManager.Uri.Split('?')[0], replace: true);
@@ -248,7 +237,7 @@
     // Event Handler dan Navigasi
     private void ClearFilter()
     {
-        // Mengatur ulang filter pencarian.
+        // Mengatur ulang filter pencarian menjadi string kosong.
         searchFilter = string.Empty;
     }
 

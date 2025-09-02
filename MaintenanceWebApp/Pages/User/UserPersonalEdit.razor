@@ -1,0 +1,550 @@
+﻿@page "/UserPersonalEdit/{Id}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<DataContext> DbFactory
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject UserManager<User> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+
+@* Roles Authorize *@
+@attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Edit Pengguna</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p>Memuat Data Pengguna...</p>
+            </div>
+        }
+        else if (user == null)
+        {
+            <div class="text-center py-3">
+                <p>Data pengguna tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="user" OnValidSubmit="HandleUpdateUserAsync" OnInvalidSubmit="HandleInvalidSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <label for="fullName" class="col-form-label">Nama Lengkap <span class="required">*</span></label>
+                        <InputText id="fullName" @bind-Value="user.FullName" class="form-control" />
+                        <ValidationMessage For="@(() => user.FullName)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="email" class="col-form-label">Email <span class="required">*</span></label>
+                        <InputText id="email" @bind-Value="user.Email" class="form-control" />
+                        <ValidationMessage For="@(() => user.Email)" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <label for="phoneNumber" class="col-form-label">Nomor Telepon <span class="required">*</span></label>
+                        <InputText id="phoneNumber" @bind-Value="user.PhoneNumber" class="form-control" />
+                        <ValidationMessage For="@(() => user.PhoneNumber)" />
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="role" class="col-form-label">Role <span class="required">*</span></label>
+                        <InputText id="role" @bind-Value="user.Role" class="form-control" readonly></InputText>
+                        <ValidationMessage For="@(() => user.Role)" />
+                        @if (validationMessages.ContainsKey("role"))
+                        {
+                            <div class="text-danger mt-2">@validationMessages["role"]</div>
+                        }
+                    </div>
+                </div>
+
+                @if (user.Role == "Supervisor" || user.Role == "Manager")
+                {
+                    <div class="col-sm-12 mb-3">
+                        <label for="section" class="col-form-label">Section <span class="required">*</span></label>
+                        <InputText id="section" @bind-Value="user.Section" class="form-control" readonly></InputText>
+                        <ValidationMessage For="@(() => user.Section)" />
+                        @if (validationMessages.ContainsKey("section"))
+                        {
+                            <div class="text-danger mt-2">@validationMessages["section"]</div>
+                        }
+                    </div>
+                }
+
+                @if (user.Role == "Maintenance" || (user.Role == "Supervisor" && user.Section == "Operation"))
+                {
+                    <div class="col-sm-12 mb-3">
+                        <label for="roleCategory" class="col-form-label">Divisi <span class="required">*</span></label>
+                        <InputText id="roleCategory" @bind-Value="user.RoleCategory" class="form-control" readonly></InputText>
+                        @if (validationMessages.ContainsKey("roleCategory"))
+                        {
+                            <div class="text-danger mt-2">@validationMessages["roleCategory"]</div>
+                        }
+                    </div>
+                }
+
+                @if (user.Role != "Admin")
+                {
+                    <div class="col-sm-12 mb-3">
+                        <label for="signature" class="col-form-label">Tanda Tangan <span class="required">*</span></label>
+                        @if (!signatureStatus)
+                        {
+                            <InputFile id="signature" class="form-control" accept=".jpg,.jpeg,.png" OnChange="HandleSignatureUploadAsync" />
+                            <small class="form-text text-muted">Unggah foto tanda tangan digital (JPG, JPEG, PNG).</small>
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center">
+                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(signaturePath)" alt="Tanda Tangan Pengguna">
+                                <button @onclick="HandleSignatureChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            </div>
+                        }
+                        @if (validationMessages.ContainsKey("signature"))
+                        {
+                            <div class="text-danger mt-2">@validationMessages["signature"]</div>
+                        }
+                    </div>
+                }
+
+                <div class="col-sm-12 mb-3">
+                    <label for="userPhoto" class="col-form-label">Foto Profil</label>
+                    @if (!profilePhotoStatus)
+                    {
+                        <InputFile id="userPhoto" class="form-control" accept=".jpg,.jpeg,.png" OnChange="HandleProfilePhotoUploadAsync" />
+                        <small class="form-text text-muted">Opsional: Unggah foto profil pengguna (JPG, JPEG, PNG).</small>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(profilePhotoPath)" alt="Foto Pengguna">
+                            <button @onclick="HandleProfilePhotoChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="float-end mt-3">
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    // Parameter Halaman
+    [Parameter]
+    public string Id { get; set; } = default!;
+
+    // Properti Halaman
+    private DotNetObjectReference<UserPersonalEdit> dotNetHelper;
+
+    // Properti State
+    private User? user;
+    private bool isLoading = true;
+    private string? previousId;
+    private string? originalUserRole;
+
+    // State Formulir dan Validasi Kustom
+    private Dictionary<string, string> validationMessages = new();
+
+    // State File Upload
+    private bool profilePhotoStatus;
+    private bool signatureStatus;
+    private string? profilePhotoPath;
+    private string? signaturePath;
+    private string? originalprofilePhotoPath;
+    private string? originalsignaturePath;
+
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "User";
+    private const string FILE_CATEGORY = "img";
+    private const string FOLDER_NAME = "Image";
+    private string? webUserRoot;
+
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Id != previousId)
+        {
+            isLoading = true;
+            previousId = Id;
+
+            await LoadUserDataAsync();
+            if (!string.IsNullOrWhiteSpace(user.Signature))
+            {
+                signatureStatus = true;
+                originalsignaturePath = user.Signature;
+                signaturePath = user.Signature;
+            }
+            else
+            {
+                signatureStatus = false;
+                originalsignaturePath = null;
+                signaturePath = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.UserPhoto))
+            {
+                profilePhotoStatus = true;
+                originalprofilePhotoPath = user.UserPhoto;
+                profilePhotoPath = user.UserPhoto;
+            }
+            else
+            {
+                profilePhotoStatus = false;
+                originalprofilePhotoPath = null;
+                profilePhotoPath = null;
+            }
+
+            isLoading = false;
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        if (signaturePath != originalsignaturePath)
+        {
+            await UploadService.FileChange(signaturePath, SUB_FOLDER_NAME);
+        }
+        if (profilePhotoPath != originalprofilePhotoPath)
+        {
+            await UploadService.FileChange(profilePhotoPath, SUB_FOLDER_NAME);
+        }
+
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");        
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebUserRoot`. Hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebUserRoot`: {ex}");
+        }
+    }
+
+    private async Task LoadUserDataAsync()
+    {
+        user = await UserManager.FindByIdAsync(Id);
+        if (user != null)
+        {
+            var currentRoles = await UserManager.GetRolesAsync(user);
+            originalUserRole = currentRoles.FirstOrDefault();
+            user.Role = originalUserRole ?? string.Empty;
+
+            originalprofilePhotoPath = user.UserPhoto;
+            originalsignaturePath = user.Signature;
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        validationMessages.Clear();
+        bool isValid = true;
+
+        if (string.IsNullOrWhiteSpace(user?.Role))
+        {
+            validationMessages["role"] = "Jabatan harus dipilih.";
+            isValid = false;
+        }
+
+        if ((user?.Role == "Supervisor" || user?.Role == "Manager") && string.IsNullOrWhiteSpace(user.Section))
+        {
+            validationMessages["section"] = "Bagian harus dipilih.";
+            isValid = false;
+        }
+
+        if ((user?.Role == "Maintenance" || (user?.Role == "Supervisor" && user.Section == "Operation")) && string.IsNullOrWhiteSpace(user.RoleCategory))
+        {
+            validationMessages["roleCategory"] = "Divisi harus dipilih.";
+            isValid = false;
+        }
+
+        if (user?.Role != "Admin" && string.IsNullOrWhiteSpace(user?.Signature))
+        {
+            validationMessages["signature"] = "Tanda tangan harus diunggah.";
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    private async Task HandleUpdateUserAsync()
+    {
+        if (user == null) return;
+
+        if (signatureStatus)
+        {
+            if (signaturePath != originalsignaturePath)
+            {
+                if (!string.IsNullOrWhiteSpace(originalsignaturePath))
+                {
+                    HandleFileChange(originalsignaturePath);
+                }
+                user.Signature = signaturePath;
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(originalsignaturePath))
+            {
+                HandleFileChange(originalsignaturePath);
+            }
+            user.Signature = null;
+        }
+
+        if (profilePhotoStatus)
+        {
+            if (profilePhotoPath != originalprofilePhotoPath)
+            {
+                if (!string.IsNullOrWhiteSpace(originalprofilePhotoPath))
+                {
+                    HandleFileChange(originalprofilePhotoPath);
+                }
+                user.UserPhoto = profilePhotoPath;
+            }
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(originalprofilePhotoPath))
+            {
+                HandleFileChange(originalprofilePhotoPath);
+            }
+            user.UserPhoto = null;
+        }
+
+        if (!ValidateForm())
+        {
+            await NotificationService.AlertMessage("Cek kembali input. Terdapat isian yang tidak valid.");
+            return;
+        }
+
+        // Membersihkan field yang tidak relevan berdasarkan Role
+        ClearIrrelevantFields(user);
+        user.UserName = user.Email;
+        user.NormalizedEmail = user.Email?.ToUpperInvariant();
+        user.NormalizedUserName = user.UserName?.ToUpperInvariant();
+
+        try
+        {
+            // Perbarui peran pengguna jika ada perubahan
+            if (user.Role != originalUserRole)
+            {
+                await EnsureRoleExists(user.Role);
+                var removeResult = await UserManager.RemoveFromRoleAsync(user, originalUserRole!);
+                var addResult = await UserManager.AddToRoleAsync(user, user.Role);
+                if (!removeResult.Succeeded || !addResult.Succeeded)
+                {
+                    HandleIdentityErrors(removeResult.Succeeded ? addResult : removeResult);
+                    return;
+                }
+            }
+
+            var updateResult = await UserManager.UpdateAsync(user);
+            if (updateResult.Succeeded)
+            {
+                NotificationService.AlertMessage("Data berhasil diedit");
+                NavigationManager.Refresh();
+            }
+            else
+            {
+                HandleIdentityErrors(updateResult);
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan tak terduga saat memperbarui pengguna. Silakan coba lagi.");
+            NotificationService.LogMessage($"Kesalahan tak terduga saat memperbarui pengguna: {ex.Message}");
+        }
+    }
+
+    private async Task HandleInvalidSubmitAsync()
+    {
+        await NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
+
+    private async Task HandleProfilePhotoUploadAsync(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e.File, fileType: "UserPhoto");
+    }
+
+    private async Task HandleSignatureUploadAsync(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e.File, fileType: "Signature");
+    }
+
+    private async Task HandleFileUploadAsync(IBrowserFile file, string fileType)
+    {
+        if (user == null) return;
+        try
+        {
+            await UploadService.FilesUpload(file, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
+
+            if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan gambar gagal: {UploadService.UploadErrorMessage}");
+
+                if (fileType == "UserPhoto")
+                {
+                    profilePhotoPath = null;
+                }
+                else
+                {
+                    signaturePath = null;
+                }
+
+                return;
+            }
+
+            if (fileType == "UserPhoto")
+            {
+                profilePhotoPath = UploadService.FilePath;
+                profilePhotoStatus = true;
+            }
+            else
+            {
+                signaturePath = UploadService.FilePath;
+                signatureStatus = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
+        }
+    }
+
+    private async Task HandleProfilePhotoChange()
+    {
+        if (user == null || string.IsNullOrWhiteSpace(profilePhotoPath)) return;
+
+        if (profilePhotoStatus)
+        {
+            if (profilePhotoPath != originalprofilePhotoPath)
+            {
+                HandleFileChange(profilePhotoPath);
+            }
+
+            profilePhotoStatus = false;
+        }
+        else
+        {
+            profilePhotoStatus = true;
+        }
+    }
+
+    private async Task HandleSignatureChange()
+    {
+        if (user == null || string.IsNullOrWhiteSpace(signaturePath)) return;
+
+        if (signatureStatus)
+        {
+            if (signaturePath != originalsignaturePath)
+            {
+                HandleFileChange(signaturePath);
+            }
+
+            signatureStatus = false;
+        }
+        else
+        {
+            signatureStatus = true;
+        }
+    }
+
+    private async Task HandleFileChange(string ImagePath)
+    {
+        await UploadService.FileChange(ImagePath, SUB_FOLDER_NAME);
+
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            await NotificationService.AlertMessage($"Terjadi kesalahan saat mengubah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengubah file: {UploadService.UploadErrorMessage}");
+            return;
+        }
+    }
+
+    private string GetFilePath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return "/noimg.png";
+        }
+        return Path.Combine(webUserRoot!, relativePath).Replace("\\", "/");
+    }
+
+    private void ClearIrrelevantFields(User user)
+    {
+        if (user.Role != "Supervisor" && user.Role != "Manager")
+        {
+            user.Section = null;
+        }
+        if (user.Role != "Maintenance" && !(user.Role == "Supervisor" && user.Section == "Operation"))
+        {
+            user.RoleCategory = null;
+        }
+    }
+
+    private async Task EnsureRoleExists(string roleName)
+    {
+        if (!await RoleManager.RoleExistsAsync(roleName))
+        {
+            await RoleManager.CreateAsync(new IdentityRole(roleName));
+        }
+    }
+
+    private async void HandleIdentityErrors(IdentityResult result)
+    {
+        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+        await NotificationService.AlertMessage($"Gagal memperbarui pengguna. Detail: {errors}");
+        NotificationService.LogMessage($"Pembaruan pengguna gagal. User ID: {user?.Id}. Kesalahan: {errors}");
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+}

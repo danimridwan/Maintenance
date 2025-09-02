@@ -3,8 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MaintenanceWebApp.Data
 {
-    public class BreatherValve
+    public class BreatherValve : IInventoryItem
     {
+        public string DisplayItem => $"{Brand} {Type} - Tank {Tank}";
+        public string ItemId => $"{BreatherValveID}";
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int BreatherValveID { get; set; }

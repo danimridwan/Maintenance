@@ -16,10 +16,11 @@
 @inject UploadFilesService UploadService
 @inject NotificationService NotificationService
 
+@* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Supervisor")]
 
 <div class="card">
-    @* Formulir PPM *@
+    @* Header Formulir *@
     <div class="card-header bg-light border-primary">
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
@@ -33,7 +34,7 @@
         </ul>
     </div>
     <div class="card-body">
-        <EditForm Model="ppmTask" OnValidSubmit="HandleValidSubmitAsync" OnInvalidSubmit="HandleInvalidSubmitAsync">
+        <EditForm Model="ppmTask" OnValidSubmit="HandleCreatePPM" OnInvalidSubmit="HandleInvalidSubmitAsync">
             <DataAnnotationsValidator />
             
             <div class="row">
@@ -99,6 +100,7 @@
                 </div>
             </div>
             
+            @* Tombol Aksi Formulir *@
             <div class="float-end mt-3">
                 <button type="button" class="btn btn-secondary me-2" @onclick="CancelAsync">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan</button>
@@ -108,28 +110,26 @@
 </div>
 
 @code {
-    // Properti State
+    // State Halaman
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     private PPMTask ppmTask = new();
     private User? userInfo;
+    private DotNetObjectReference<PPMAdd> dotNetHelper = default!;
     private Dictionary<string, string> validationMessages = new();
 
-    // Properti Halaman
-    private DotNetObjectReference<PPMAdd> dotNetHelper = default!;
-
-    // Konstanta dan State Unggahan File
+    // Konstanta
     private const string SUB_FOLDER_NAME = "PPM";
     private const string IMAGE_FILE_CATEGORY = "img";
     private const string DOCUMENT_FILE_CATEGORY = "doc";
     private const string IMAGE_FOLDER_NAME = "Image";
     private const string DOCUMENT_FOLDER_NAME = "Document";
-    private string webPpmRoot = string.Empty;
+    private string _webPpmRoot = string.Empty;
 
-    // Konstanta untuk dropdown
+    // Form Properties
     private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
 
-    // Metode Lifecycle
+    // Metode Lifecycle Blazor
     protected override async Task OnInitializedAsync()
     {
         await LoadUserInfoAsync();
@@ -151,6 +151,7 @@
         }
     }
 
+    // Metode Dispose untuk membersihkan sumber daya
     public void Dispose()
     {
         dotNetHelper?.Dispose();
@@ -168,7 +169,7 @@
     {
         try
         {
-            webPpmRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
+            _webPpmRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
         }
         catch (Exception ex)
         {
@@ -216,7 +217,8 @@
         }
     }
 
-    private async Task HandleValidSubmitAsync()
+    // Penanganan Submit Formulir
+    private async Task HandleCreatePPM()
     {
         if (!ValidateForm())
         {
@@ -229,6 +231,7 @@
             ? PPMStatusLevel.Request
             : PPMStatusLevel.ApprovedByManager;
 
+        // Menyimpan data menggunakan CRUDService
         await CRUDService.CreateAsync(ppmTask);
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
@@ -288,6 +291,7 @@
         return isValid;
     }
 
+    // Penanganan Unggahan & Perubahan File
     private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
     {
         try
@@ -392,7 +396,7 @@
         {
             return "/noimg.png";
         }
-        return Path.Combine(webPpmRoot, relativePath).Replace("\\", "/");
+        return Path.Combine(_webPpmRoot, relativePath).Replace("\\", "/");
     }
 
     private async Task CancelAsync()

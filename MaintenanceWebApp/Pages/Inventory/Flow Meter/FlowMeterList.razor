@@ -1,221 +1,159 @@
 ﻿@page "/FlowMeterList"
-
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components
 @inject NavigationManager NavigationManager
-@implements IDisposable
 
 @* Services *@
 @inject CRUDService CRUDService
 @inject UrlStatusService UrlStatusService
 @inject TableService TableService
+@inject NotificationService NotificationService
 
-@* Roles Authorize *@
+@* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-@* Status Notification *@
-@if (!string.IsNullOrEmpty(statusMessage))
-{
-    <div class="container px-0">
-        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
-            @statusMessage
-            <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;" type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
+@* Komponen Daftar Flow Meter *@
+<div class="card p-3">
+    @* Notifikasi Status *@
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="container px-0">
+            <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+                @statusMessage
+                <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;"
+                        type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            </div>
         </div>
-    </div>
-}
+    }
 
-<div class="card">
-
-    <div class="row px-3">
+    <div class="row">
         <div class="col-sm-5 form-group">
             <h5 class="display-6">Flow Meter</h5>
             @if (HasFlowMeters)
             {
-                @if (FlowMeterCount > 5)
-                {
-                    <div class="page-size-chooser my-2">
-                        Items per page:
-                        <select @bind="@Pagination.ItemsPerPage">
-                            <option>5</option>
-                            @if (FlowMeterCount > 10)
-                            {
-                                <option>10</option>
-                            }
-                            @if (FlowMeterCount > 20)
-                            {
-                                <option>20</option>
-                            }
-                        </select>
-                    </div>
-                }
+                <div class="d-flex align-items-center mt-3">
+                    Jumlah per Halaman:
+                    <select class="form-select form-select-sm w-auto ms-2" @bind="pagination.ItemsPerPage">
+                        <option value="5">5</option>
+                        @if (FlowMeterCount > 5)
+                        {
+                            <option value="10">10</option>
+                        }
+                        @if (FlowMeterCount > 10)
+                        {
+                            <option value="20">20</option>
+                        }
+                        @if (FlowMeterCount > 20)
+                        {
+                            <option value="50">50</option>
+                        }
+                    </select>
+                </div>
             }
         </div>
 
-        @if (dataPermission)
+        @if (canEditData)
         {
-            <div class="col-sm-4"></div>
-
-            <div class="col-sm-3 d-flex align-items-center justify-content-end">
+            <div class="col-sm-7 d-flex justify-content-end align-items-center">
                 <button class="btn btn-primary" @onclick="NavigateToAddFlowMeter">
-                    Tambah
+                    + Tambah
                 </button>
             </div>
         }
-
     </div>
 
-    <div class="px-3">
-        @* Loading Data *@
-        @if (_isLoading)
+    <div>
+        @* Tampilan Data Flow Meter *@
+        @if (isLoading)
         {
+            @* Memuat Data *@
             <div class="text-center py-3">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                    <span class="visually-hidden">Memuat...</span>
                 </div>
                 <p>Memuat Data Flow Meter...</p>
             </div>
         }
-
         else if (!HasFlowMeters)
         {
-            @* No Flow Meter Data *@
+            @* Tidak Ada Data *@
             <hr />
             <div class="text-center py-3">
-                <p>Tidak ada Flow Meter.</p>
-                @if (!string.IsNullOrEmpty(NoFilter))
+                <p>Tidak ada data flow meter ditemukan.</p>
+                @if (!string.IsNullOrEmpty(searchFilter))
                 {
-                    <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
+                    <button class="btn btn-link" @onclick="ClearFilter">Hapus Filter</button>
                 }
             </div>
         }
         else
         {
-            @* Search Box *@
-            <div class="search-box mb-3">
-                <input class="form-control" type="search" autofocus @bind="NoFilter" @bind:event="oninput" placeholder="Search..." />
+            @* Kotak Pencarian *@
+            <div class="search-box mb-3 mt-3">
+                <input class="form-control" type="search" autofocus @bind="searchFilter" @bind:event="oninput" placeholder="Cari Tag, Merk, atau Lokasi..." />
             </div>
 
-            @* Flow Meter Data Table *@
-            <QuickGrid Items="FilteredFlowMeters" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
-
-                <TemplateColumn Title="Tag" SortBy="@SortByTag">
-                    <a style="cursor:pointer; color: royalblue;" @onclick="@(() => NavigateToFlowMeterInfo(context))">
+            @* Tabel Data Flow Meter *@
+            <QuickGrid Items="FilteredFlowMeters" Virtualize="false" Pagination="pagination" Class="table table-striped table-hover table-bordered">
+                <TemplateColumn Title="Tag" Sortable="true">
+                    <a style="cursor:pointer;
+                       color: royalblue;" @onclick="@(() => NavigateToFlowMeterInfo(context))">
                         @context.Tag
                     </a>
                 </TemplateColumn>
-
                 <PropertyColumn Property="@(flowMeter => flowMeter.Brand)" Title="Merk" Sortable="true" />
                 <PropertyColumn Property="@(flowMeter => flowMeter.Location)" Title="Lokasi" Sortable="true" />
 
-                @if (dataPermission)
+                @if (canEditData)
                 {
-                    <TemplateColumn Title="Actions" Class="td-action">
-                        <button @onclick="@(() => NavigateToEditFlowMeter(@context))" class="btn btn-warning">
+                    <TemplateColumn Title="Aksi" Class="td-action">
+                        <button @onclick="@(() => NavigateToEditFlowMeter(@context))" class="btn btn-warning btn-sm">
                             <span class="oi oi-pencil"></span>
                         </button>
-                        <button @onclick="@(() => NavigateToDeleteFlowMeter(context))" class="btn btn-danger">
+                        <button @onclick="@(() => NavigateToDeleteFlowMeter(context))" class="btn btn-danger btn-sm">
                             <span class="oi oi-trash"></span>
                         </button>
                     </TemplateColumn>
                 }
-
             </QuickGrid>
 
-            <Paginator State="@Pagination" />
+            <Paginator State="pagination" />
         }
     </div>
 </div>
 
 @code {
+    // Cascading Parameter
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
-    private bool dataPermission;
 
+    // Properti State
+    private bool canEditData;
     private IQueryable<FlowMeter>? _allFlowMeters;
-    private bool _isLoading = true;
-
-    private GridSort<FlowMeter> SortByTag = GridSort<FlowMeter>.ByAscending(p => p.Tag);
-
-    private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
-    public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
-
-    public bool HasFlowMeters => !_isLoading && (_allFlowMeters?.Any() ?? false);
-    public int FlowMeterCount => _allFlowMeters?.Count() ?? 0;
-
+    private bool isLoading = true;
     private string statusMessage = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    // Konstanta
+    private const string ADD_FLOW_METER_PATH = "./FlowMeterAdd";
+    private const string FLOW_METER_INFO_PATH = "./FlowMeterInfo/{0}";
+    private const string FLOW_METER_EDIT_PATH = "./FlowMeterEdit/{0}";
+    private const string FLOW_METER_DELETE_PATH = "./FlowMeterDelete/{0}";
+
+    // Pagination State
+    private PaginationState pagination = new() { ItemsPerPage = 5 };
+
+    // Properti Terkomputasi
+    private bool HasFlowMeters => !isLoading && (_allFlowMeters?.Any() ?? false);
+    private int FlowMeterCount => _allFlowMeters?.Count() ?? 0;
+
+    // Properti untuk Filtering
+    private string searchFilter
     {
-        _isLoading = true;
-
-        //Authorization Admin & Maintenance Supervisor
-        await Authorization();
-
-        //Filter Applied using Table Service
-        TableService.OnFilterApplied += TableService_OnFilterApplied;
-        NoFilter = string.Empty;
-
-        //Load Flow Meter
-        await LoadFlowMeters();
-        _isLoading = false;
-
-        //Get Url Status
-        LoadUrlStatus();
-    }
-
-    private async Task Authorization()
-    {
-        if (authenticationStateTask != null)
-        {
-            var authenticationState = await authenticationStateTask;
-            var user = authenticationState.User;
-            if (user.IsInRole("Admin") || user.IsInRole("Maintenance Supervisor"))
-            {
-                dataPermission = true;
-            }
-            else
-            {
-                dataPermission = false;
-            }
-        }
-    }
-
-    private async Task LoadFlowMeters()
-    {
-        try
-        {
-            // Get All Data using CRUD Service
-            var flowMetersList = await CRUDService.ReadAllAsync<FlowMeter>(orderBy: q => q.OrderBy(p => p.FlowMeterID));
-            _allFlowMeters = flowMetersList.AsQueryable();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Flow Meters: {ex.Message}");
-        }
-        finally
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadUrlStatus()
-    {
-        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
-
-        var uri = new Uri(NavigationManager.Uri);
-        var currentPath = uri.AbsolutePath;
-        NavigationManager.NavigateTo(currentPath, replace: true);
-    }
-
-    //No Filter
-    public string NoFilter
-    {
-        get => TableService.NoFilter ?? string.Empty; // Read from Table Service
+        get => TableService.NoFilter ?? string.Empty;
         set
         {
             if (TableService.NoFilter != value)
@@ -225,62 +163,106 @@
         }
     }
 
-    //Items per Page
-    public int ItemsPerPage
+    private IQueryable<FlowMeter> FilteredFlowMeters
     {
-        get => Pagination.ItemsPerPage;
-        set
+        get
         {
-            if (Pagination.ItemsPerPage != value)
+            if (string.IsNullOrWhiteSpace(searchFilter))
             {
-                Pagination.ItemsPerPage = value;
+                return _allFlowMeters ?? Enumerable.Empty<FlowMeter>().AsQueryable();
             }
+
+            return _allFlowMeters?.Where(flowMeter =>
+                (!string.IsNullOrEmpty(flowMeter.Tag.ToString()) && flowMeter.Tag.ToString().Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(flowMeter.Brand) && flowMeter.Brand.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(flowMeter.Location) && flowMeter.Location.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)))
+                ?? Enumerable.Empty<FlowMeter>().AsQueryable();
         }
     }
 
-    //Filtered
-    public IQueryable<FlowMeter> FilteredFlowMeters =>
-        string.IsNullOrWhiteSpace(TableService.NoFilter) // Using Table Service
-            ? _allFlowMeters ?? Enumerable.Empty<FlowMeter>().AsQueryable()
-            : (_allFlowMeters?.Where(p =>
-                p.Tag.ToString().Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
-                p.Brand.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
-                p.Location.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase))
-             ?? Enumerable.Empty<FlowMeter>().AsQueryable());
-
-    private async void TableService_OnFilterApplied(object? sender, EventArgs e)
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
+        isLoading = true;
+        await CheckUserAuthorizationAsync();
+        await LoadAllFlowMetersAsync();
+        LoadUrlStatus();
     }
 
-    public void Dispose()
+    // Metode Bantuan (Helper Methods)
+    private async Task CheckUserAuthorizationAsync()
     {
-        TableService.OnFilterApplied -= TableService_OnFilterApplied;
-        GC.SuppressFinalize(this);
+        // Memeriksa peran pengguna untuk menentukan apakah mereka memiliki izin untuk mengedit data.
+        if (authenticationStateTask is not null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var user = authenticationState.User;
+            canEditData = user.IsInRole("Admin") || user.IsInRole("Maintenance") || user.IsInRole("Maintenance Supervisor");
+        }
     }
 
+    private async Task LoadAllFlowMetersAsync()
+    {
+        // Mengambil semua data flow meter dari database secara asinkron.
+        try
+        {
+            _allFlowMeters = (await CRUDService.ReadAllAsync<FlowMeter>(orderBy: q => q.OrderBy(v => v.FlowMeterID)))
+                .ToList()
+                .AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            // Menangani kesalahan saat memuat data dengan notifikasi yang informatif.
+            NotificationService.AlertMessage($"Terjadi kesalahan saat memuat data Flow Meter. Silakan coba kembali nanti.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data Flow Meter: {ex.Message}");
+        }
+        finally
+        {
+            // Mengubah status loading setelah data berhasil dimuat atau terjadi kesalahan.
+            isLoading = false;
+        }
+    }
+
+    private void LoadUrlStatus()
+    {
+        // Mengambil dan menghapus pesan status dari URL jika ada.
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+
+        // Jika ada pesan status, navigasi ulang untuk membersihkan URL agar tidak muncul lagi saat refresh.
+        if (!string.IsNullOrEmpty(statusMessage))
+        {
+            NavigationManager.NavigateTo(NavigationManager.Uri.Split('?')[0], replace: true);
+        }
+    }
+
+    // Event Handler dan Navigasi
     private void ClearFilter()
     {
-        NoFilter = string.Empty;
+        // Mengatur ulang filter pencarian menjadi string kosong.
+        searchFilter = string.Empty;
     }
 
     private void NavigateToAddFlowMeter()
     {
-        NavigationManager.NavigateTo("/FlowMeterAdd");
+        // Navigasi ke halaman untuk menambah data flow meter baru.
+        NavigationManager.NavigateTo(ADD_FLOW_METER_PATH);
     }
 
     private void NavigateToFlowMeterInfo(FlowMeter flowMeter)
     {
-        NavigationManager.NavigateTo($"/FlowMeterInfo/{flowMeter.FlowMeterID}");
+        // Navigasi ke halaman detail informasi flow meter berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(FLOW_METER_INFO_PATH, flowMeter.FlowMeterID));
     }
 
     private void NavigateToEditFlowMeter(FlowMeter flowMeter)
     {
-        NavigationManager.NavigateTo($"/FlowMeterEdit/{flowMeter.FlowMeterID}");
+        // Navigasi ke halaman untuk mengedit data flow meter berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(FLOW_METER_EDIT_PATH, flowMeter.FlowMeterID));
     }
 
     private void NavigateToDeleteFlowMeter(FlowMeter flowMeter)
     {
-        NavigationManager.NavigateTo($"/FlowMeterDelete/{flowMeter.FlowMeterID}");
+        // Navigasi ke halaman untuk menghapus data flow meter berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(FLOW_METER_DELETE_PATH, flowMeter.FlowMeterID));
     }
 }

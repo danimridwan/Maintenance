@@ -1,4 +1,4 @@
-﻿@page "/PRVValveDelete/{PRVValveID:int}"
+﻿@page "/PRVValveDelete/{Id:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -10,101 +10,164 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
-<div class="card">
-
+<div class="card p-4 shadow-sm border-0">
     <div class="card-body">
-        @if (prvValve == null)
+        @if (isLoading)
         {
-            <p><em>Memuat Data PRV Valve...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p class="mt-2 text-muted">Memuat data PRV Valve...</p>
+            </div>
+        }
+        else if (prvValve == null)
+        {
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data PRV Valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus PRV Valve</h3>
-
+            <h3 class="card-title text-danger mb-3">Hapus PRV Valve</h3>
             <hr />
+            <p class="text-muted">Anda yakin ingin menghapus PRV Valve dengan Nomor Tangki: <b>@prvValve.TankNumber</b> ?</p>
 
-            <p>Anda yakin ingin menghapus PRV Valve dengan Nomor Tangki: <b>@prvValve.TankNumber</b> ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeletePRVValve">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            </div>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
+    // Parameter Rute
     [Parameter]
-    public int PRVValveID { get; set; }
-    private PRVValve prvValve;
+    public int Id { get; set; }
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // State
+    private PRVValve? prvValve;
+    private bool isLoading = true;
 
-    //File
-    private string subFolderName = "Inventories";
-    private string folderName = "PRV Valve";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+    private const string FOLDER_NAME = "PRV Valve";
 
+    // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
-        await LoadPRVValve();
+        await LoadPRVValveAsync();
+        isLoading = false;
     }
 
-    //Read Data Pump
-    private async Task LoadPRVValve()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadPRVValveAsync()
     {
         try
         {
-            //Read Pump using Service
-            prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(PRVValveID);
+            // Memuat data PRV Valve berdasarkan ID
+            prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(Id);
+            if (prvValve == null)
+            {
+                await NotificationService.AlertMessage("Data PRV Valve tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data PRV Valve. Hubungi administrator.";
-            logMessage = $"Gagal memuat data PRV Valve\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data PRV Valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data PRV Valve dengan ID {Id}. Detail: {ex.Message}");
+            prvValve = null;
         }
     }
 
-    //Delete Data Pump
-    private async Task DeletePRVValve()
+    private async Task HandleDeleteAsync()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(prvValve);
-
-        //File Delete using File Upload Service
-        await UploadService.FileChange(prvValve.Image, subFolderName);
-        prvValve.Image = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (prvValve == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Data PRV Valve tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        NavigationManager.NavigateTo("/PRVValveList?status=DeleteSuccess");
+        try
+        {
+            // Hapus file terkait sebelum menghapus data dari database
+            await DeleteAssociatedFileAsync();
+
+            // Lakukan penghapusan record dari database
+            await CRUDService.DeleteAsync(prvValve);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data PRV Valve dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data PRV Valve dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == prvValve.PRVValveID);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data Inventory Maintenance History. Detail: {CRUDService.CRUDErrorMessage}");
+            }
+
+            // Navigasi kembali ke halaman daftar dengan status sukses
+            NavigationManager.NavigateTo("./PRVValveList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus PRV Valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus PRV Valve dengan ID {Id}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
     {
-        NavigationManager.NavigateTo("/PRVValveList");
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == prvValve.PRVValveID);
+
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        NotificationService.AlertMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
+        }
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    private async Task DeleteAssociatedFileAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
+        if (!string.IsNullOrWhiteSpace(prvValve?.Image))
+        {
+            await UploadService.FileChange(prvValve.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
+                NotificationService.LogMessage($"Gagal menghapus file '{prvValve.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("./PRVValveList");
     }
 }

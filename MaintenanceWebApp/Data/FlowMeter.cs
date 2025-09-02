@@ -1,10 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using MaintenanceWebApp.Pages.Inventory.Breather_Valve;
 
 namespace MaintenanceWebApp.Data
 {
-    public class FlowMeter
+    public class FlowMeter : IInventoryItem
     {
+        public string DisplayItem => $"{Brand} {Type} - Tag {Tag}";
+        public string ItemId => $"{FlowMeterID}";
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int FlowMeterID { get; set; }

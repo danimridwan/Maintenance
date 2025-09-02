@@ -9,7 +9,7 @@ function DisplayText() {
 }
 function sidebar() {
     if (sidebarToggle == true) {
-        document.getElementById("sidebar").style.width = "80px";
+        document.getElementById("sidebar").style.width = "90px";
 
         document.querySelectorAll(".nav-list").forEach(element => {
             element.style.display = "none";

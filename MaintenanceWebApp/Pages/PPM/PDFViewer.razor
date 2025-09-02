@@ -10,10 +10,11 @@
 @inject IJSRuntime JSRuntime
 @inject IWebHostEnvironment WebHostEnvironment
 
-@* Injeksi Service *@
+@* Services *@
 @inject CRUDService CrudService
 @inject NotificationService NotificationService
 
+@* Status Pemuatan *@
 <div class="pdf-viewer-container">
     <div style="text-align: center; margin-bottom: 20px;">
         @if (isLoading)
@@ -28,9 +29,11 @@
 </div>
 
 @code {
+    // Parameter dari URL
     [Parameter]
     public string TaskId { get; set; } = string.Empty;
 
+    // Properti State
     private bool isLoading = true;
     private byte[]? pdfBytes;
 

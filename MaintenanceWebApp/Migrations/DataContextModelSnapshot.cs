@@ -207,6 +207,61 @@ namespace MaintenanceWebApp.Migrations
                     b.ToTable("IT");
                 });
 
+            modelBuilder.Entity("MaintenanceWebApp.Data.InventoryMaintenanceHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("InventoryId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("InventoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MaintenanceCategory")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("MaintenanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("PPMId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Photo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Technician")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("InventoryMaintenanceHistory");
+                });
+
             modelBuilder.Entity("MaintenanceWebApp.Data.PCVValveTank", b =>
                 {
                     b.Property<int>("PCVValveTankID")
@@ -263,8 +318,8 @@ namespace MaintenanceWebApp.Migrations
 
             modelBuilder.Entity("MaintenanceWebApp.Data.PPMStatusByYear", b =>
                 {
-                    b.Property<int>("RowNum")
-                        .HasColumnType("int");
+                    b.Property<long>("RowNum")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Status")
                         .IsRequired()

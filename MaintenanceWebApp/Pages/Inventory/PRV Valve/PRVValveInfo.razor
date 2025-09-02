@@ -3,154 +3,650 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Security.Claims
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject CRUDService CRUDService
+@inject UploadFilesService UploadService
 @inject NotificationService NotificationService
 
 @* Roles Authorize *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-<div class="card">
+@* Status Pemuatan *@
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Memuat...</span>
+        </div>
+        <p class="mt-2">Memuat informasi PRV Valve...</p>
+    </div>
+}
+@* Status Data PRV Valve Tidak Ditemukan *@
+else if (prvValve is null)
+{
+    <div class="text-center py-5">
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">Data Tidak Ditemukan!</h4>
+            <p>PRV Valve dengan ID yang diberikan tidak ada atau terjadi kesalahan saat memuat data.</p>
+            <hr>
+            <p class="mb-0">Mohon cek kembali ID PRV Valve atau hubungi administrator.</p>
+        </div>
+    </div>
+}
+@* Status Data User Tidak Ditemukan *@
+else if (user is null)
+{
+    <div class="text-center py-5">
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">User Tidak Ditemukan!</h4>
+            <p>User tidak ada atau terjadi kesalahan saat memuat data.</p>
+            <hr>
+            <p class="mb-0">Lakukan refresh halaman atau hubungi administrator.</p>
+        </div>
+    </div>
+}
+@* Detail PRV Valve *@
+else
+{
+    <div class="card">
+        @* Header Halaman *@
+        <div class="card-header bg-light border-primary">
+            <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                <li class="nav-item">
+                    <a style="cursor: pointer;" @onclick="NavigateToPRVValveList" class="nav-link" aria-label="Kembali ke Daftar PRV Valve">
+                        <span class="oi oi-chevron-left"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link active" id="information-tab" data-bs-toggle="tab" data-bs-target="#information" type="button" role="tab" aria-controls="information" aria-selected="false">
+                        Informasi
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                        Riwayat
+                    </button>
+                </li>
+            </ul>
+        </div>
 
-	@if (prvValve != null)
-	{
-		<div class="card-header bg-light border-primary">
-			@* Tab Header *@
-			<ul class="nav nav-tabs card-header-tabs">
-				<li class="nav-item">
-					<a href="PRVValveList" class="nav-link" aria-label="Kembali ke Daftar PRV Valve">
-						<span class="oi oi-chevron-left"></span>
-					</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link active" aria-label="Informasi PRV Valve">Informasi PRV Valve</a>
-				</li>
-			</ul>
-		</div>
-		<div class="card-body">
-			@* Informasi PRV Valve *@
-			<div class="form-group row">
-				<div class="col-sm-5">
+        <div class="card-body">
 
-					@if (string.IsNullOrWhiteSpace(prvValve.Image) == false)
-					{
-						<img style="align-content:center;" width="100%" src="@CreateFilePath(prvValve.Image)" alt="PRV Valve Image">
-					}
-					else
-					{
-						<img style="align-content:center;" width="100%" src="/noimg.png" alt="No Image Available">
-					}
-				</div>
+            @* Tab Informasi *@
+            <div class="tab-content" id="PRVValveTabContent">
+                <div class="tab-pane fade show active" id="information" role="tabpanel" aria-labelledby="information-tab">
+                    <div class="container">
+                        <div class="row align-items-center mt-3 mb-3">
 
-				<div style="align-content: center;" class="col-sm-7">
-					<h5 class="display-6">Safety Relief Valve</h5><hr />
-					<table width="100%">
-						<tr>
-							<td class="td-first">Kategori</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.Category</td>
-						</tr>
-						<tr>
-							<td class="td-first">Nomor Tangki</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.TankNumber</td>
-						</tr>
-						<tr>
-							<td class="td-first">Merk (Pressure Reliefe Valve)</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.Brand</td>
-						</tr>
-						<tr>
-							<td class="td-first">Tipe</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.Type</td>
-						</tr>
-						<tr>
-							<td class="td-first">Tekanan Desain</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.DesignPressureValue @prvValve.DesignPressureUnit</td>
-						</tr>
-						<tr>
-							<td class="td-first">Diameter Valve</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.DiameterValue @prvValve.DiameterUnit</td>
-						</tr>
-						<tr>
-							<td class="td-first">Jumlah</td>
-							<td> : </td>
-							<td class="td-last">@prvValve.Quantity</td>
-						</tr>
-					</table>
-				</div>
+                            @* Bagian Foto PRV Valve *@
+                            <div class="col-md-4 d-flex justify-content-center">
+                                <div class="border rounded-lg overflow-hidden" style="max-width: 250px; height: auto;">
+                                    <img class="img-fluid" src="@CreateFilePath(prvValve.Image)" alt="Foto PRV Valve" />
+                                </div>
+                            </div>
 
-			</div>
+                            @* Bagian Informasi Detail *@
+                            <div class="col-md-8">
+                                <h5 class="display-6 mb-2">Safety Relief Valve</h5><hr />
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="form-label text-muted">Nomor Tangki</label>
+                                        <p class="info-text">@prvValve.TankNumber</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Kategori</label>
+                                        <p class="info-text">@prvValve.Category</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Merk</label>
+                                        <p class="info-text">@prvValve.Brand</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Tipe</label>
+                                        <p class="info-text">@prvValve.Type</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Tekanan Desain</label>
+                                        <p class="info-text">@prvValve.DesignPressureValue @prvValve.DesignPressureUnit</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Diameter Valve</label>
+                                        <p class="info-text">@prvValve.DiameterValue @prvValve.DiameterUnit</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Jumlah</label>
+                                        <p class="info-text">@prvValve.Quantity</p>
+                                    </div>
+                                </div>
+                            </div>
 
-		</div>
-	}
-	else
-	{
-		<p>Memuat Data PRV Valve...</p>
-	}
-</div>
+                        </div>
+                    </div>
+                </div>
+
+                @* Tab Riwayat *@
+                <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+                    <div class="container row">
+                        <div class="col-sm-12">
+                            <div class="row">
+                                <div class="col-sm-5 form-group">
+                                    <h5 class="display-6">Riwayat Maintenance</h5>
+                                </div>
+                                <div class="col-sm-7 d-flex justify-content-end align-items-center">
+                                    <button type="button" class="btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#addHistoryModal">
+                                        + Tambah
+                                    </button>
+                                </div>
+                            </div>
+                            <hr />
+                            @if (prvValveHistoryList != null && prvValveHistoryList.Any())
+                            {
+                                <QuickGrid Items="@(prvValveHistoryList.AsQueryable())" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">
+
+                                    <TemplateColumn Title="No">
+                                        @(prvValveHistoryList.IndexOf(context) + 1)
+                                    </TemplateColumn>
+
+                                    <PropertyColumn Property="@(history => history.MaintenanceDate.ToString("dd-MM-yyyy"))" Title="Tanggal" Sortable="true" />
+
+                                    <PropertyColumn Property="@(history => history.Technician)" Title="Teknisi" />
+
+                                    <PropertyColumn Property="@(history => history.MaintenanceCategory)" Title="Kategori" />
+
+                                    <TemplateColumn Title="Deskripsi">
+                                        @{
+                                            string descriptionText = context.Description;
+                                            const int maxLength = 35;
+
+                                            if (descriptionText.Length > maxLength)
+                                            {
+                                                @($"{descriptionText.Substring(0, maxLength)}...")
+                                            }
+                                            else
+                                            {
+                                                @descriptionText
+                                            }
+                                        }
+                                    </TemplateColumn>
+
+                                    <TemplateColumn Title="Aksi">
+                                        <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#viewHistoryModal" @onclick="@(() => OpenDetailHistoryModal(@context))">
+                                            <span class="oi oi-eye"></span>
+                                        </button>
+                                        <button class="btn btn-danger btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#deleteHistoryModal" @onclick="@(() => OpenDeleteHistoryModal(@context))">
+                                            <span class="oi oi-trash"></span>
+                                        </button>
+                                    </TemplateColumn>
+                                </QuickGrid>
+
+                                <Paginator State="@pagination" />
+                            }
+                            else
+                            {
+                                <p>Belum ada riwayat untuk PRV Valve ini.</p>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    @* View History Modal *@
+    <div class="modal fade" id="viewHistoryModal" tabindex="-1" aria-labelledby="viewHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewHistoryModalLabel">Detail Riwayat Maintenance</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (selectedHistory != null)
+                    {
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <p class="form-label"><b>Tanggal Maintenance</b></p>
+                                <p class="form-control-plaintext">@selectedHistory.MaintenanceDate.ToString("dd-MM-yyyy")</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="form-label"><b>Kategori</b></p>
+                                <p class="form-control-plaintext">@selectedHistory.MaintenanceCategory</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="form-label"><b>Teknisi</b></p>
+                                <p class="form-control-plaintext">@selectedHistory.Technician</p>
+                            </div>
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrWhiteSpace(@selectedHistory.PPMId))
+                                {
+                                    <p class="form-label"><b>PPM ID</b></p>
+                                    <p class="form-control-plaintext">@selectedHistory.PPMId</p>
+                                }
+                            </div>
+                            <div class="col-md-6">
+                                <p class="form-label"><b>Deskripsi</b></p>
+                                <p class="form-control-plaintext">@selectedHistory.Description</p>
+                            </div>
+
+                            <div class="col-md-6">
+                                <p class="form-label"><b>Foto</b></p>
+                                <img style="max-height: 150px;" src="@CreateFilePath(selectedHistory.Photo)" class="img-fluid" alt="Foto Maintenance">
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Add History Modal *@
+    <div class="modal fade" id="addHistoryModal" tabindex="-1" role="dialog" aria-labelledby="addHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addHistoryModalLabel">Tambah Riwayat Maintenance</h5>
+                    <button type="button" @onclick="DeleteHistoryPhoto" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="newMaintenanceHistory" OnValidSubmit="HandleValidSubmitHistoryAsync" OnInvalidSubmit="HandleInvalidSubmitHistoryAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" min="@todayDate" />
+                                    <label for="MaintenanceDate">Tanggal Maintenance</label>
+                                    <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceDate)" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    <InputSelect id="MaintenanceCategory" @bind-Value="newMaintenanceHistory.MaintenanceCategory" class="form-select" placeholder="Kategori Maintenance">
+                                        <option value="">...</option>
+                                        @foreach (var category in JOB_CATEGORIES)
+                                        {
+                                            <option value="@category">@category</option>
+                                        }
+                                    </InputSelect>
+                                    <label for="MaintenanceCategory">Kategori Maintenance</label>
+                                    <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceCategory)" />
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating mb-3">
+                                    <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" />
+                                    <label for="Description">Deskripsi</label>
+                                    <ValidationMessage For="@(() => newMaintenanceHistory.Description)" />
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-floating mb-3">
+                                    <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" />
+                                    <label for="Technician">Teknisi</label>
+                                    <ValidationMessage For="@(() => newMaintenanceHistory.Technician)" />
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="Foto" class="form-label">Foto</label>
+                                    @if (string.IsNullOrWhiteSpace(newMaintenanceHistory.Photo))
+                                    {
+                                        <InputFile id="Foto" class="form-control"
+                                                   accept=".jpg,.jpeg,.png"
+                                                   OnChange="HandleFileUpload" />
+                                    }
+                                    else
+                                    {
+                                        <div class="d-flex align-items-center mt-2">
+                                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(newMaintenanceHistory.Photo)" alt="Photo">
+                                            <button @onclick="() => HandleFileChangeAsync(newMaintenanceHistory.Photo)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                                        </div>
+                                    }
+                                    <ValidationMessage For="@(() => newMaintenanceHistory.Photo)" />
+                                    @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                                    {
+                                        <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer mt-4">
+                            <button @onclick="DeleteHistoryPhoto" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success">Simpan</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Delete History Modal *@
+    <div class="modal fade" id="deleteHistoryModal" tabindex="-1" aria-labelledby="deleteHistoryModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteHistoryModalLabel">Hapus Riwayat Maintenance?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Apakah Anda yakin ingin menghapus riwayat maintenance yang dipilih?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal" @onclick="@(() => DeleteHistoryAsync())">Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
-	//Page
-	[Parameter]
-	public int PRVValveID { get; set; }
-	private PRVValve prvValve;
-	private string _webStorageRoot = string.Empty;
+    // Parameter dari URL
+    [Parameter]
+    public int PRVValveID { get; set; }
 
-	//Notification
-	private string? alertMessage;
-	private string? logMessage;
+    // Properti Halaman
+    private DotNetObjectReference<PRVValveInfo> dotNetHelper = default!;
+    private User? user;
+    private InventoryMaintenanceHistory newMaintenanceHistory = new();
+    private List<InventoryMaintenanceHistory>? prvValveHistoryList;
+    private IQueryable<InventoryMaintenanceHistory>? _prvValveHistories;
+    private InventoryMaintenanceHistory? selectedHistory;
+    private int selectedHistoryId;
 
-	protected override async Task OnInitializedAsync()
-	{
-		await LoadPRVValve();
+    // Properti State
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private PRVValve? prvValve;
+    private bool isLoading = true;
+    private int? previousId;
+    private PaginationState pagination = new() { ItemsPerPage = 10 };
+    private string todayDate = string.Empty;
 
-		try
-		{
-			// Get Path Root
-			_webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-			logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
+    // Konstanta
+    private string _webStorageRoot = string.Empty;
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string IMAGE_FILE_CATEGORY = "img";
+    private const string IMAGE_FOLDER_NAME = "PRV Valve";
+    private const string NO_IMAGE_PATH = "/noimg.png";
+    private const string PRV_VALVE_LIST_PATH = "./PRVValveList";
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+    // Konstanta untuk dropdown
+    private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
 
-	//Read Data Pump
-	private async Task LoadPRVValve()
-	{
-		try
-		{
-			//Read Pump using Service
-			prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(PRVValveID);
-		}
-		catch (Exception ex)
-		{
-			alertMessage = "Gagal memuat data PRV Valve. Hubungi administrator.";
-			logMessage = $"Gagal memuat data PRV Valve\nDetail :\n{ex}";
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+    }
 
-			ShowNotification(alertMessage, logMessage);
-		}
-	}
+    protected override async Task OnParametersSetAsync()
+    {
+        // Pemuatan data hanya terjadi jika parameter ID berubah
+        if (PRVValveID != previousId)
+        {
+            isLoading = true;
+            todayDate = DateTime.Now.ToString("yyyy-MM-dd");
+            previousId = PRVValveID;
+            await LoadPRVValveAsync();
+            await LoadPRVValveMaintenanceHistoryAsync();
+            await LoadUserAsync();
+            isLoading = false;
+        }
+    }
 
-	private string CreateFilePath(string relativePath)
-	{
-		return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
-	}
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
 
-	//Notification
-	private async Task ShowNotification(string alertMessage, string logMessage)
-	{
-		await NotificationService.AlertMessage(alertMessage);
-		NotificationService.LogMessage(logMessage);
-	}
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await DeleteHistoryPhoto();
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+
+        await JSRuntime.InvokeVoidAsync("hideModal", "addHistoryModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "viewHistoryModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "deleteHistoryModal");
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            // Mengambil path root dari konfigurasi
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebStorageRoot`. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`: {ex}");
+        }
+    }
+
+    // Metode untuk memuat data
+    private async Task LoadUserAsync()
+    {
+        if (authenticationStateTask == null) return;
+        var authenticationState = await authenticationStateTask;
+        var userPrincipal = authenticationState.User;
+        var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+        if (userPrincipal.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(userId))
+        {
+            try
+            {
+                // Memuat informasi pengguna dari database
+                user = await CRUDService.ReadSingleAsync<User, string>(userId);
+            }
+            catch (Exception ex)
+            {
+                NotificationService.LogMessage($"Terjadi kesalahan saat memuat info pengguna yang sedang masuk: {ex.Message}");
+                NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda. Silakan coba lagi atau hubungi administrator.");
+            }
+        }
+    }
+
+    private async Task LoadPRVValveAsync()
+    {
+        try
+        {
+            // Membaca data tunggal dari database berdasarkan ID
+            prvValve = await CRUDService.ReadSingleAsync<PRVValve, int>(PRVValveID);
+        }
+        catch (Exception ex)
+        {
+            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
+            await NotificationService.AlertMessage("Gagal memuat data PRV Valve. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat data PRV Valve dengan ID {PRVValveID}: {ex}");
+            prvValve = null;
+        }
+    }
+
+    private async Task LoadPRVValveMaintenanceHistoryAsync()
+    {
+        if (prvValve is null) return;
+        try
+        {
+            // Membaca data riwayat dari database berdasarkan ID PRV Valve
+            prvValveHistoryList = (await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(
+                filter: h => h.InventoryId == prvValve.PRVValveID && h.InventoryName == "PRV Valve",
+                orderBy: q => q.OrderByDescending(h => h.MaintenanceDate)
+            )).ToList();
+            _prvValveHistories = prvValveHistoryList.AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
+            await NotificationService.AlertMessage("Gagal memuat data Maintenance History PRV Valve. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat data Maintenance History PRV Valve dengan ID {PRVValveID}: {ex}");
+            prvValveHistoryList = null;
+            _prvValveHistories = null;
+        }
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        // Memastikan relativePath tidak null atau kosong
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return NO_IMAGE_PATH;
+        }
+        // Menggabungkan path root dengan relative path
+        string fullPath = Path.Combine(_webStorageRoot, relativePath);
+        // Mengganti backslash dengan slash untuk URL
+        return fullPath.Replace("\\", "/");
+    }
+
+    // Penanganan Unggahan & Perubahan File
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+    }
+
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                newMaintenanceHistory.Photo = UploadService.FilePath;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleFileChangeAsync(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        try
+        {
+            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
+                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            newMaintenanceHistory.Photo = null;
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    // Penanganan Submit Formulir History
+    private async Task HandleValidSubmitHistoryAsync()
+    {
+        if (prvValve is null || user is null) return;
+        //Inisialisasi Data
+        newMaintenanceHistory.InventoryId = prvValve.PRVValveID;
+        newMaintenanceHistory.InventoryName = "PRV Valve";
+        newMaintenanceHistory.CreatedBy = user.FullName;
+        newMaintenanceHistory.CreatedDate = DateTime.Now;
+        // Menyimpan data menggunakan CRUDService
+        await CRUDService.CreateAsync(newMaintenanceHistory);
+        // Memeriksa hasil operasi CRUD
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal menyimpan data. Kesalahan: {CRUDService.CRUDErrorMessage}");
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("hideModal", "addHistoryModal");
+        NavigationManager.Refresh();
+    }
+
+    private Task HandleInvalidSubmitHistoryAsync()
+    {
+        return NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
+
+    private void OpenDetailHistoryModal(InventoryMaintenanceHistory history)
+    {
+        selectedHistory = history;
+    }
+
+    private void OpenDeleteHistoryModal(InventoryMaintenanceHistory history)
+    {
+        selectedHistory = history;
+    }
+
+    // Metode untuk menghapus riwayat dari database
+    private async Task DeleteHistoryAsync()
+    {
+        if (selectedHistory == null) return;
+        try
+        {
+            await CRUDService.DeleteAsync<InventoryMaintenanceHistory>(selectedHistory);
+            await NotificationService.AlertMessage("Riwayat berhasil dihapus.");
+            NavigationManager.Refresh();
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal menghapus riwayat. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal menghapus riwayat dengan ID {selectedHistory.Id}: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteHistoryPhoto()
+    {
+        if (newMaintenanceHistory == null) return;
+        if (!string.IsNullOrEmpty(newMaintenanceHistory.Photo))
+        {
+            await UploadService.FileChange(newMaintenanceHistory.Photo, SUB_FOLDER_NAME);
+            newMaintenanceHistory.Photo = null;
+        }
+        StateHasChanged();
+    }
+
+    // Navigasi
+    private void NavigateToPRVValveList()
+    {
+        // Navigasi kembali ke halaman daftar
+        NavigationManager.NavigateTo(PRV_VALVE_LIST_PATH);
+    }
 }

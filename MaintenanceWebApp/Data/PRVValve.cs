@@ -1,10 +1,14 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using MaintenanceWebApp.Pages.Inventory.Breather_Valve;
 
 namespace MaintenanceWebApp.Data
 {
-    public class PRVValve
+    public class PRVValve : IInventoryItem
     {
+        public string DisplayItem => $"{Brand} {Type} - Tank {TankNumber}";
+        public string ItemId => $"{PRVValveID}";
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int PRVValveID { get; set; }

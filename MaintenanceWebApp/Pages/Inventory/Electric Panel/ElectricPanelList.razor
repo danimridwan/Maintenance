@@ -1,218 +1,158 @@
 ﻿@page "/ElectricPanelList"
-
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components
 @inject NavigationManager NavigationManager
-@implements IDisposable
 
 @* Services *@
 @inject CRUDService CRUDService
 @inject UrlStatusService UrlStatusService
 @inject TableService TableService
+@inject NotificationService NotificationService
 
-@* Roles Authorize *@
+@* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
-@* Status Notification *@
-@if (!string.IsNullOrEmpty(statusMessage))
-{
-    <div class="container px-0">
-        <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
-            @statusMessage
-            <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;" type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
+@* Komponen Daftar Electric Panel *@
+<div class="card p-3">
+    @* Notifikasi Status *@
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="container px-0">
+            <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
+                @statusMessage
+                <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;"
+                        type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            </div>
         </div>
-    </div>
-}
+    }
 
-<div class="card">
-
-    <div class="row px-3">
+    <div class="row">
         <div class="col-sm-5 form-group">
             <h5 class="display-6">Panel Listrik</h5>
             @if (HasElectricPanels)
             {
-                @if (ElectricPanelCount > 5)
-                {
-                    <div class="page-size-chooser my-2">
-                        Items per page:
-                        <select @bind="@Pagination.ItemsPerPage">
-                            <option>5</option>
-                            @if (ElectricPanelCount > 10)
-                            {
-                                <option>10</option>
-                            }
-                            @if (ElectricPanelCount > 20)
-                            {
-                                <option>20</option>
-                            }
-                        </select>
-                    </div>
-                }
+                <div class="d-flex align-items-center mt-3">
+                    Jumlah per Halaman:
+                    <select class="form-select form-select-sm w-auto ms-2" @bind="pagination.ItemsPerPage">
+                        <option value="5">5</option>
+                        @if (ElectricPanelCount > 5)
+                        {
+                            <option value="10">10</option>
+                        }
+                        @if (ElectricPanelCount > 10)
+                        {
+                            <option value="20">20</option>
+                        }
+                        @if (ElectricPanelCount > 20)
+                        {
+                            <option value="50">50</option>
+                        }
+                    </select>
+                </div>
             }
         </div>
 
-        @if (dataPermission)
+        @if (canEditData)
         {
-            <div class="col-sm-4"></div>
-
-            <div class="col-sm-3 d-flex align-items-center justify-content-end">
+            <div class="col-sm-7 d-flex justify-content-end align-items-center">
                 <button class="btn btn-primary" @onclick="NavigateToAddElectricPanel">
-                    Tambah
+                    + Tambah
                 </button>
             </div>
         }
-
     </div>
 
-    <div class="px-3">
-        @* Loading Data *@
-        @if (_isLoading)
+    <div>
+        @* Tampilan Data Electric Panel *@
+        @if (isLoading)
         {
+            @* Memuat Data *@
             <div class="text-center py-3">
                 <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+                    <span class="visually-hidden">Memuat...</span>
                 </div>
                 <p>Memuat Data Panel Listrik...</p>
             </div>
         }
-
         else if (!HasElectricPanels)
         {
-            @* No Electric Data *@
+            @* Tidak Ada Data *@
             <hr />
             <div class="text-center py-3">
-                <p>Tidak ada Panel Listrik.</p>
-                @if (!string.IsNullOrEmpty(NoFilter))
+                <p>Tidak ada data panel listrik ditemukan.</p>
+                @if (!string.IsNullOrEmpty(searchFilter))
                 {
-                    <button class="btn btn-link" @onclick="ClearFilter">Clear filter</button>
+                    <button class="btn btn-link" @onclick="ClearFilter">Hapus Filter</button>
                 }
             </div>
         }
         else
         {
-            @* Search Box *@
-            <div class="search-box mb-3">
-                <input class="form-control" type="search" autofocus @bind="NoFilter" @bind:event="oninput" placeholder="Search..." />
+            @* Kotak Pencarian *@
+            <div class="search-box mb-3 mt-3">
+                <input class="form-control" type="search" autofocus @bind="searchFilter" @bind:event="oninput" placeholder="Cari Nama atau Lokasi..." />
             </div>
 
-            @* Electric Panel Data Table *@
-            <QuickGrid Items="FilteredElectricPanels" Virtualize="false" Pagination="@Pagination" Class="table table-striped table-hover table-bordered">
-
+            @* Tabel Data Electric Panel *@
+            <QuickGrid Items="FilteredElectricPanels" Virtualize="false" Pagination="pagination" Class="table table-striped table-hover table-bordered">
                 <TemplateColumn Title="Alat" Sortable="true">
-                    <a style="cursor:pointer; color: royalblue;" @onclick="@(() => NavigateToElectricPanelInfo(context))">
+                    <a style="cursor:pointer;
+                       color: royalblue;" @onclick="@(() => NavigateToElectricPanelInfo(context))">
                         @context.Name
                     </a>
                 </TemplateColumn>
+                <PropertyColumn Property="@(panel => panel.Location)" Title="Lokasi" Sortable="true" />
 
-                <PropertyColumn Property="@(pump => pump.Location)" Title="Lokasi" Sortable="true" />
-
-                @if (dataPermission)
+                @if (canEditData)
                 {
-                    <TemplateColumn Title="Actions" Class="td-action">
-                        <button @onclick="@(() => NavigateToEditElectricPanel(@context))" class="btn btn-warning">
+                    <TemplateColumn Title="Aksi" Class="td-action">
+                        <button @onclick="@(() => NavigateToEditElectricPanel(@context))" class="btn btn-warning btn-sm">
                             <span class="oi oi-pencil"></span>
                         </button>
-                        <button @onclick="@(() => NavigateToDeleteElectricPanel(context))" class="btn btn-danger">
+                        <button @onclick="@(() => NavigateToDeleteElectricPanel(context))" class="btn btn-danger btn-sm">
                             <span class="oi oi-trash"></span>
                         </button>
                     </TemplateColumn>
                 }
-
             </QuickGrid>
 
-            <Paginator State="@Pagination" />
+            <Paginator State="pagination" />
         }
     </div>
 </div>
 
 @code {
+    // Cascading Parameter
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
-    private bool dataPermission;
 
+    // Properti State
+    private bool canEditData;
     private IQueryable<ElectricPanel>? _allElectricPanels;
-    private bool _isLoading = true;
-
-    private readonly int[] PageSizeOptions = new[] { 1, 5, 10, 20 };
-    public PaginationState Pagination { get; } = new() { ItemsPerPage = 5 };
-
-    public bool HasElectricPanels => !_isLoading && (_allElectricPanels?.Any() ?? false);
-    public int ElectricPanelCount => _allElectricPanels?.Count() ?? 0;
-
+    private bool isLoading = true;
     private string statusMessage = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    // Konstanta
+    private const string ADD_ELECTRIC_PANEL_PATH = "./ElectricPanelAdd";
+    private const string ELECTRIC_PANEL_INFO_PATH = "./ElectricPanelInfo/{0}";
+    private const string ELECTRIC_PANEL_EDIT_PATH = "./ElectricPanelEdit/{0}";
+    private const string ELECTRIC_PANEL_DELETE_PATH = "./ElectricPanelDelete/{0}";
+
+    // Pagination State
+    private PaginationState pagination = new() { ItemsPerPage = 5 };
+
+    // Properti Terkomputasi
+    private bool HasElectricPanels => !isLoading && (_allElectricPanels?.Any() ?? false);
+    private int ElectricPanelCount => _allElectricPanels?.Count() ?? 0;
+
+    // Properti untuk Filtering
+    private string searchFilter
     {
-        _isLoading = true;
-
-        //Authorization Admin & Maintenance Supervisor
-        await Authorization();
-
-        //Filter Applied using Table Service
-        TableService.OnFilterApplied += TableService_OnFilterApplied;
-        NoFilter = string.Empty;
-
-        //Load Pump
-        await LoadElectricPanels();
-        _isLoading = false;
-
-        //Get Url Status
-        LoadUrlStatus();
-    }
-
-    private async Task Authorization()
-    {
-        if (authenticationStateTask != null)
-        {
-            var authenticationState = await authenticationStateTask;
-            var user = authenticationState.User;
-            if (user.IsInRole("Admin") || user.IsInRole("Maintenance Supervisor"))
-            {
-                dataPermission = true;
-            }
-            else
-            {
-                dataPermission = false;
-            }
-        }
-    }
-
-    private async Task LoadElectricPanels()
-    {
-        try
-        {
-            // Get All Data using CRUD Service
-            var electricPanelList = await CRUDService.ReadAllAsync<ElectricPanel>(orderBy: q => q.OrderBy(p => p.PanelID));
-            _allElectricPanels = electricPanelList.AsQueryable();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading Electric Panel: {ex.Message}");
-        }
-        finally
-        {
-            StateHasChanged();
-        }
-    }
-
-    private async Task LoadUrlStatus()
-    {
-        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
-
-        var uri = new Uri(NavigationManager.Uri);
-        var currentPath = uri.AbsolutePath;
-        NavigationManager.NavigateTo(currentPath, replace: true);
-    }
-
-    //No Filter
-    public string NoFilter
-    {
-        get => TableService.NoFilter ?? string.Empty; // Read from Table Service
+        get => TableService.NoFilter ?? string.Empty;
         set
         {
             if (TableService.NoFilter != value)
@@ -222,61 +162,105 @@
         }
     }
 
-    //Items per Page
-    public int ItemsPerPage
+    private IQueryable<ElectricPanel> FilteredElectricPanels
     {
-        get => Pagination.ItemsPerPage;
-        set
+        get
         {
-            if (Pagination.ItemsPerPage != value)
+            if (string.IsNullOrWhiteSpace(searchFilter))
             {
-                Pagination.ItemsPerPage = value;
+                return _allElectricPanels ?? Enumerable.Empty<ElectricPanel>().AsQueryable();
             }
+
+            return _allElectricPanels?.Where(panel =>
+                (!string.IsNullOrEmpty(panel.Name) && panel.Name.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(panel.Location) && panel.Location.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)))
+                ?? Enumerable.Empty<ElectricPanel>().AsQueryable();
         }
     }
 
-    //Filtered
-    public IQueryable<ElectricPanel> FilteredElectricPanels =>
-        string.IsNullOrWhiteSpace(TableService.NoFilter) // Using Table Service
-            ? _allElectricPanels ?? Enumerable.Empty<ElectricPanel>().AsQueryable()
-            : (_allElectricPanels?.Where(p =>
-                p.Name.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase) ||
-                p.Location.Contains(TableService.NoFilter!, StringComparison.OrdinalIgnoreCase))
-             ?? Enumerable.Empty<ElectricPanel>().AsQueryable());
-
-    private async void TableService_OnFilterApplied(object? sender, EventArgs e)
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
     {
-        await InvokeAsync(StateHasChanged);
+        isLoading = true;
+        await CheckUserAuthorizationAsync();
+        await LoadAllElectricPanelsAsync();
+        LoadUrlStatus();
     }
 
-    public void Dispose()
+    // Metode Bantuan (Helper Methods)
+    private async Task CheckUserAuthorizationAsync()
     {
-        TableService.OnFilterApplied -= TableService_OnFilterApplied;
-        GC.SuppressFinalize(this);
+        // Memeriksa peran pengguna untuk menentukan apakah mereka memiliki izin untuk mengedit data.
+        if (authenticationStateTask is not null)
+        {
+            var authenticationState = await authenticationStateTask;
+            var user = authenticationState.User;
+            canEditData = user.IsInRole("Admin") || user.IsInRole("Maintenance") || user.IsInRole("Maintenance Supervisor");
+        }
     }
 
+    private async Task LoadAllElectricPanelsAsync()
+    {
+        // Mengambil semua data electric panel dari database secara asinkron.
+        try
+        {
+            _allElectricPanels = (await CRUDService.ReadAllAsync<ElectricPanel>(orderBy: q => q.OrderBy(v => v.PanelID)))
+                .ToList()
+                .AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            // Menangani kesalahan saat memuat data dengan notifikasi yang informatif.
+            NotificationService.AlertMessage($"Terjadi kesalahan saat memuat data Panel Listrik. Silakan coba kembali nanti.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data Panel Listrik: {ex.Message}");
+        }
+        finally
+        {
+            // Mengubah status loading setelah data berhasil dimuat atau terjadi kesalahan.
+            isLoading = false;
+        }
+    }
+
+    private void LoadUrlStatus()
+    {
+        // Mengambil dan menghapus pesan status dari URL jika ada.
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+
+        // Jika ada pesan status, navigasi ulang untuk membersihkan URL agar tidak muncul lagi saat refresh.
+        if (!string.IsNullOrEmpty(statusMessage))
+        {
+            NavigationManager.NavigateTo(NavigationManager.Uri.Split('?')[0], replace: true);
+        }
+    }
+
+    // Event Handler dan Navigasi
     private void ClearFilter()
     {
-        NoFilter = string.Empty;
+        // Mengatur ulang filter pencarian menjadi string kosong.
+        searchFilter = string.Empty;
     }
 
     private void NavigateToAddElectricPanel()
     {
-        NavigationManager.NavigateTo("/ElectricPanelAdd");
+        // Navigasi ke halaman untuk menambah data electric panel baru.
+        NavigationManager.NavigateTo(ADD_ELECTRIC_PANEL_PATH);
     }
 
     private void NavigateToElectricPanelInfo(ElectricPanel electricPanel)
     {
-        NavigationManager.NavigateTo($"/ElectricPanelInfo/{electricPanel.PanelID}");
+        // Navigasi ke halaman detail informasi electric panel berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(ELECTRIC_PANEL_INFO_PATH, electricPanel.PanelID));
     }
 
     private void NavigateToEditElectricPanel(ElectricPanel electricPanel)
     {
-        NavigationManager.NavigateTo($"/ElectricPanelEdit/{electricPanel.PanelID}");
+        // Navigasi ke halaman untuk mengedit data electric panel berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(ELECTRIC_PANEL_EDIT_PATH, electricPanel.PanelID));
     }
 
     private void NavigateToDeleteElectricPanel(ElectricPanel electricPanel)
     {
-        NavigationManager.NavigateTo($"/ElectricPanelDelete/{electricPanel.PanelID}");
+        // Navigasi ke halaman untuk menghapus data electric panel berdasarkan ID.
+        NavigationManager.NavigateTo(string.Format(ELECTRIC_PANEL_DELETE_PATH, electricPanel.PanelID));
     }
 }

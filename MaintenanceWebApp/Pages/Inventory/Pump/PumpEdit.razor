@@ -5,21 +5,22 @@
 @using Microsoft.EntityFrameworkCore
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject UploadFilesService UploadService
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
 <div class="card">
     <div class="card-header bg-light border-primary">
-            @* Tab Header *@
+        @* Header Halaman *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Pompa">
+                <a @onclick="CancelAsync" class="nav-link" aria-label="Kembali ke Daftar Pompa">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -31,147 +32,92 @@
     <div class="card-body">
         @if (pump != null)
         {
-            @* Form Edit *@
-            <EditForm Model="pump" OnValidSubmit="HandleUpdatePump" OnInvalidSubmit="HandleInvalidSubmit">
+            @* Formulir Edit Data *@
+            <EditForm Model="pump" OnValidSubmit="HandleUpdatePump" OnInvalidSubmit="HandleInvalidSubmitAsync">
                 <DataAnnotationsValidator />
-                <div class="form-group row">
-                    <div class="col-sm-12 mb-3">
-                        <label for="NamaPompa" class="col-form-label">Nama Pompa <span class="required">*</span></label>
-                        <InputSelect id="NamaPompa" @bind-Value="pump.Name" class="form-control">
-                            <option value="">...</option>
-                            @foreach (var name in pumpName)
-                            {
-                                <option value="@name">@name</option>
-                            }
-                        </InputSelect>
-                        <ValidationMessage For="@(() => pump.Name)" />
-                    </div>
 
-                    <div class="col-sm-12 mb-3">
-                        <label for="TagPompa" class="col-form-label">Tag No Pompa <span class="required">*</span></label>
-                        <InputText id="TagPompa" @bind-Value="pump.Tag" class="form-control" />
-                        <ValidationMessage For="@(() => pump.Tag)" />
-                    </div>
-
+                <div class="row">
                     <div class="col-sm-6 mb-3">
                         <label for="Merk" class="col-form-label">Merk</label>
                         <InputText id="Merk" @bind-Value="pump.Brand" class="form-control" />
                         <ValidationMessage For="@(() => pump.Brand)" />
                     </div>
-
                     <div class="col-sm-6 mb-3">
-                        <label for="Material" class="col-form-label">Material</label>
-                        <InputText id="Material" @bind-Value="pump.Material" class="form-control" />
-                        <ValidationMessage For="@(() => pump.Material)" />
-                    </div>
-
-                    <div class="col-sm-6 mb-3">
-                        <label for="Jenis" class="col-form-label">Jenis</label>
-                        <InputText id="Jenis" @bind-Value="pump.Category" class="form-control" />
-                        <ValidationMessage For="@(() => pump.Category)" />
-                    </div>
-
-                    <div class="col-sm-6 mb-3">
-                        <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
-                        <InputText id="Lokasi" @bind-Value="pump.Location" class="form-control" />
-                        <ValidationMessage For="@(() => pump.Location)" />
-                    </div>
-
-                    <div class="col-sm-12 mb-3">
                         <label for="Tipe" class="col-form-label">Tipe</label>
                         <InputText id="Tipe" @bind-Value="pump.Type" class="form-control" />
                         <ValidationMessage For="@(() => pump.Type)" />
                     </div>
+                </div>
 
-                    <div class="col-sm-6 mb-3">
-                        <label for="Tahun" class="col-form-label">Tahun</label>
-                        <InputNumber id="Tahun" @bind-Value="pump.Year" class="form-control" />
-                        <ValidationMessage For="@(() => pump.Year)" />
-                    </div>
-
-                    <div class="col-sm-6 mb-3">
-                        <div class="row">
-                            <div class="col-sm-8">
-                                <label for="Kapasitas" class="col-form-label">Kapasitas</label>
-                                <InputNumber class="form-control" id="Kapasitas" @bind-Value="pump.CapacityValue" @oninput="OnCapacityInputChanged" />
-                                <ValidationMessage For="@(() => pump.CapacityValue)" />
-                            </div>
-                            <div class="col-sm-4">
-                                <label for="SatuanKapasitas" class="col-form-label">Unit</label>
-                                <InputSelect id="SatuanKapasitas" @bind-Value="pump.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
-                                    <option value="">...</option>
-                                    @foreach (var unit in capacityUnits)
-                                    {
-                                        <option value="@unit">@unit</option>
-                                    }
-                                </InputSelect>
-                                @* Custom validation message for CapacityUnit *@
-                                @if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
-                                {
-                                    <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
-                                }
-                            </div>
+                <div class="col-sm-12 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Kapasitas" class="col-form-label">Kapasitas</label>
+                            <InputNumber class="form-control" id="Kapasitas" @bind-Value="pump.CapacityValue" @oninput="OnCapacityInputChanged" />
+                            <ValidationMessage For="@(() => pump.CapacityValue)" />
                         </div>
-                    </div>
-
-                    <div class="col-sm-6 mb-3">
-                        <div class="row">
-                            <div class="col-sm-8">
-                                <label for="Daya" class="col-form-label">Daya</label>
-                                <InputNumber class="form-control" id="Daya" @bind-Value="pump.PowerValue" @oninput="OnPowerInputChanged" />
-                                <ValidationMessage For="@(() => pump.PowerValue)" />
-                            </div>
-                            <div class="col-sm-4">
-                                <label for="SatuanDaya" class="col-form-label">Unit</label>
-                                <InputSelect id="SatuanDaya" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
-                                    <option value="">...</option>
-                                    @foreach (var unit in powerUnits)
-                                    {
-                                        <option value="@unit">@unit</option>
-                                    }
-                                </InputSelect>
-                                @* Custom validation message for PowerUnit *@
-                                @if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
+                        <div class="col-sm-4">
+                            <label for="SatuanKapasitas" class="col-form-label">Unit</label>
+                            <InputSelect id="SatuanKapasitas" @bind-Value="pump.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in capacityUnits)
                                 {
-                                    <div class="text-danger">Satuan Daya harus dipilih.</div>
+                                    <option value="@unit">@unit</option>
                                 }
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-sm-6 mb-3">
-                        <label for="KodeExplotionProof" class="col-form-label">Kode Explotion Proof</label>
-                        <InputText id="KodeExplotionProof" @bind-Value="pump.ExplotionProofCode" class="form-control" />
-                        <ValidationMessage For="@(() => pump.ExplotionProofCode)" />
-                    </div>
-
-                    <div class="col-sm-12 mb-3">
-                        <label for="Foto" class="col-form-label">Foto</label>
-                        @if (!fileStatus)
-                        {
-                            <InputFile id="Foto" class="form-control"
-                            accept=".jpg,.jpeg,.png"
-                            OnChange="HandleFileUpload"/>
-                            <ValidationMessage For="@(() => filePath)" />
-                        }
-                        else
-                        {
-                            <div class="d-flex align-items-center">
-                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath)" alt="Pump Image">
-                                <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
-                            </div>
-
-                            @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                            </InputSelect>
+                            @if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
                             {
-                                <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
+                                <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
                             }
-                        }
+                        </div>
                     </div>
                 </div>
 
-                @* Submit Button *@
+                <div class="col-sm-12 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Daya" class="col-form-label">Daya</label>
+                            <InputNumber class="form-control" id="Daya" @bind-Value="pump.PowerValue" @oninput="OnPowerInputChanged" />
+                            <ValidationMessage For="@(() => pump.PowerValue)" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="SatuanDaya" class="col-form-label">Unit</label>
+                            <InputSelect id="SatuanDaya" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in powerUnits)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </InputSelect>
+                            @if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
+                            {
+                                <div class="text-danger">Satuan Daya harus dipilih.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Foto" class="col-form-label">Foto</label>
+                    @if (!fileStatus)
+                    {
+                        <InputFile id="Foto" class="form-control"
+                                   accept=".jpg,.jpeg,.png"
+                                   OnChange="HandleFileUploadAsync" />
+                        <ValidationMessage For="@(() => filePath)" />
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="Pump Image">
+                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                        </div>
+                    }
+                </div>
+
+                @* Tombol Aksi *@
                 <div class="float-end mt-3">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </EditForm>
@@ -184,131 +130,127 @@
 </div>
 
 @code {
-    //Page
-    private Pump pump;
+    // Parameter Halaman
     [Parameter]
     public int PumpId { get; set; }
+
+    // Properti Halaman
+    private Pump? pump;
     private EditContext? editContext;
+    private DotNetObjectReference<PumpEdit>? dotNetHelper;
     private string _webStorageRoot = string.Empty;
-    private bool uploadErrorStatus;
 
-    //Form
-    private bool IsPowerUnitDisabled;
-    private bool IsCapacityUnitDisabled;
-    private List<string> pumpName = new() { "Pompa Delivery", "Pompa Pendukung Operasional", "Pompa Air Bersih", "Pompa Kondisi Darurat Kebakaran" };
-    private List<string> powerUnits = new() { "HP", "KW" };
-    private List<string> capacityUnits = new() { "M3/h", "M3/min", "LPM", "GPM" };
+    // State Formulir
+    private bool IsPowerUnitDisabled = true;
+    private bool IsCapacityUnitDisabled = true;
 
-    //File
+    private List<string> capacityUnits = new() { "M3/h", "m3/day", "GPM" };
+    private List<string> powerUnits = new() { "kW", "HP", "MW" };
+
+    // State File
     private string? originalFilePath;
     private string? filePath;
     private bool fileStatus;
-    private string subFolderName = "Inventories";
-    private string fileCategory = "img";
-    private string folderName = "Pump";
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string FILE_CATEGORY = "img";
+    private const string FOLDER_NAME = "Pump";
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        //Read Pump using Service
-        pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
+        await LoadConfigurationAsync();
+        await LoadPumpDataAsync();
+    }
 
-        if (pump == null)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            NavigationManager.NavigateTo("/PumpList", forceLoad: true);
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
         }
+    }
 
-        editContext = new EditContext(pump);
-        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
-        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
-
-        uploadErrorStatus = false;
-
-        if (!string.IsNullOrWhiteSpace(pump.Image))
-        {
-            fileStatus = true;
-            originalFilePath = pump.Image;
-            filePath = pump.Image;
-        }
-        else
-        {
-            fileStatus = false;
-            originalFilePath = null;
-            filePath = null;
-        }
-
-        if (string.IsNullOrWhiteSpace(pump.PowerUnit))
-        {
-            IsPowerUnitDisabled = true;
-        }
-        else
-        {
-            IsPowerUnitDisabled = false;
-        }
-
-        if (string.IsNullOrWhiteSpace(pump.CapacityUnit))
-        {
-            IsCapacityUnitDisabled = true;
-        }
-        else
-        {
-            IsCapacityUnitDisabled = false;
-        }
-
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
         try
         {
-            // Get Path Root
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`. Detail: {ex.Message}");
         }
     }
 
-    //File Upload
-    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    private async Task LoadPumpDataAsync()
     {
-        //File Upload using Service
-        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        pump = await CRUDService.ReadSingleAsync<Pump, int>(PumpId);
+        if (pump == null)
         {
-            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-
-            filePath = null;
-
-            return;
+            await NotificationService.AlertMessage("Data Pompa tidak ditemukan.");
+            NavigationManager.NavigateTo("./PumpList", forceLoad: true);
         }
+        else
+        {
+            // Inisialisasi EditContext dan status file
+            editContext = new EditContext(pump);
+            editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+            editContext.OnFieldChanged += (sender, e) => StateHasChanged();
 
-        filePath = UploadService.FilePath;
-        fileStatus = true;
+            InitializeFileStatus(pump.Image);
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+            // Inisialisasi status unit
+            IsPowerUnitDisabled = !pump.PowerValue.HasValue || pump.PowerValue.Value <= 0;
+            IsCapacityUnitDisabled = !pump.CapacityValue.HasValue || pump.CapacityValue.Value <= 0;
+        }
     }
 
-    //Handle File Change
-    private async Task HandleFileChange()
+    private void InitializeFileStatus(string? imagePath)
+    {
+        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
+        originalFilePath = imagePath;
+        filePath = imagePath;
+    }
+
+    // Metode Unggah File
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
+            if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
+                filePath = null;
+                return;
+            }
+
+            filePath = UploadService.FilePath;
+            fileStatus = true;
+            editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileChangeAsync()
     {
         if (fileStatus)
         {
+            // Hapus file lama jika filePath berubah
             if (filePath != originalFilePath)
             {
-                //Update Image File
-                FileChange(filePath);
+                await DeleteOldFileAsync(filePath);
             }
-
             fileStatus = false;
         }
         else
@@ -317,177 +259,147 @@
         }
     }
 
-    // File Change
-    private async Task FileChange(string ImagePath)
+    private async Task DeleteOldFileAsync(string? path)
     {
-        //File Change using Service
-        await UploadService.FileChange(ImagePath, subFolderName);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        if (!string.IsNullOrWhiteSpace(path))
         {
-            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
-            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-            return;
+            await UploadService.FileChange(path, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus file lama. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menghapus file lama. Detail: {UploadService.UploadErrorMessage}");
+            }
         }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.Image));
     }
 
-    //Create File Path
     private string CreateFilePath(string relativePath)
     {
-        if (!string.IsNullOrWhiteSpace(relativePath))
+        if (string.IsNullOrWhiteSpace(relativePath))
         {
-            return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+            return "/noimg.png";
         }
-        return null;
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
     }
 
-    //Update Data Pump
-    private async Task HandleUpdatePump()
-    {
-        // Custom Capacity Value Validation
-        if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
-        {
-            alertMessage = "Jika Kapasitas diisi, Satuan Kapasitas harus dipilih.";
-            logMessage = $"Validasi kustom gagal: Satuan Kapasitas tidak dipilih saat Kapasitas ada.";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        // Custom Power Value Validation
-        if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
-        {
-            alertMessage = "Jika Daya diisi, Satuan Daya harus dipilih.";
-            logMessage = $"Validasi kustom gagal: Satuan Daya tidak dipilih saat Daya ada.";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        //File Check
-        if (fileStatus)
-        {
-            if (uploadErrorStatus)
-            {
-                alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-                logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-                uploadErrorStatus = false;
-
-                ShowNotification(alertMessage, logMessage);
-                return;
-            }
-
-            if(filePath != originalFilePath)
-            {
-                if (!string.IsNullOrWhiteSpace(originalFilePath))
-                {
-                    //Update Image File
-                    FileChange(originalFilePath);
-                }
-                pump.Image = filePath;
-            }
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(originalFilePath))
-            {
-                FileChange(originalFilePath);
-            }
-            pump.Image = null;
-        }
-
-        //Update using Services
-        await CRUDService.UpdateAsync<Pump>(pump);
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
-        {
-            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
-            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        NavigationManager.NavigateTo("/PumpList?status=EditSuccess");
-    }
-
-    //Invalid Submit
-    private async Task HandleInvalidSubmit()
-    {
-        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
-        logMessage = $"Formulir PumpEdit disubmit dengan input tidak valid.";
-
-        ShowNotification(alertMessage, logMessage);
-    }
-
-    //Power Validation
+    // Metode Validasi Input
     private void OnPowerInputChanged(ChangeEventArgs args)
     {
         if (double.TryParse(args.Value?.ToString(), out double currentPowerInputValue))
         {
-            pump.PowerValue = currentPowerInputValue;
+            pump!.PowerValue = currentPowerInputValue;
         }
         else
         {
-            pump.PowerValue = null;
+            pump!.PowerValue = null;
         }
 
         IsPowerUnitDisabled = !pump.PowerValue.HasValue || pump.PowerValue.Value <= 0;
-
         if (IsPowerUnitDisabled)
         {
             pump.PowerUnit = null;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.PowerValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.PowerUnit));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.PowerValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.PowerUnit));
     }
 
-    //Capacity Validation
     private void OnCapacityInputChanged(ChangeEventArgs args)
     {
         if (double.TryParse(args.Value?.ToString(), out double currentCapacityInputValue))
         {
-            pump.CapacityValue = currentCapacityInputValue;
+            pump!.CapacityValue = currentCapacityInputValue;
         }
         else
         {
-            pump.CapacityValue = null;
+            pump!.CapacityValue = null;
         }
 
         IsCapacityUnitDisabled = !pump.CapacityValue.HasValue || pump.CapacityValue.Value <= 0;
-
         if (IsCapacityUnitDisabled)
         {
             pump.CapacityUnit = null;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.CapacityValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump.CapacityUnit));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.CapacityValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pump!.CapacityUnit));
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    // Metode Penanganan Submit
+    private async Task HandleUpdatePump()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
-    }
+        if (pump == null) return;
 
-    //Cancel
-    private void Cancel()
-    {
-        if(filePath != originalFilePath)
+        // Validasi kustom untuk Satuan Daya
+        if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
         {
-            FileChange(filePath);
+            await NotificationService.AlertMessage("Jika Daya diisi, Satuan Daya harus dipilih.");
+            return;
         }
 
-        NavigationManager.NavigateTo("/PumpList");
+        // Validasi kustom untuk Satuan Kapasitas
+        if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
+        {
+            await NotificationService.AlertMessage("Jika Kapasitas diisi, Satuan Kapasitas harus dipilih.");
+            return;
+        }
+
+        // Sinkronisasi path file sebelum update
+        pump.Image = fileStatus ? filePath : null;
+
+        // Jika ada perubahan file, hapus file lama
+        if (filePath != originalFilePath)
+        {
+            await DeleteOldFileAsync(originalFilePath);
+        }
+
+        try
+        {
+            await CRUDService.UpdateAsync(pump);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menyimpan data. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menyimpan data. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            NavigationManager.NavigateTo("./PumpList?status=EditSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan tak terduga saat memperbarui data. Silakan coba lagi.");
+            NotificationService.LogMessage($"Kesalahan saat memperbarui data Pompa. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleInvalidSubmitAsync()
+    {
+        await NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+        NotificationService.LogMessage($"Pengiriman formulir PumpEdit tidak valid.");
+    }
+
+    // Metode Navigasi
+    private async Task CancelAsync()
+    {
+        // Bersihkan file temporer jika ada
+        if (filePath != originalFilePath)
+        {
+            await DeleteOldFileAsync(filePath);
+        }
+
+        NavigationManager.NavigateTo("./PumpList");
+    }
+
+    // Metode untuk JavaScript Interop
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Implementasi IDisposable untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
     }
 }

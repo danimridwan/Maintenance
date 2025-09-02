@@ -31,9 +31,6 @@
                 <span class="nav-link active" aria-current="page">Informasi Pengguna</span>
             </li>
         </ul>
-        <button class="btn btn-warning btn-sm" @onclick="GoToUserEdit">
-            <span class="oi oi-pencil"></span> Edit
-        </button>
     </div>
 
     @* Status Pemuatan *@
@@ -62,48 +59,58 @@
     else
     {
         <div class="card-body">
-            <div class="row align-items-start">
-                @* Bagian Foto Profil *@
-                <div class="col-md-4 text-center mb-4">
-                    <div class="profile-photo-container">
-                        <img class="img-fluid rounded-circle shadow-sm" src="@CreateFilePath(user.UserPhoto)" alt="Foto Profil Pengguna" style="max-width: 200px; height: auto;" />
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center">
+                    @* Foto Profil *@
+                    <div class="profile-photo-container mb-3">
+                        <img class="img-fluid" src="@CreateFilePath(user.UserPhoto)" alt="Foto Profil Pengguna" />
                     </div>
+
+                    @* Tanda Tangan *@
+                    @if (user.Role != "Admin")
+                    {
+                        <div class="signature-section mt-4">
+                            <h5 class="mb-3">Tanda Tangan Digital</h5>
+                            <img class="signature-photo" src="@CreateFilePath(user.Signature)" alt="Tanda Tangan Pengguna" />
+                        </div>
+                    }
                 </div>
 
+
                 @* Bagian Informasi Detail *@
-                <div class="col-md-8">
-                    <h4 class="mb-3">@user.FullName</h4>
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item">
-                            <i class="oi oi-envelope-closed me-2"></i> <b>Email:</b> @user.Email
-                        </li>
-                        <li class="list-group-item">
-                            <i class="oi oi-phone me-2"></i> <b>Nomor Telepon:</b> @user.PhoneNumber
-                        </li>
-                        <li class="list-group-item">
-                            <i class="oi oi-person me-2"></i> <b>Role:</b> @user.Role
-                        </li>
+                <div class="col-md-9 px-5">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label text-muted">Nama Lengkap</label>
+                            <p class="info-text">@user.FullName</p>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted">Email</label>
+                            <p class="info-text">@user.Email</p>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted">Nomor Telepon</label>
+                            <p class="info-text">@user.PhoneNumber</p>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label text-muted">Role</label>
+                            <p class="info-text">@user.Role</p>
+                        </div>
                         @if (!string.IsNullOrEmpty(user.Section))
                         {
-                            <li class="list-group-item">
-                                <i class="oi oi-briefcase me-2"></i> <b>Section:</b> @user.Section
-                            </li>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted">Section</label>
+                                <p class="info-text">@user.Section</p>
+                            </div>
                         }
                         @if (!string.IsNullOrEmpty(user.RoleCategory))
                         {
-                            <li class="list-group-item">
-                                <i class="oi oi-tag me-2"></i> <b>Divisi:</b> @user.RoleCategory
-                            </li>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted">Divisi</label>
+                                <p class="info-text">@user.RoleCategory</p>
+                            </div>
                         }
-                    </ul>
-
-                    @if (user.Role != "Admin")
-                    {
-                        <div class="signature-section border-top pt-4">
-                            <h5 class="mb-3">Tanda Tangan Digital</h5>
-                            <img class="img-fluid border rounded shadow-sm" src="@CreateFilePath(user.Signature)" alt="Tanda Tangan Pengguna" style="max-height: 150px;" />
-                        </div>
-                    }
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,7 +130,7 @@
     // Konstanta
     private string webUserRoot = string.Empty;
     private const string NO_IMAGE_PATH = "/noimg.png";
-    private const string USER_LIST_PATH = "/UserList";
+    private const string USER_LIST_PATH = "./UserList";
 
     // Metode Lifecycle
     protected override async Task OnInitializedAsync()
@@ -178,13 +185,6 @@
     }
 
     // Navigasi
-    private void GoToUserEdit()
-    {
-        if (user != null)
-        {
-            NavigationManager.NavigateTo($"/UserEdit/{user.Id}");
-        }
-    }
 
     private void NavigateToUserList()
     {

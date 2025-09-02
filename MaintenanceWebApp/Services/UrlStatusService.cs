@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Shared;
 
 namespace MaintenanceWebApp.Services
 {
@@ -21,6 +22,47 @@ namespace MaintenanceWebApp.Services
         public UrlStatusService(NavigationManager navigationManager)
         {
             _navigationManager = navigationManager;
+        }
+
+        public string? GetStatus()
+        {
+            var uri = _navigationManager.ToAbsoluteUri(_navigationManager.Uri);
+            var queryParameters = QueryHelpers.ParseQuery(uri.Query);
+
+            if (queryParameters.TryGetValue("status", out var status))
+            {
+                if (Enum.TryParse<StatusType>(status.ToString(), true, out var statusEnum))
+                {
+                    switch (statusEnum)
+                    {
+                        case StatusType.CreateSuccess:
+                            status = "Data berhasil ditambahkan.";
+                            break;
+                        case StatusType.EditSuccess:
+                            status = "Data berhasil diperbarui.";
+                            break;
+                        case StatusType.DeleteSuccess:
+                            status = "Data berhasil dihapus.";
+                            break;
+                        case StatusType.ApproveSuccess:
+                            status = "PPM berhasil disetujui.";
+                            break;
+                        case StatusType.RejectSuccess:
+                            status = "PPM berhasil ditolak.";
+                            break;
+                        case StatusType.OperationFailed:
+                            status = "Operasi gagal. Silakan coba lagi.";
+                            break;
+                        default:
+                            status = "";
+                            break;
+                    }
+
+                    return status;
+                }
+            }
+
+            return null;
         }
 
         public string? GetAndClearUrlStatusMessage()

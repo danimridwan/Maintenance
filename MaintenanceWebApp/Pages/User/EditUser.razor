@@ -418,8 +418,7 @@
             var updateResult = await UserManager.UpdateAsync(user);
             if (updateResult.Succeeded)
             {
-                NotificationService.AlertMessage("Data berhasil diedit");
-                NavigationManager.NavigateTo(NavigationManager.Uri);
+                NavigationManager.NavigateTo("./UserList?status=CreateSuccess");
             }
             else
             {
@@ -554,7 +553,7 @@
         if (user == null)
         {
             await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
-            await JSRuntime.InvokeVoidAsync("history.back");
+            NavigationManager.NavigateTo("./UserList");
             return;
         }
 
@@ -568,7 +567,7 @@
         }
 
         await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
-        await JSRuntime.InvokeVoidAsync("history.back");
+        NavigationManager.NavigateTo("./UserList");
     }
 
     private void ClearIrrelevantFields(User user)

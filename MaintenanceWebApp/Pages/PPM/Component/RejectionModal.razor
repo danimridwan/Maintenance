@@ -1,0 +1,69 @@
+﻿@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+
+@* Services *@
+@inject NotificationService NotificationService
+
+@* Rejection Modal *@
+<div class="modal fade" id="rejectionModal" tabindex="-1" role="dialog" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="rejectionModalLabel">Tolak PPM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body">
+                @if (PpmTask != null)
+                {
+                    <EditForm Model="PpmTask" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="form-group">
+                            <label for="RejectionNote" class="col-form-label">Alasan Penolakan<span class="required">*</span></label>
+                            <InputTextArea id="RejectionNote" @bind-Value="PpmTask.RejectionNote" class="form-control" required />
+                            <ValidationMessage For="@(() => PpmTask.RejectionNote)" />
+                        </div>
+
+                        <div class="modal-footer mt-4">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-danger">Tolak</button>
+                        </div>
+                    </EditForm>
+                }
+                else
+                {
+                    <p class="text-danger">Data PPM tidak tersedia untuk proses penolakan.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // --- Parameter & Event Callbacks ---
+
+    // Menerima data PPM dari komponen induk
+    [Parameter]
+    public PPMTask? PpmTask { get; set; }
+
+    // Mengirim event ke induk saat form penolakan di-submit
+    [Parameter]
+    public EventCallback OnRejectSubmit { get; set; }
+
+    // --- Metode Penanganan Form ---
+
+    // Menangani submit form dan meneruskan event ke komponen induk
+    private async Task HandleSubmit()
+    {
+        // Memeriksa validitas sebelum mengirim event
+        if (PpmTask != null && !string.IsNullOrWhiteSpace(PpmTask.RejectionNote))
+        {
+            await OnRejectSubmit.InvokeAsync();
+        }
+        else
+        {
+            // Memberi notifikasi jika alasan kosong, meskipun validasi standar seharusnya sudah menangani ini
+            await NotificationService.AlertMessage("Alasan penolakan tidak boleh kosong.");
+        }
+    }
+}

@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/Dashboard"
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @using System.Security.Claims
 @using MaintenanceWebApp.Data
@@ -84,7 +84,7 @@ else
         StateHasChanged();
     }
 
-    private async Task LoadPumps()
+    private async Task LoadPPMPerformance()
     {
         try
         {

@@ -42,6 +42,43 @@
     <script src="~/js/ChartJsBlazorInterop.js"></script>
     <script src="~/js/blazor-interop.js"></script>
     <script>
+                window.blazorInterop = {
+            addOutsideClickHandler: (element, dotNetHelper) => {
+                // Fungsi ini akan dipanggil saat ada klik di mana saja
+                const handleClick = (event) => {
+                    // Cek apakah klik terjadi di luar elemen yang kita pantau
+                    if (element && !element.contains(event.target)) {
+                        // Panggil metode C# di Blazor untuk menutup dropdown
+                        dotNetHelper.invokeMethodAsync('CloseDropdownOnOutsideClick');
+                    }
+                };
+
+                // Tambahkan event listener ke dokumen
+                document.addEventListener('mousedown', handleClick);
+
+                // Simpan referensi ke handler agar bisa kita hapus nanti
+                element.outsideClickHandler = handleClick;
+            },
+
+            removeOutsideClickHandler: (element) => {
+                // Hapus event listener untuk mencegah memory leak
+                if (element && element.outsideClickHandler) {
+                    document.removeEventListener('mousedown', element.outsideClickHandler);
+                    delete element.outsideClickHandler;
+                }
+            }
+        };
+    </script>
+    <script>
+        function showModal(modalId) {
+            $('#' + modalId).modal('show');
+        }
+
+        function hideModal(modalId) {
+            $('#' + modalId).modal('hide');
+        }
+    </script>
+    <script>
         window.blazorInterop = window.blazorInterop || {};
 
         // Menambahkan entri baru dan menyiapkan listener

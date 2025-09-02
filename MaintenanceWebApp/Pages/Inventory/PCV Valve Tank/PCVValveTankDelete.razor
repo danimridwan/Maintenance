@@ -1,4 +1,4 @@
-﻿@page "/PCVValveTankDelete/{PCVValveTankID:int}"
+﻿@page "/PCVValveTankDelete/{Id:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -10,101 +10,165 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
-<div class="card">
-
+<div class="card p-4 shadow-sm border-0">
     <div class="card-body">
-        @if (pcvValveTank == null)
+        @if (isLoading)
         {
-            <p><em>Memuat Data PCV Valve Tank...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p class="mt-2 text-muted">Memuat data PCV Valve Tank...</p>
+            </div>
+        }
+        else if (pcvValveTank == null)
+        {
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data PCV Valve Tank tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus PCV Valve Tank</h3>
-
+            <h3 class="card-title text-danger mb-3">Hapus PCV Valve Tank</h3>
             <hr />
+            <p class="text-muted">Anda yakin ingin menghapus PCV Valve Tank dengan Nomor Pompa: <b>@pcvValveTank.PumpNumber</b> ?</p>
 
-            <p>Anda yakin ingin menghapus PCV Valve Tank dengan Nomor Pompa: <b>@pcvValveTank.PumpNumber</b> ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeletePCVValveTank">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            </div>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
+    // Parameter Rute
     [Parameter]
-    public int PCVValveTankID { get; set; }
-    private PCVValveTank pcvValveTank;
+    public int Id { get; set; }
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // State
+    private PCVValveTank? pcvValveTank;
+    private bool isLoading = true;
 
-    //File
-    private string subFolderName = "Inventories";
-    private string folderName = "PCV Valve Tank";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+    private const string FOLDER_NAME = "PCV Valve Tank";
 
+    // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
-        await LoadPCVValveTank();
+        await LoadPCVValveTankAsync();
+        isLoading = false;
     }
 
-    //Read Data PCV Valve Tank
-    private async Task LoadPCVValveTank()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadPCVValveTankAsync()
     {
         try
         {
-            //Read PCV Valve Tank using Service
-            pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(PCVValveTankID);
+            // Memuat data PCV Valve Tank berdasarkan ID
+            pcvValveTank = await CRUDService.ReadSingleAsync<PCVValveTank, int>(Id);
+            if (pcvValveTank == null)
+            {
+                await NotificationService.AlertMessage("Data PCV Valve Tank tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data PCV Valve Tank. Hubungi administrator.";
-            logMessage = $"Gagal memuat data PCV Valve Tank\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data PCV Valve Tank. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data PCV Valve Tank dengan ID {Id}. Detail: {ex.Message}");
+            pcvValveTank = null;
         }
     }
 
-	//Delete Data PCV Valve Tank
-    private async Task DeletePCVValveTank()
+    private async Task HandleDeleteAsync()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(pcvValveTank);
-
-        //File Delete using File Upload Service
-        await UploadService.FileChange(pcvValveTank.Image, subFolderName);
-        pcvValveTank.Image = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (pcvValveTank == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Data PCV Valve Tank tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        NavigationManager.NavigateTo("/PCVValveTankList?status=DeleteSuccess");
+        try
+        {
+            // Hapus file terkait sebelum menghapus data dari database
+            await DeleteAssociatedFileAsync();
+
+            // Lakukan penghapusan record dari database
+            await CRUDService.DeleteAsync(pcvValveTank);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data PCV Valve Tank dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data PCV Valve Tank dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == pcvValveTank.PCVValveTankID);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data Inventory Maintenance History. Detail: {CRUDService.CRUDErrorMessage}");
+            }
+
+            // Navigasi kembali ke halaman daftar dengan status sukses
+            NavigationManager.NavigateTo("./PCVValveTankList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus PCV Valve Tank. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus PCV Valve Tank dengan ID {Id}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
     {
-        NavigationManager.NavigateTo("/PCVValveTankList");
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == pcvValveTank.PCVValveTankID);
+
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        NotificationService.AlertMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
+        }
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    private async Task DeleteAssociatedFileAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
+        if (!string.IsNullOrWhiteSpace(pcvValveTank?.Image))
+        {
+            await UploadService.FileChange(pcvValveTank.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
+                NotificationService.LogMessage($"Gagal menghapus file '{pcvValveTank.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("./PCVValveTankList");
     }
 }

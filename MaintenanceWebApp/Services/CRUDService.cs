@@ -127,6 +127,31 @@ namespace MaintenanceWebApp.Services
             }
         }
 
+        // --- CRUDServices.cs ---
+        public async Task DeleteByConditionAsync<T>(System.Linq.Expressions.Expression<Func<T, bool>> predicate) where T : class
+        {
+            try
+            {
+                using (var context = new DataContext(_options))
+                {
+                    // Temukan semua entitas yang cocok dengan kondisi (predicate)
+                    var entities = await context.Set<T>().Where(predicate).ToListAsync();
+
+                    // Jika ditemukan, hapus entitas-entitas tersebut
+                    if (entities.Any())
+                    {
+                        context.Set<T>().RemoveRange(entities);
+                        await context.SaveChangesAsync();
+                    }
+                }
+                CRUDErrorMessage = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                CRUDErrorMessage = $"Error deleting entities by condition: {ex.Message}";
+            }
+        }
+
         public async Task<int> CountAsync<T>(Expression<Func<T, bool>>? filter = null) where T : class
         {
             try

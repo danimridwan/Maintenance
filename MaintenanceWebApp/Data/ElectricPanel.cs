@@ -1,10 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using MaintenanceWebApp.Pages.Inventory.Breather_Valve;
+using static Org.BouncyCastle.Asn1.Cmp.Challenge;
 
 namespace MaintenanceWebApp.Data
 {
-    public class ElectricPanel
+    public class ElectricPanel : IInventoryItem
     {
+        public string DisplayItem => $"{Name} - Lokasi {Location}";
+        public string ItemId => $"{PanelID}";
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int PanelID { get; set; }

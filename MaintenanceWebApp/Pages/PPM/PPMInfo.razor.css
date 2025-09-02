@@ -1,0 +1,48 @@
+﻿/* Container utama, pastikan posisinya relatif */
+.custom-select-container {
+    position: relative;
+}
+
+    /* Konten dropdown (daftar item) */
+    .custom-select-container .dropdown-content {
+        display: none; /* Sembunyikan secara default */
+        position: absolute;
+        top: 100%; /* Posisikan tepat di bawah input */
+        left: 0;
+        right: 0;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 0.25rem 0.25rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        max-height: 200px; /* Batasi tinggi untuk scroll */
+        overflow-y: auto; /* Aktifkan scrolling jika item terlalu banyak */
+        z-index: 1000; /* Pastikan muncul di atas elemen lain */
+    }
+
+        /* Tampilkan dropdown saat ada kelas 'show' */
+        .custom-select-container .dropdown-content.show {
+            display: block;
+        }
+
+    /* Gaya untuk setiap item di dalam dropdown */
+    .custom-select-container .dropdown-item {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #333;
+        white-space: nowrap; /* Mencegah teks terpotong */
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+        /* Efek saat item di-hover */
+        .custom-select-container .dropdown-item:hover {
+            background-color: #f1f1f1;
+        }
+
+    /* Sesuaikan input untuk menghindari tumpang tindih dengan dropdown */
+    .custom-select-container .form-control {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }

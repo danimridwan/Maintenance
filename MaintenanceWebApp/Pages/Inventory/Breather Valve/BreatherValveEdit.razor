@@ -5,21 +5,22 @@
 @using Microsoft.EntityFrameworkCore
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 @* Services *@
 @inject UploadFilesService UploadService
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
 <div class="card">
     <div class="card-header bg-light border-primary">
-            @* Tab Header *@
+        @* Header Halaman *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a @onclick="Cancel" class="nav-link" aria-label="Kembali ke Daftar Breather Valve">
+                <a @onclick="CancelAsync" class="nav-link" aria-label="Kembali ke Daftar Breather Valve">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
@@ -31,8 +32,8 @@
     <div class="card-body">
         @if (breatherValve != null)
         {
-            @* Form Edit *@
-            <EditForm Model="breatherValve" OnValidSubmit="HandleUpdateBreatherValve" OnInvalidSubmit="HandleInvalidSubmit">
+            @* Formulir Edit Data *@
+            <EditForm Model="breatherValve" OnValidSubmit="HandleUpdateBreatherValve" OnInvalidSubmit="HandleInvalidSubmitAsync">
                 <DataAnnotationsValidator />
 
                 <div class="col-sm-12 mb-3">
@@ -46,7 +47,7 @@
                         <label for="Merk" class="col-form-label">Merk</label>
                         <InputSelect id="Merk" @bind-Value="breatherValve.Brand" class="form-control">
                             <option value="">...</option>
-                            @foreach (var brand in breatherValveBrand)
+                            @foreach (var brand in BREATER_VALVE_BRANDS)
                             {
                                 <option value="@brand">@brand</option>
                             }
@@ -58,7 +59,7 @@
                         <label for="Tipe" class="col-form-label">Tipe</label>
                         <InputSelect id="Tipe" @bind-Value="breatherValve.Type" class="form-control">
                             <option value="">...</option>
-                            @foreach (var type in breatherValveType)
+                            @foreach (var type in BREATER_VALVE_TYPES)
                             {
                                 <option value="@type">@type</option>
                             }
@@ -71,7 +72,7 @@
                     <label for="Merk" class="col-form-label">Material</label>
                     <InputSelect id="Merk" @bind-Value="breatherValve.Material" class="form-control">
                         <option value="">...</option>
-                        @foreach (var material in breatherValveMaterial)
+                        @foreach (var material in BREATER_VALVE_MATERIALS)
                         {
                             <option value="@material">@material</option>
                         }
@@ -87,6 +88,7 @@
                                 <InputNumber class="form-control" id="TekananDesainPositif" @bind-Value="breatherValve.DesignPressurePos" />
                                 <ValidationMessage For="@(() => breatherValve.DesignPressurePos)" />
                             </div>
+
                             <div class="col-sm-6">
                                 <label for="TekananDesainNegatif" class="col-form-label">Tekkanan Desain (-MMH20)</label>
                                 <InputNumber class="form-control" id="TekananDesainNegatif" @bind-Value="breatherValve.DesignPressureNeg" />
@@ -104,14 +106,14 @@
                             </div>
                             <div class="col-sm-4">
                                 <label for="SatuanDiameter" class="col-form-label">Unit</label>
-                                <InputSelect id="SatuanDiameter" @bind-Value="breatherValve.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
+                                <InputSelect id="SatuanDiameter" @bind-Value="breatherValve.DiameterUnit" class="form-control" disabled="@isDiameterUnitDisabled">
                                     <option value="">...</option>
-                                    @foreach (var unit in diameterUnits)
+                                    @foreach (var unit in DIAMETER_UNITS)
                                     {
                                         <option value="@unit">@unit</option>
                                     }
                                 </InputSelect>
-                                @* Custom validation message for Diameter Unit *@
+                                @* Pesan validasi kustom untuk Satuan Diameter *@
                                 @if (breatherValve.DiameterValue.HasValue && breatherValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(breatherValve.DiameterUnit))
                                 {
                                     <div class="text-danger">Satuan Diameter harus dipilih.</div>
@@ -133,26 +135,21 @@
                     {
                         <InputFile id="Foto" class="form-control"
                                    accept=".jpg,.jpeg,.png"
-                                   OnChange="HandleFileUpload" />
+                                   OnChange="HandleFileUploadAsync" />
                         <ValidationMessage For="@(() => filePath)" />
                     }
                     else
                     {
                         <div class="d-flex align-items-center">
-                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath)" alt="Breather Valve Image">
-                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="Breather Valve Image">
+                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
-
-                        @if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-                        {
-                            <div class="text-danger mt-2">@UploadService.UploadErrorMessage</div>
-                        }
                     }
                 </div>
 
-                @* Submit Button *@
+                @* Tombol Aksi *@
                 <div class="float-end mt-3">
-                    <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </EditForm>
@@ -165,269 +162,250 @@
 </div>
 
 @code {
-    //Page
-    private BreatherValve breatherValve;
+    // Parameter Halaman
     [Parameter]
     public int BreatherValveID { get; set; }
+
+    // Properti Halaman
+    private BreatherValve? breatherValve;
     private EditContext? editContext;
+    private DotNetObjectReference<BreatherValveEdit>? dotNetHelper;
     private string _webStorageRoot = string.Empty;
-    private bool uploadErrorStatus;
 
-    //Form
-    private bool IsDiameterUnitDisabled = true;
-    private List<string> breatherValveBrand = new() { "VAREC", "SHAND & JURS", "KSPC" };
-    private List<string> breatherValveType = new() { "2010B", "94020", "94570", "KSBBFI-6", "KSBB-2" };
-    private List<string> breatherValveMaterial = new() { "Alumunium", "Stainless Steel" };
-    private List<string> diameterUnits = new() { "inch" };
+    // State Formulir
+    private bool isDiameterUnitDisabled = true;
 
-    //File
+    // State File
     private string? originalFilePath;
     private string? filePath;
     private bool fileStatus;
-    private string subFolderName = "Inventories";
-    private string fileCategory = "img";
-    private string folderName = "Breather Valve";
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string FILE_CATEGORY = "img";
+    private const string FOLDER_NAME = "Breather Valve";
+    private readonly List<string> BREATER_VALVE_BRANDS = new() { "VAREC", "SHAND & JURS", "KSPC" };
+    private readonly List<string> BREATER_VALVE_TYPES = new() { "2010B", "94020", "94570", "KSBBFI-6", "KSBB-2" };
+    private readonly List<string> BREATER_VALVE_MATERIALS = new() { "Alumunium", "Stainless Steel" };
+    private readonly List<string> DIAMETER_UNITS = new() { "inch" };
 
+    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
-        //Read Breather Valve using Service
-        breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
+        await LoadConfigurationAsync();
+        await LoadBreatherValveDataAsync();
+    }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task LoadBreatherValveDataAsync()
+    {
+        breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
         if (breatherValve == null)
         {
-            NavigationManager.NavigateTo("/BreatherValveList", forceLoad: true);
+            await NotificationService.AlertMessage("Data Breather Valve tidak ditemukan.");
+            NavigationManager.NavigateTo("./BreatherValveList", forceLoad: true);
         }
+        else
+        {
+            // Inisialisasi EditContext dan status file
+            editContext = new EditContext(breatherValve);
+            editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+            editContext.OnFieldChanged += (sender, e) => StateHasChanged();
 
-        editContext = new EditContext(breatherValve);
-        editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
-        editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+            InitializeFileStatus(breatherValve.Image);
+            InitializeDiameterUnitStatus(breatherValve.DiameterUnit);
+        }
+    }
 
-        uploadErrorStatus = false;
+    private void InitializeFileStatus(string? imagePath)
+    {
+        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
+        originalFilePath = imagePath;
+        filePath = imagePath;
+    }
 
-        if (!string.IsNullOrWhiteSpace(breatherValve.Image))
+    private void InitializeDiameterUnitStatus(string? diameterUnit)
+    {
+        isDiameterUnitDisabled = string.IsNullOrWhiteSpace(diameterUnit);
+    }
+
+    // Metode Unggah File
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
+            if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
+                filePath = null;
+                return;
+            }
+
+            filePath = UploadService.FilePath;
+            fileStatus = true;
+            editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileChangeAsync()
+    {
+        if (fileStatus)
+        {
+            // Hapus file lama jika filePath berubah
+            if (filePath != originalFilePath)
+            {
+                await DeleteOldFileAsync(filePath);
+            }
+            fileStatus = false;
+        }
+        else
         {
             fileStatus = true;
-            originalFilePath = breatherValve.Image;
-            filePath = breatherValve.Image;
         }
-        else
+    }
+
+    private async Task DeleteOldFileAsync(string? path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
         {
-            fileStatus = false;
-            originalFilePath = null;
-            filePath = null;
+            await UploadService.FileChange(path, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus file lama. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menghapus file lama. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private string CreateFilePath(string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return "/noimg.png";
+        }
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    // Metode Penanganan Submit
+    private async Task HandleUpdateBreatherValve()
+    {
+        if (breatherValve == null) return;
+
+        // Validasi kustom untuk Satuan Diameter
+        if (breatherValve.DiameterValue.HasValue && breatherValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(breatherValve.DiameterUnit))
+        {
+            await NotificationService.AlertMessage("Jika Diameter diisi, Satuan Diameter harus dipilih.");
+            return;
         }
 
-        if (string.IsNullOrWhiteSpace(breatherValve.DiameterUnit))
+        // Sinkronisasi path file sebelum update
+        breatherValve.Image = fileStatus ? filePath : null;
+
+        // Jika ada perubahan file, hapus file lama
+        if (filePath != originalFilePath)
         {
-            IsDiameterUnitDisabled = true;
-        }
-        else
-        {
-            IsDiameterUnitDisabled = false;
+            await DeleteOldFileAsync(originalFilePath);
         }
 
         try
         {
-            // Get Path Root
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; // Default root
-        }
-        catch (Exception ex)
-        {
-            alertMessage = "Gagal memuat konfigurasi '_webStorageRoot'. Hubungi administrator.";
-            logMessage = $"Gagal memuat konfigurasi '_webStorageRoot'\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
-        }
-    }
-
-    //File Upload
-    private async Task HandleFileUpload(InputFileChangeEventArgs e)
-    {
-        //File Upload using Service
-        await UploadService.FilesUpload(e.File, folderName, subFolderName, fileCategory);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-        {
-            alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-            logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-
-            filePath = null;
-
-            return;
-        }
-
-        filePath = UploadService.FilePath;
-        fileStatus = true;
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
-    }
-
-    //Handle File Change
-    private async Task HandleFileChange()
-    {
-        if (fileStatus)
-        {
-            if (filePath != originalFilePath)
+            await CRUDService.UpdateAsync(breatherValve);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
             {
-                //Update Image File
-                FileChange(filePath);
-            }
-
-            fileStatus = false;
-        }
-        else
-        {
-            fileStatus = true;
-        }
-    }
-
-    // File Change
-    private async Task FileChange(string ImagePath)
-    {
-        //File Change using Service
-        await UploadService.FileChange(ImagePath, subFolderName);
-
-        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-        {
-            alertMessage = "Gagal mengubah gambar. Hubungi Administrator.";
-            logMessage = $"Gagal mengubah gambar '_webStorageRoot'\nDetail :\n{UploadService.UploadErrorMessage}";
-
-            uploadErrorStatus = true;
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => breatherValve.Image));
-    }
-
-    //Create File Path
-    private string CreateFilePath(string relativePath)
-    {
-        if (!string.IsNullOrWhiteSpace(relativePath))
-        {
-            return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
-        }
-        return null;
-    }
-
-    //Update Data Breather Valve
-    private async Task HandleUpdateBreatherValve()
-    {
-
-        // Custom Diameter Value Validation
-        if (breatherValve.DiameterValue.HasValue && breatherValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(breatherValve.DiameterUnit))
-        {
-            alertMessage = "Jika Diameter diisi, Satuan Diameter harus dipilih.";
-            logMessage = $"Validasi kustom gagal: Satuan Diameter tidak dipilih saat nilai Diameter ada.";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        //File Check
-        if (fileStatus)
-        {
-            if (uploadErrorStatus)
-            {
-                alertMessage = $"Gagal upload gambar.\n{UploadService.UploadErrorMessage}";
-                logMessage = $"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}";
-
-                uploadErrorStatus = false;
-
-                ShowNotification(alertMessage, logMessage);
+                await NotificationService.AlertMessage("Gagal menyimpan data. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menyimpan data. Detail: {CRUDService.CRUDErrorMessage}");
                 return;
             }
 
-            if (filePath != originalFilePath)
-            {
-                if (!string.IsNullOrWhiteSpace(originalFilePath))
-                {
-                    //Update Image File
-                    FileChange(originalFilePath);
-                }
-                breatherValve.Image = filePath;
-            }
+            NavigationManager.NavigateTo("./BreatherValveList?status=EditSuccess");
         }
-        else
+        catch (Exception ex)
         {
-            if (!string.IsNullOrWhiteSpace(originalFilePath))
-            {
-                FileChange(originalFilePath);
-            }
-            breatherValve.Image = null;
+            await NotificationService.AlertMessage("Terjadi kesalahan tak terduga saat memperbarui data. Silakan coba lagi.");
+            NotificationService.LogMessage($"Kesalahan saat memperbarui data breather valve. Detail: {ex.Message}");
         }
-
-        //Update using Services
-        await CRUDService.UpdateAsync<BreatherValve>(breatherValve);
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
-        {
-            alertMessage = "Gagal menyimpan data. Hubungi Administrator.";
-            logMessage = $"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
-            return;
-        }
-
-        NavigationManager.NavigateTo("/BreatherValveList?status=EditSuccess");
     }
 
-    //Invalid Submit
-    private async Task HandleInvalidSubmit()
+    private async Task HandleInvalidSubmitAsync()
     {
-        alertMessage = "Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.";
-        logMessage = $"Formulir BreatherValveEdit disubmit dengan input tidak valid.";
-
-        ShowNotification(alertMessage, logMessage);
+        await NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+        NotificationService.LogMessage($"Pengiriman formulir BreatherValveEdit tidak valid.");
     }
 
-    //Diameter Validation
+    // Metode Perubahan Input
     private void OnDiameterValveInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentprvValveInputValue))
+        if (double.TryParse(args.Value?.ToString(), out double diameterValue))
         {
-            breatherValve.DiameterValue = currentprvValveInputValue;
+            breatherValve!.DiameterValue = diameterValue;
         }
         else
         {
-            breatherValve.DiameterValue = null;
+            breatherValve!.DiameterValue = null;
         }
 
-        IsDiameterUnitDisabled = !breatherValve.DiameterValue.HasValue || breatherValve.DiameterValue.Value <= 0;
-
-        if (IsDiameterUnitDisabled)
+        isDiameterUnitDisabled = !breatherValve.DiameterValue.HasValue || breatherValve.DiameterValue.Value <= 0;
+        if (isDiameterUnitDisabled)
         {
             breatherValve.DiameterUnit = null;
         }
 
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => breatherValve.DiameterValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => breatherValve.DiameterUnit));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => breatherValve!.DiameterValue));
+        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => breatherValve!.DiameterUnit));
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    // Metode Navigasi
+    private async Task CancelAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
-    }
-
-    //Cancel
-    private void Cancel()
-    {
+        // Bersihkan file temporer jika ada
         if (filePath != originalFilePath)
         {
-            FileChange(filePath);
+            await DeleteOldFileAsync(filePath);
         }
 
-        NavigationManager.NavigateTo("/BreatherValveList");
+        NavigationManager.NavigateTo("./BreatherValveList");
+    }
+
+    // Metode untuk JavaScript Interop
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Implementasi IDisposable untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
     }
 }

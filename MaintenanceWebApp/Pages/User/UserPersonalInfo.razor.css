@@ -1,0 +1,195 @@
+﻿/* Existing CSS */
+.card-body {
+    padding: 2.5rem;
+}
+
+.btn-warning,
+.edit-profile-button {
+    color: black;
+    border: none;
+    font-weight: 500;
+    padding: 7px 20px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+    .btn-warning:hover,
+    .edit-profile-button:hover {
+        background-color: #dca500;
+    }
+
+.info-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 1rem;
+}
+
+.profile-photo-container img {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.list-group-item {
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+}
+
+    .list-group-item i.oi {
+        color: #007bff; /* Primary color */
+        font-size: 18px;
+    }
+
+/* Signature Section */
+.signature-section img {
+    padding: 8px;
+    max-height: 120px;
+}
+
+/* Penyesuaian untuk tampilan responsif */
+@media (max-width: 767.98px) {
+    .profile-photo-container {
+        display: block;
+        margin: auto;
+        width: fit-content;
+    }
+}
+
+/* New CSS for the refactored layout */
+.user-profile-container {
+    padding: 2rem;
+    background-color: #f0f2f5;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-profile-card, .user-signature-card {
+    display: flex;
+    padding: 20px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+}
+
+.user-signature-card {
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.profile-left-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    flex-shrink: 0;
+}
+
+.profile-image-container {
+    width: 150px;
+    height: 150px;
+    background-color: #f5f5f5;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.profile-photo {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.action-buttons-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 15px;
+    border: 1px dashed #d0d0d0;
+    border-radius: 5px;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 10px;
+    color: #555;
+    text-transform: uppercase;
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+
+    .action-button:hover {
+        background-color: #e9ecef;
+    }
+
+.profile-right-panel {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.user-details {
+    margin-top: 10px;
+}
+
+.detail-row {
+    margin-bottom: 10px;
+}
+
+.detail-label {
+    font-weight: bold;
+    color: #555;
+    margin-right: 5px;
+}
+
+.detail-value {
+    color: #333;
+}
+
+.edit-profile-button-container {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.edit-profile-button {
+    padding: 10px 20px;
+    border: 1px solid #d0d0d0;
+    border-radius: 5px;
+    background-color: transparent;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+    .edit-profile-button:hover {
+        background-color: #007bff;
+        color: white;
+    }
+
+.signature-photo {
+    max-height: 150px;
+}

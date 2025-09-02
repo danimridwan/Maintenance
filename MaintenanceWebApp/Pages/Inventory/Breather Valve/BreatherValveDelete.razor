@@ -1,4 +1,4 @@
-﻿@page "/BreatherValveDelete/{BreatherValveID:int}"
+﻿@page "/BreatherValveDelete/{Id:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -10,54 +10,59 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
-<div class="card">
+<div class="card p-4 shadow-sm border-0">
     <div class="card-body">
-        @if (isDataLoading)
+        @if (isLoading)
         {
-            <div class="text-center py-3">
+            <div class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Memuat...</span>
                 </div>
-                <p>Memuat data breather valve...</p>
+                <p class="mt-2 text-muted">Memuat data breather valve...</p>
             </div>
         }
         else if (breatherValve == null)
         {
-            <div class="text-center py-3">
-                <p>Data breather valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data breather valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
                 <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus Breather Valve</h3>
+            <h3 class="card-title text-danger mb-3">Hapus Breather Valve</h3>
             <hr />
-            <p>Anda yakin ingin menghapus Breather Valve dengan Tangki: <b>@breatherValve.Tank</b> ?</p>
-            <button type="button" class="btn btn-danger me-2" @onclick="DeleteBreatherValveAsync">Hapus</button>
-            <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            <p class="text-muted">Anda yakin ingin menghapus Breather Valve dengan Tangki: <b>@breatherValve.Tank</b>?</p>
+
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            </div>
         }
     </div>
 </div>
 
 @code {
+    // Parameter Rute
     [Parameter]
-    public int BreatherValveID { get; set; }
+    public int Id { get; set; }
 
+    // State
     private BreatherValve? breatherValve;
-    private bool isDataLoading = true;
+    private bool isLoading = true;
 
     // Konstanta
     private const string SUBFOLDER_NAME = "Inventories";
     private const string FOLDER_NAME = "Breather Valve";
 
-    // Metode Lifecycle
+    // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
         await LoadBreatherValveAsync();
-        isDataLoading = false;
+        isLoading = false;
     }
 
     // Metode Bantuan (Helper Methods)
@@ -65,8 +70,8 @@
     {
         try
         {
-            // Membaca data Breather Valve berdasarkan ID.
-            breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(BreatherValveID);
+            // Memuat data Breather Valve berdasarkan ID
+            breatherValve = await CRUDService.ReadSingleAsync<BreatherValve, int>(Id);
             if (breatherValve == null)
             {
                 await NotificationService.AlertMessage("Data breather valve tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
@@ -75,12 +80,12 @@
         catch (Exception ex)
         {
             await NotificationService.AlertMessage("Gagal memuat data breather valve. Silakan hubungi administrator.");
-            NotificationService.LogMessage($"Kesalahan saat memuat data breather valve dengan ID {BreatherValveID}. Detail: {ex.Message}");
-            breatherValve = null; // Memastikan objek null agar UI menampilkan pesan error
+            NotificationService.LogMessage($"Kesalahan saat memuat data breather valve dengan ID {Id}. Detail: {ex.Message}");
+            breatherValve = null;
         }
     }
 
-    private async Task DeleteBreatherValveAsync()
+    private async Task HandleDeleteAsync()
     {
         if (breatherValve == null)
         {
@@ -90,10 +95,10 @@
 
         try
         {
-            // Menghapus file terkait sebelum menghapus data dari database.
+            // Hapus file terkait sebelum menghapus data dari database
             await DeleteAssociatedFileAsync();
 
-            // Melakukan penghapusan record dari database.
+            // Lakukan penghapusan record dari database
             await CRUDService.DeleteAsync(breatherValve);
 
             if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
@@ -103,13 +108,49 @@
                 return;
             }
 
-            // Arahkan kembali ke halaman daftar dengan status sukses.
-            NavigationManager.NavigateTo("/BreatherValveList?status=DeleteSuccess");
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == breatherValve.BreatherValveID);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data Inventory Maintenance History. Detail: {CRUDService.CRUDErrorMessage}");
+            }
+
+            // Navigasi kembali ke halaman daftar dengan status sukses
+            NavigationManager.NavigateTo("./BreatherValveList?status=DeleteSuccess");
         }
         catch (Exception ex)
         {
             await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus breather valve. Silakan hubungi administrator.");
             NotificationService.LogMessage($"Kesalahan saat menghapus breather valve dengan ID {breatherValve.BreatherValveID}. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
+    {
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == breatherValve.BreatherValveID);
+
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        NotificationService.AlertMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
         }
     }
 
@@ -120,7 +161,6 @@
             await UploadService.FileChange(breatherValve.Image, SUBFOLDER_NAME);
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
-                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
                 NotificationService.LogMessage($"Gagal menghapus file '{breatherValve.Image}'. Detail: {UploadService.UploadErrorMessage}");
             }
         }
@@ -128,6 +168,6 @@
 
     private void GoBack()
     {
-        NavigationManager.NavigateTo("/BreatherValveList");
+        NavigationManager.NavigateTo("./BreatherValveList");
     }
 }

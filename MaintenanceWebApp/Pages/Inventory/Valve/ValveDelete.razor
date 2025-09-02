@@ -1,4 +1,4 @@
-﻿@page "/ValveDelete/{ValveID:int}"
+﻿@page "/ValveDelete/{Id:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -10,110 +10,175 @@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
-@* Roles Authorize *@
-@attribute [Authorize(Roles = "Admin, Maintenance Supervisor")]
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
 
-<div class="card">
-
+<div class="card p-4 shadow-sm border-0">
     <div class="card-body">
-        @if (valve == null)
+        @if (isLoading)
         {
-            <p><em>Memuat Data Valve...</em></p>
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p class="mt-2 text-muted">Memuat data valve...</p>
+            </div>
+        }
+        else if (valve == null)
+        {
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3>Hapus Valve</h3>
-
+            <h3 class="card-title text-danger mb-3">Hapus Valve</h3>
             <hr />
-
-            <p>Anda yakin ingin menghapus Valve di Jalur:
+            <p class="text-muted">
+                Anda yakin ingin menghapus Valve di Jalur:
                 @if (string.IsNullOrWhiteSpace(valve.ValveTrack))
                 {
                     <b>@valve.ValveEntry ke @valve.ValveExit</b>
                 }
                 else
                 {
-                    <b>valve.ValveTrack</b>
+                    <b>@valve.ValveTrack</b>
                 }
-                ?</p>
-            <button type="button" class="btn btn-danger" @onclick="DeleteValve">Delete</button>
-            <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                ?
+            </p>
+
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Batal</button>
+            </div>
         }
     </div>
-
 </div>
 
 @code {
-    //Page
+    // Parameter Rute
     [Parameter]
-    public int ValveID { get; set; }
-    private Valve valve;
+    public int Id { get; set; }
 
-    //Notification
-    private string? alertMessage;
-    private string? logMessage;
+    // State
+    private Valve? valve;
+    private bool isLoading = true;
 
-    //File
-    private string subFolderName = "Inventories";
-    private string folderName = "Valve";
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+    private const string FOLDER_NAME = "Valve";
 
+    // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
-        await LoadValve();
+        await LoadValveAsync();
+        isLoading = false;
     }
 
-    //Read Data Pump
-    private async Task LoadValve()
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadValveAsync()
     {
         try
         {
-            //Read Pump using Service
-            valve = await CRUDService.ReadSingleAsync<Valve, int>(ValveID);
+            // Memuat data Valve berdasarkan ID
+            valve = await CRUDService.ReadSingleAsync<Valve, int>(Id);
+            if (valve == null)
+            {
+                await NotificationService.AlertMessage("Data valve tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+            }
         }
         catch (Exception ex)
         {
-            alertMessage = "Gagal memuat data Valve. Hubungi administrator.";
-            logMessage = $"Gagal memuat data Valve\nDetail :\n{ex}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Gagal memuat data valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data valve dengan ID {Id}. Detail: {ex.Message}");
+            valve = null;
         }
     }
 
-    //Delete Data Valve
-    private async Task DeleteValve()
+    private async Task HandleDeleteAsync()
     {
-        //File Delete using CRUD Service
-        await CRUDService.DeleteAsync(valve);
-
-        //File Delete using File Upload Service
-        await UploadService.FileChange(valve.Image, subFolderName);
-        valve.Image = UploadService.FilePath;
-
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        if (valve == null)
         {
-            alertMessage = "Gagal menghapus gambar. Hubungi Administrator.";
-            logMessage = $"Gagal menghapus gambar '_webStorageRoot'\nDetail :\n{CRUDService.CRUDErrorMessage}";
-
-            ShowNotification(alertMessage, logMessage);
+            await NotificationService.AlertMessage("Data valve tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
-        NavigationManager.NavigateTo("/ValveList?status=DeleteSuccess");
+        try
+        {
+            // Hapus file terkait sebelum menghapus data dari database
+            await DeleteAssociatedFileAsync();
+
+            // Lakukan penghapusan record dari database
+            await CRUDService.DeleteAsync(valve);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data valve dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data valve dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == valve.ValveID);
+
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data Inventory Maintenance History. Detail: {CRUDService.CRUDErrorMessage}");
+            }
+
+            // Navigasi kembali ke halaman daftar dengan status sukses
+            NavigationManager.NavigateTo("./ValveList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus valve. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus valve dengan ID {Id}. Detail: {ex.Message}");
+        }
     }
 
-    //Cancel Delete
-    private void CancelDelete()
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
     {
-        NavigationManager.NavigateTo("/ValveList");
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == valve.ValveID);
+
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        NotificationService.AlertMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
+        }
     }
 
-    //Notification
-    private async Task ShowNotification(string alertMessage, string logMessage)
+    private async Task DeleteAssociatedFileAsync()
     {
-        await NotificationService.AlertMessage(alertMessage);
-        NotificationService.LogMessage(logMessage);
+        if (!string.IsNullOrWhiteSpace(valve?.Image))
+        {
+            await UploadService.FileChange(valve.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
+                NotificationService.LogMessage($"Gagal menghapus file '{valve.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("./ValveList");
     }
 }

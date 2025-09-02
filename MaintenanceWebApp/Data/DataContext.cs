@@ -9,6 +9,7 @@ namespace MaintenanceWebApp.Data
         public DbSet<User> User { get; set; }
         public DbSet<PPMTask> PPMTasks { get; set; }
         public DbSet<PPMTaskHistory> PPMTaskHistory { get; set; }
+        public DbSet<InventoryMaintenanceHistory> InventoryMaintenanceHistory { get; set; }
 
         //Inventory
         public DbSet<Tank> Tanks { get; set; }

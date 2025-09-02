@@ -1,0 +1,367 @@
+﻿@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using System.Security.Claims
+@using System.IO
+
+@* Services yang Dibutuhkan oleh Komponen Ini *@
+@inject CRUDService CRUDService
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+@inject PPMWorkflowService PPMWorkflowService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+
+<div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="approvalModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approvalModalLabel">Konfirmasi Aksi PPM</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup" @onclick="HandleCancel"></button>
+            </div>
+            @if (PpmTask != null && CurrentUser != null)
+            {
+                <div class="modal-body">
+                    <EditForm Model="PpmTask" OnValidSubmit="HandleApprovalSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            @* --- Logika UI Kondisional Berdasarkan Peran dan Status PPM --- *@
+
+                            @if (CanApproveWithTargetDate())
+                            {
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputDate id="TargetDate" @bind-Value="PpmTask.TargetDate" class="form-control" placeholder="Target Penyelesaian" min="@todayDate" required />
+                                        <label for="TargetDate">Target Penyelesaian<span class="required">*</span></label>
+                                        <ValidationMessage For="@(() => PpmTask.TargetDate)" />
+                                    </div>
+                                </div>
+                            }
+                            else if (CanApproveWithMaintenancePIC())
+                            {
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputSelect id="KategoriMaintenance" @bind-Value="SelectedMaintenanceCategory" class="form-select">
+                                            <option value="">Pilih Kategori</option>
+                                            @foreach (var cat in MaintenanceCategories)
+                                            {
+                                                <option value="@cat">@cat</option>
+                                            }
+                                        </InputSelect>
+                                        <label for="KategoriMaintenance">Kategori Perawatan<span class="required">*</span></label>
+                                        <ValidationMessage For="@(() => SelectedMaintenanceCategory)" />
+                                    </div>
+                                </div>
+
+                                @if (MaintenancePICs != null && MaintenancePICs.Any())
+                                {
+                                    <div class="col-12">
+                                        <div class="form-floating mb-3">
+                                            <InputSelect id="MaintenancePIC" @bind-Value="PpmTask.MaintenancePIC" class="form-select">
+                                                <option value="" selected>Pilih Penanggung Jawab</option>
+                                                @foreach (var maintenance in MaintenancePICs)
+                                                {
+                                                    <option value="@maintenance.FullName">@maintenance.FullName</option>
+                                                }
+                                            </InputSelect>
+                                            <label for="MaintenancePIC">Penanggung Jawab Perawatan<span class="required">*</span></label>
+                                            <ValidationMessage For="@(() => PpmTask.MaintenancePIC)" />
+                                        </div>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(SelectedMaintenanceCategory))
+                                {
+                                    <div class="col-12 mb-3">
+                                        <p class="text-danger">Tidak ada personel yang tersedia untuk kategori @SelectedMaintenanceCategory</p>
+                                    </div>
+                                }
+                            }
+                            else if (CanComplete())
+                            {
+                                <div class="col-12">
+                                    <p><b>Target Penyelesaian : </b>@(PpmTask.TargetDate?.ToShortDateString() ?? "N/A")</p>
+                                    <p><b>Kesesuaian Terhadap Target : </b>@(IsTargetDatePassed() ? "Tidak" : "Ya")</p>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputTextArea id="EvaluasiPelaksanaan" @bind-Value="PpmTask.EvaluationNote" class="form-control" placeholder="Evaluasi Pelaksanaan" style="height: 100px;" />
+                                        <label for="EvaluasiPelaksanaan">Evaluasi Pelaksanaan</label>
+                                        <ValidationMessage For="@(() => PpmTask.EvaluationNote)" />
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputTextArea id="CatatanMTD" @bind-Value="PpmTask.MTDNote" class="form-control" placeholder="Catatan MTD" style="height: 100px;" />
+                                        <label for="CatatanMTD">Catatan MTD</label>
+                                        <ValidationMessage For="@(() => PpmTask.MTDNote)" />
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="Foto" class="form-label">Foto Kondisi Akhir<span class="required">*</span></label>
+                                        @if (!imageAfterStatus)
+                                        {
+                                            <InputFile id="Foto" class="form-control" accept=".jpg,.jpeg,.png" OnChange="HandleFileUpload" />
+                                            <ValidationMessage For="@(() => imageAfterPath)" />
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex align-items-center mt-2">
+                                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(imageAfterPath)" alt="Image After">
+                                                <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                <hr />
+                                <div class="col-12 row">
+                                    <div class="col-6"><b>Maintenance Item</b></div>
+                                    <div class="col-6 d-flex justify-content-end align-items-center">
+                                        @* Tombol ini akan membuka InputMaintenanceHistoryModal yang ada di parent *@
+                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#inputMaintenanceHistoryModal">
+                                            <b>Tambah</b>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    @if (InventoryMaintenanceHistoryList != null && InventoryMaintenanceHistoryList.Any())
+                                    {
+                                        <table class="table table-striped table-hover table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>No</th>
+                                                    <th>Kategori</th>
+                                                    <th>Deskripsi</th>
+                                                    <th>Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @{
+                                                    int index = 1;
+                                                }
+                                                @foreach (var history in InventoryMaintenanceHistoryList)
+                                                {
+                                                    <tr>
+                                                        <td>@(index++)</td>
+                                                        <td>@history.MaintenanceCategory</td>
+                                                        <td>
+                                                            @{
+                                                                string descriptionText = history.Description ?? string.Empty;
+                                                                const int maxLength = 25;
+                                                                string displayedText = descriptionText.Length > maxLength ? $"{descriptionText.Substring(0, maxLength)}..." : descriptionText;
+                                                            }
+                                                            @displayedText
+                                                        </td>
+                                                        <td>
+                                                            <button class="btn btn-danger btn-sm" type="button" title="Hapus Riwayat Item" @onclick="@(() => DeleteSelectedHistory(history))">
+                                                                <span class="oi oi-trash"></span>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-center text-muted">Belum ada riwayat pemeliharaan. Setiap item yang diganti atau diperbaiki akan tercatat di sini.</p>
+                                    }
+                                </div>
+                            }
+                            else if (CanCheckAndComplete())
+                            {
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputTextArea id="CatatanPemohon" @bind-Value="PpmTask.RequestorNote" class="form-control" placeholder="Catatan" style="height: 100px;" />
+                                        <label for="CatatanPemohon">Catatan</label>
+                                        <ValidationMessage For="@(() => PpmTask.RequestorNote)" />
+                                    </div>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <p>Anda ingin menyetujui PPM ini sebagai selesai?</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-12 mt-3">
+                                    <p>Anda ingin menyetujui PPM ini?</p>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="modal-footer mt-4">
+                            <button @onclick="HandleCancel" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success">
+                                @(IsMaintenanceOnProgress ? "Selesaikan" : "Setuju")
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    // --- Parameter dari Komponen Induk ---
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    [Parameter] public PPMTask? PpmTask { get; set; }
+    [Parameter] public User? CurrentUser { get; set; }
+    [Parameter] public List<InventoryMaintenanceHistory>? InventoryMaintenanceHistoryList { get; set; }
+    [Parameter] public List<User>? MaintenancePICs { get; set; }
+    [Parameter] public List<string> MaintenanceCategories { get; set; } = new();
+
+    // --- Parameter Otorisasi dari Induk ---
+    [Parameter] public bool IsSupervisor { get; set; }
+    [Parameter] public bool IsManager { get; set; }
+    [Parameter] public bool IsTerminalManager { get; set; }
+    [Parameter] public bool IsMaintenanceSupervisor { get; set; }
+    [Parameter] public bool IsMaintenance { get; set; }
+
+    // --- Event Callbacks ke Komponen Induk ---
+    [Parameter] public EventCallback<string> OnMaintenanceCategoryChanged { get; set; }
+    [Parameter] public EventCallback<InventoryMaintenanceHistory> OnDeleteHistory { get; set; }
+    [Parameter] public EventCallback OnSubmitSuccess { get; set; }
+
+    // --- Properti Internal Komponen ---
+    private string? _selectedMaintenanceCategory;
+    private string? originalImageAfterPath;
+    private string? imageAfterPath;
+    private bool imageAfterStatus;
+    private readonly string todayDate = DateTime.Now.ToString("yyyy-MM-dd");
+    private readonly string subFolderName = "PPM";
+    private readonly string folderName = "Image";
+
+    private string? SelectedMaintenanceCategory
+    {
+        get => _selectedMaintenanceCategory;
+        set
+        {
+            if (_selectedMaintenanceCategory != value)
+            {
+                _selectedMaintenanceCategory = value;
+                if (PpmTask != null) PpmTask.MaintenancePIC = null;
+                // Beri tahu induk bahwa kategori telah berubah
+                OnMaintenanceCategoryChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Sinkronkan state gambar setiap kali parameter di-update
+        if (PpmTask != null)
+        {
+            imageAfterStatus = !string.IsNullOrWhiteSpace(PpmTask.ImageAfter);
+            originalImageAfterPath = PpmTask.ImageAfter;
+            imageAfterPath = PpmTask.ImageAfter;
+        }
+    }
+
+    // --- Logika Otorisasi (Sekarang Terenkapsulasi) ---
+    private bool CanApproveWithTargetDate() => IsTerminalManager && PpmTask?.Level == PPMStatusLevel.ApprovedByManager;
+    private bool CanApproveWithMaintenancePIC() => IsMaintenanceSupervisor && PpmTask?.Level == PPMStatusLevel.ApprovedByTerminalManager;
+    private bool CanComplete() => IsMaintenance && PpmTask?.MaintenancePIC == CurrentUser?.FullName && PpmTask?.Level == PPMStatusLevel.OnProgress;
+    private bool CanCheckAndComplete() => IsSupervisor && PpmTask?.Level == PPMStatusLevel.Checking;
+    private bool IsMaintenanceOnProgress => IsMaintenance && PpmTask?.Level == PPMStatusLevel.OnProgress;
+    private bool IsTargetDatePassed() => PpmTask?.TargetDate != null && DateOnly.FromDateTime(DateTime.Today) > PpmTask.TargetDate.Value;
+
+    // --- Penanganan Form Submit ---
+    private async Task HandleApprovalSubmit()
+    {
+        if (PpmTask == null || authenticationStateTask == null) return;
+
+        var authState = await authenticationStateTask;
+        var userPrincipal = authState.User;
+
+        // Logika untuk menentukan TargetCompletion
+        if (PpmTask.Level == PPMStatusLevel.OnProgress)
+        {
+            PpmTask.TargetCompletion = !IsTargetDatePassed();
+            PpmTask.ImageAfter = imageAfterPath;
+        }
+
+        // Menetapkan kategori maintenance jika dipilih
+        if (!string.IsNullOrEmpty(SelectedMaintenanceCategory))
+        {
+            PpmTask.MaintenanceCategory = SelectedMaintenanceCategory;
+        }
+
+        // Memanggil service untuk memproses alur kerja
+        var result = await PPMWorkflowService.ProcessPPMAction(PpmTask, userPrincipal, "Approve");
+        if (result.IsSuccess)
+        {
+            // Buat entri riwayat baru
+            await UploadNewPPMHistory("Approve");
+            await JSRuntime.InvokeVoidAsync("hideModal", "approvalModal");
+            // Beri tahu induk bahwa proses berhasil
+            await OnSubmitSuccess.InvokeAsync();
+        }
+        else
+        {
+            await NotificationService.AlertMessage(result.ErrorMessage);
+        }
+    }
+
+    // --- Metode Helper ---
+    private async Task UploadNewPPMHistory(string actionType)
+    {
+        if (PpmTask == null || CurrentUser == null) return;
+        var newPpmHistory = new PPMTaskHistory
+            {
+                PPMID = PpmTask.TaskID,
+                UpdateBy = CurrentUser.FullName,
+                DateUpdated = DateTime.Now
+            };
+
+        // Logika deskripsi riwayat...
+        newPpmHistory.Description = $"{CurrentUser.FullName} melakukan aksi: {actionType}";
+
+        await CRUDService.CreateAsync(newPpmHistory);
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await UploadService.FilesUpload(e.File, folderName, subFolderName, "img");
+        if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+        {
+            await NotificationService.AlertMessage($"Gagal upload gambar: {UploadService.UploadErrorMessage}");
+            imageAfterPath = null;
+            return;
+        }
+        imageAfterPath = UploadService.FilePath;
+        imageAfterStatus = true;
+    }
+
+    private async Task HandleFileChange()
+    {
+        if (imageAfterStatus && imageAfterPath != null)
+        {
+            await UploadService.FileChange(imageAfterPath, subFolderName);
+            imageAfterPath = null;
+        }
+        imageAfterStatus = false;
+    }
+
+    private async Task HandleCancel()
+    {
+        // Jika ada gambar baru yang diunggah tapi dibatalkan, hapus file tersebut
+        if (PpmTask != null && imageAfterPath != PpmTask.ImageAfter)
+        {
+            await HandleFileChange();
+        }
+    }
+
+    private async Task DeleteSelectedHistory(InventoryMaintenanceHistory history)
+    {
+        await OnDeleteHistory.InvokeAsync(history);
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        var webRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
+        return string.IsNullOrWhiteSpace(relativePath) ? "" : Path.Combine(webRoot, relativePath).Replace("\\", "/");
+    }
+}
