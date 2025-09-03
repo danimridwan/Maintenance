@@ -272,7 +272,7 @@ else
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
                                     <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" min="@todayDate" />
-                                    <label for="MaintenanceDate">Tanggal Maintenance</label>
+                                    <label for="MaintenanceDate">Tanggal Maintenance<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceDate)" />
                                 </div>
                             </div>
@@ -285,21 +285,21 @@ else
                                             <option value="@category">@category</option>
                                         }
                                     </InputSelect>
-                                    <label for="MaintenanceCategory">Kategori Maintenance</label>
+                                    <label for="MaintenanceCategory">Kategori Maintenance<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceCategory)" />
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
                                     <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" />
-                                    <label for="Description">Deskripsi</label>
+                                    <label for="Description">Deskripsi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Description)" />
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
                                     <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" />
-                                    <label for="Technician">Teknisi</label>
+                                    <label for="Technician">Teknisi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Technician)" />
                                 </div>
                             </div>
@@ -311,7 +311,8 @@ else
                                     {
                                         <InputFile id="Foto" class="form-control"
                                         accept=".jpg,.jpeg,.png"
-                                        OnChange="HandleFileUpload" />
+                                                   OnChange="HandleFileUpload" />
+                                        <small class="form-text text-muted">Opsional: Unggah foto (JPG, JPEG, PNG).</small>
                                     }
                                     else
                                     {

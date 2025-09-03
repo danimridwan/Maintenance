@@ -74,36 +74,42 @@
                 @* Bagian Informasi Detail *@
                 <div class="col-md-9 px-5">
                     <div class="row g-3">
-                        <div class="col-md-12">
-                            <label class="form-label text-muted">Nama Lengkap</label>
-                            <p class="info-text">@user.FullName</p>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label text-muted">Email</label>
-                            <p class="info-text">@user.Email</p>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label text-muted">Nomor Telepon</label>
-                            <p class="info-text">@user.PhoneNumber</p>
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label text-muted">Role</label>
-                            <p class="info-text">@user.Role</p>
-                        </div>
-                        @if (!string.IsNullOrEmpty(user.Section))
-                        {
-                            <div class="col-md-12">
-                                <label class="form-label text-muted">Section</label>
-                                <p class="info-text">@user.Section</p>
+                        <div class="col-md-12 row">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Nama Lengkap</label>
+                                <p class="info-text">@user.FullName</p>
                             </div>
-                        }
-                        @if (!string.IsNullOrEmpty(user.RoleCategory))
-                        {
-                            <div class="col-md-12">
-                                <label class="form-label text-muted">Divisi</label>
-                                <p class="info-text">@user.RoleCategory</p>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Role</label>
+                                <p class="info-text">@user.Role</p>
                             </div>
-                        }
+                        </div>
+                        <div class="col-md-12 row">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Email</label>
+                                <p class="info-text">@user.Email</p>
+                            </div>
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrEmpty(user.Section))
+                                {
+                                    <label class="form-label text-muted">Section</label>
+                                    <p class="info-text">@user.Section</p>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-12 row">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted">Nomor Telepon</label>
+                                <p class="info-text">@user.PhoneNumber</p>
+                            </div>
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrEmpty(user.RoleCategory))
+                                {
+                                    <label class="form-label text-muted">Divisi</label>
+                                    <p class="info-text">@user.RoleCategory</p>
+                                }
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

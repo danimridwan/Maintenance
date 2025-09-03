@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250827051922_updateTableMaintenanceHistory")]
-    partial class updateTableMaintenanceHistory
+    [Migration("20250903075602_InitializeDatabase")]
+    partial class InitializeDatabase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -220,8 +220,7 @@ namespace MaintenanceWebApp.Migrations
 
                     b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -235,8 +234,7 @@ namespace MaintenanceWebApp.Migrations
 
                     b.Property<string>("InventoryName")
                         .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MaintenanceCategory")
                         .IsRequired()
@@ -247,12 +245,10 @@ namespace MaintenanceWebApp.Migrations
                         .HasColumnType("date");
 
                     b.Property<string>("PPMId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Photo")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
