@@ -106,6 +106,7 @@
                     </a>
                 </TemplateColumn>
                 <PropertyColumn Property="@(it => it.Brand)" Title="Merk" Sortable="true" />
+                <PropertyColumn Property="@(it => it.Model)" Title="Model" Sortable="true" />
 
                 @if (canEditData)
                 {
@@ -173,7 +174,8 @@
 
             return _allIT?.Where(it =>
                 (!string.IsNullOrEmpty(it.Device) && it.Device.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrEmpty(it.Brand) && it.Brand.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)))
+                (!string.IsNullOrEmpty(it.Brand) && it.Brand.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(it.Model) && it.Model.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)))
                 ?? Enumerable.Empty<IT>().AsQueryable();
         }
     }

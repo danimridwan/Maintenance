@@ -1,5 +1,6 @@
 ﻿@using MaintenanceWebApp.Data
 @using System.IO
+@inject IConfiguration Configuration
 
 <div class="tab-content" id="ppmTabContent">
 
@@ -175,7 +176,6 @@
     [Parameter, EditorRequired] public PPMTask PpmTask { get; set; } = null!;
     [Parameter, EditorRequired] public User Supervisor { get; set; } = null!;
     [Parameter] public List<PPMTaskHistory>? PpmHistoryList { get; set; }
-    [Parameter] public string WebPPMRoot { get; set; } = "/";
     [Parameter] public RenderFragment? ActionButtons { get; set; }
 
     // --- Event Callbacks ke Induk ---
@@ -184,7 +184,16 @@
     // --- Metode Helper yang Dipindahkan dari Induk ---
     private string CreateFilePath(string relativePath)
     {
-        return string.IsNullOrWhiteSpace(relativePath) ? "" : Path.Combine(WebPPMRoot, relativePath).Replace("\\", "/");
+        try
+        {
+            // Mengambil path root dari konfigurasi
+            var _webPPMRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
+            return string.IsNullOrWhiteSpace(relativePath) ? "" : Path.Combine(_webPPMRoot, relativePath).Replace("\\", "/");
+        }
+        catch (Exception ex)
+        {
+            return "/noimg.png";
+        }
     }
 
     private string GetStatusText(PPMTask task) => task.Level switch
