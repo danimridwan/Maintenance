@@ -18,15 +18,13 @@ function sidebar() {
     if (sidebarToggle == true) {
         // Menutup submenu "Inventory" dan "Administrator" jika sedang terbuka
         const inventorySubmenu = document.getElementById('InventoryList');
-        // DIUBAH: Tambahkan pengecekan apakah submenu sedang terbuka (.show)
-        if (inventorySubmenu && inventorySubmenu.classList.contains('show')) {
+        if (inventorySubmenu) {
             const collapseInventory = bootstrap.Collapse.getOrCreateInstance(inventorySubmenu);
             collapseInventory.hide();
         }
 
         const adminSubmenu = document.getElementById('AdministratorConfig');
-        // DIUBAH: Tambahkan pengecekan apakah submenu sedang terbuka (.show)
-        if (adminSubmenu && adminSubmenu.classList.contains('show')) {
+        if (adminSubmenu) {
             const collapseAdmin = bootstrap.Collapse.getOrCreateInstance(adminSubmenu);
             collapseAdmin.hide();
         }

@@ -147,6 +147,11 @@
                 }
             }
         }
+        else
+        {
+            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
+            return;
+        }
     }
 
     private async Task DeleteAssociatedFileAsync()
