@@ -1,0 +1,320 @@
+﻿@page "/Dashboard"
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Security.Claims
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@using ChartJs.Blazor.BarChart
+@using ChartJs.Blazor.Common
+@using ChartJs.Blazor.Common.Axes
+@using ChartJs.Blazor.Common.Enums
+@using ChartJs.Blazor.BarChart.Axes
+@using System.Globalization
+
+@inject CRUDService CRUDService
+@inject IJSRuntime JSRuntime
+
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+<PageTitle>Dashboard - KPI Performance</PageTitle>
+
+@if (authenticationState?.User.Identity?.IsAuthenticated == true)
+{
+    <div class="card mb-4">
+        <div class="card-body d-flex flex-wrap gap-3">
+            <div class="flex-grow-1" style="min-width: 200px;">
+                <label for="flt-year" class="form-label fw-bold">Tahun</label>
+                <select id="flt-year" class="form-select" @onchange="OnYearChange">
+                    @foreach (var year in availableYears)
+                    {
+                        <option value="@year">@year</option>
+                    }
+                </select>
+            </div>
+
+            @if (activeTab == "ppm")
+            {
+                <div class="flex-grow-1" style="min-width: 200px;">
+                    <label for="flt-category" class="form-label fw-bold">Kategori Maintenance</label>
+                    <select id="flt-category" class="form-select" @onchange="OnCategoryChange">
+                        <option value="All">Semua Kategori</option>
+                        @foreach (var categoryName in categoryOptions)
+                        {
+                            <option value="@categoryName">@categoryName</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-light border-primary">
+            <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link @(activeTab == "ppm" ? "active" : "")" @onclick='() => activeTab = "ppm"'>Performa PPM</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @(activeTab == "inventory" ? "active" : "")" @onclick='() => activeTab = "inventory"'>Maintenance Inventory</button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body">
+            @if (isLoading)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                    <p class="mt-2">Memuat data...</p>
+                </div>
+            }
+            else
+            {
+                <div class="tab-content">
+                    <div class="tab-pane @(activeTab == "ppm" ? "show active" : "")">
+                        <div class="row">
+                            <div class="col-lg-8 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h5 class="display-6 mb-2">PPM</h5>
+                                        <div class="chart-container" style="height:300px">
+                                            @if (_ppmBarConfig != null)
+                                            {
+                                                <ChartJs.Blazor.Chart Config="_ppmBarConfig"></ChartJs.Blazor.Chart>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="align-content: center;" class="col-lg-4">
+                                <div class="row">
+                                    <div class="col-12 col-sm-6 mb-4">
+                                        <div class="card text-center h-100">
+                                            <div class="card-body">
+                                                <h6 class="kpi-title text-muted">Selesai</h6>
+                                                <p class="kpi-value display-6 text-success">@kpiPpmCompleted</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-sm-6 mb-4">
+                                        <div class="card text-center h-100">
+                                            <div class="card-body">
+                                                <h6 class="kpi-title text-muted">Ditolak</h6>
+                                                <p class="kpi-value display-6 text-danger">@kpiPpmRejected</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-sm-6 mb-4">
+                                        <div class="card text-center h-100">
+                                            <div class="card-body">
+                                                <h6 class="kpi-title text-muted">Sesuai Target</h6>
+                                                <p class="kpi-value display-6 text-primary">@kpiPpmOnTime</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-sm-6 mb-4">
+                                        <div class="card text-center h-100">
+                                            <div class="card-body">
+                                                <h6 class="kpi-title text-muted">Tidak Sesuai Target</h6>
+                                                <p class="kpi-value display-6 text-warning">@kpiPpmLate</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane @(activeTab == "inventory" ? "show active" : "")">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="display-6 mb-2">Maintenance Inventory</h5>
+                                        <div class="chart-container" style="height:300px">
+                                            @if (_inventoryBarConfig != null)
+                                            {
+                                                <ChartJs.Blazor.Chart Config="_inventoryBarConfig"></ChartJs.Blazor.Chart>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4"><div class="card text-center h-100"><div class="card-body d-flex flex-column justify-content-center"><h6 class="kpi-title text-muted">Total Perbaikan</h6><p class="kpi-value display-5">@kpiTotalRepairs</p></div></div></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <p>Anda tidak login.</p>
+}
+
+
+@code {
+    // State & Config
+    private AuthenticationState authenticationState;
+    private bool isLoading = true;
+    private string activeTab = "ppm";
+    private int selectedYear;
+    private List<int> availableYears = new();
+    private string selectedCategory = "All";
+    private List<string> categoryOptions = new();
+    private BarConfig _ppmBarConfig;
+    private BarConfig _inventoryBarConfig;
+    private int kpiPpmCompleted, kpiPpmRejected, kpiPpmOnTime, kpiPpmLate, kpiTotalRepairs;
+    private List<PPMTask> allPpmTasks = new();
+    private List<InventoryMaintenanceHistory> allInventoryHistory = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        InitializePpmChart();
+        InitializeInventoryChart();
+        allPpmTasks = await (await CRUDService.ReadAllAsync<PPMTask>()).ToListAsync();
+        allInventoryHistory = await (await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>()).ToListAsync();
+
+        PopulateYearFilter();
+        PopulateCategoryFilter();
+
+        await RefreshDashboard();
+    }
+
+    private void PopulateYearFilter()
+    {
+        var ppmYears = allPpmTasks.Where(t => t.CompletionDate.HasValue).Select(t => t.CompletionDate.Value.Year);
+        var inventoryYears = allInventoryHistory.Select(h => h.MaintenanceDate.Year);
+
+        availableYears = ppmYears.Concat(inventoryYears)
+                                 .Distinct()
+                                 .OrderByDescending(y => y)
+                                 .ToList();
+
+        if (!availableYears.Any())
+        {
+            availableYears.Add(DateTime.Now.Year);
+        }
+
+        selectedYear = availableYears.First();
+    }
+
+    private void PopulateCategoryFilter()
+    {
+        categoryOptions = allPpmTasks
+                            .Where(t => !string.IsNullOrEmpty(t.MaintenanceCategory))
+                            .Select(t => t.MaintenanceCategory)
+                            .Distinct()
+                            .OrderBy(name => name)
+                            .ToList();
+    }
+
+    private async Task RefreshDashboard()
+    {
+        isLoading = true;
+        await InvokeAsync(StateHasChanged);
+
+        var filteredPpm = allPpmTasks
+            .Where(t => (t.CompletionDate.HasValue && t.CompletionDate.Value.Year == selectedYear) || (t.DateCreated.Year == selectedYear && !t.CompletionDate.HasValue))
+            .Where(t => selectedCategory == "All" || t.MaintenanceCategory == selectedCategory)
+            .ToList();
+
+        var filteredInventory = allInventoryHistory
+            .Where(h => h.MaintenanceDate.Year == selectedYear)
+            .ToList();
+
+        UpdatePpmData(filteredPpm);
+        UpdateInventoryData(filteredInventory);
+
+        isLoading = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdatePpmData(List<PPMTask> tasks)
+    {
+        kpiPpmCompleted = tasks.Count(t => t.Level == PPMStatusLevel.Completed);
+        kpiPpmRejected = tasks.Count(t => t.Level == PPMStatusLevel.Rejected);
+        kpiPpmOnTime = tasks.Count(t => t.Level == PPMStatusLevel.Completed && t.CompletionDate.HasValue && DateOnly.FromDateTime(t.CompletionDate.Value) <= t.TargetDate);
+        kpiPpmLate = tasks.Count(t => t.Level == PPMStatusLevel.Completed && t.CompletionDate.HasValue && DateOnly.FromDateTime(t.CompletionDate.Value) > t.TargetDate);
+
+        var monthLabels = GetMonthLabelsForYear(selectedYear);
+        _ppmBarConfig.Data.Labels.Clear();
+        foreach (var label in monthLabels) { _ppmBarConfig.Data.Labels.Add(label); }
+
+        var categories = tasks.Where(t => !string.IsNullOrEmpty(t.MaintenanceCategory)).Select(t => t.MaintenanceCategory).Distinct().OrderBy(c => c).ToList();
+        var categoryColors = new[] { "#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74a3b", "#858796" };
+
+        _ppmBarConfig.Data.Datasets.Clear();
+        int colorIndex = 0;
+        foreach (var category in categories)
+        {
+            var dataset = new BarDataset<int> { Label = category, BackgroundColor = categoryColors[colorIndex % categoryColors.Length] };
+            foreach (var month in Enumerable.Range(1, 12))
+            {
+                var count = tasks.Count(t =>
+                    t.Level == PPMStatusLevel.Completed &&
+                    t.CompletionDate.HasValue &&
+                    t.CompletionDate.Value.Month == month &&
+                    t.MaintenanceCategory == category);
+                dataset.Add(count);
+            }
+            _ppmBarConfig.Data.Datasets.Add(dataset);
+            colorIndex++;
+        }
+    }
+
+    private void UpdateInventoryData(List<InventoryMaintenanceHistory> history)
+    {
+        kpiTotalRepairs = history.Count;
+
+        var monthLabels = GetMonthLabelsForYear(selectedYear);
+        _inventoryBarConfig.Data.Labels.Clear();
+        foreach (var label in monthLabels) { _inventoryBarConfig.Data.Labels.Add(label); }
+
+        var dataset = new BarDataset<int> { Label = "Jumlah Perbaikan", BackgroundColor = "#1cc88a" };
+        foreach (var month in Enumerable.Range(1, 12))
+        {
+            var count = history.Count(h => h.MaintenanceDate.Month == month);
+            dataset.Add(count);
+        }
+        _inventoryBarConfig.Data.Datasets.Clear();
+        _inventoryBarConfig.Data.Datasets.Add(dataset);
+    }
+
+    private List<string> GetMonthLabelsForYear(int year)
+    {
+        var labels = new List<string>();
+        for (int i = 1; i <= 12; i++)
+        {
+            labels.Add(new DateTime(year, i, 1).ToString("MMM yy", CultureInfo.InvariantCulture));
+        }
+        return labels;
+    }
+
+    private async Task OnYearChange(ChangeEventArgs e)
+    {
+        selectedYear = Convert.ToInt32(e.Value);
+        await RefreshDashboard();
+    }
+
+    private async Task OnCategoryChange(ChangeEventArgs e)
+    {
+        selectedCategory = e.Value.ToString();
+        await RefreshDashboard();
+    }
+
+    private void InitializePpmChart()
+    {
+        _ppmBarConfig = new BarConfig { Options = new BarOptions { Responsive = true, MaintainAspectRatio = false, Title = new OptionsTitle { Display = false }, Scales = new BarScales { XAxes = new List<CartesianAxis> { new BarCategoryAxis { Stacked = true } }, YAxes = new List<CartesianAxis> { new BarLinearCartesianAxis { Stacked = true, Ticks = new LinearCartesianTicks { BeginAtZero = true } } } } } };
+    }
+
+    private void InitializeInventoryChart()
+    {
+        _inventoryBarConfig = new BarConfig { Options = new BarOptions { Responsive = true, MaintainAspectRatio = false, Title = new OptionsTitle { Display = false }, Legend = new Legend { Display = false }, Scales = new BarScales { YAxes = new List<CartesianAxis> { new LinearCartesianAxis { Ticks = new LinearCartesianTicks { BeginAtZero = true } } } } } };
+    }
+}

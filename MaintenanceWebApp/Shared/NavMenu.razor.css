@@ -51,24 +51,6 @@
     font-size: 14px; /* Improved readability */
 }
 
-/* Collapsed Card Container (Submenu) */
-.collapse .card {
-    background-color: #34495e; /* Dark submenu for separation */
-    border: none;
-    border-radius: 8px;
-    margin: 4px 0;
-}
-
-/* Submenu Nav Links */
-.card .nav-link {
-    font-size: 13px; /* Slightly smaller for hierarchy */
-    padding: 10px 20px;
-}
-
-    .card .nav-link:hover {
-        background-color: #3498db; /* Lighter blue on hover */
-    }
-
 /* Logo Styling */
 #nav-logo img {
     max-height: 48px; /* Slightly larger for visual prominence */
@@ -88,19 +70,10 @@
     cursor: pointer;
 }
 
-/* Toggler Styling */
-.navbar-toggler {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
 /* Top Row / Navbar */
 .top-row {
     height: 4rem; /* Consistent header height */
     background-color: rgba(0, 0, 0, 0.5); /* Transparent black for focus */
-}
-
-.navbar-brand {
-    font-size: 1.5rem;
 }
 
 /* Icon Styling */
@@ -212,28 +185,8 @@
     line-height: 0;
 }
 
-/* Collapse indicator (arrow ▼) */
-[data-toggle="collapse"]::after {
-    content: '▼';
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%) rotate(0);
-    font-size: 0.65rem;
-    color: #bbbbbb;
-    transition: all 0.3s ease;
-}
-
-[aria-expanded="true"]::after {
-    transform: translateY(-50%) rotate(180deg); /* Flip arrow when expanded */
-}
-
 /* Responsive adjustments */
 @media (min-width: 641px) {
-    .navbar-toggler {
-        display: none; /* Hide toggler on wide screens */
-    }
-
     .nav-scrollable {
         height: calc(100vh - 4rem); /* Subtract top-row height */
         overflow-y: auto;

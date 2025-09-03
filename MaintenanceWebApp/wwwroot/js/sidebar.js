@@ -7,8 +7,28 @@ function DisplayText() {
 
     document.getElementById("nav-title").style.display = "block";
 }
+
+function expandSidebarIfNeeded() {
+    if (sidebarToggle === false) {
+        sidebar();
+    }
+}
+
 function sidebar() {
     if (sidebarToggle == true) {
+        // Menutup submenu "Inventory" dan "Administrator" jika sedang terbuka
+        const inventorySubmenu = document.getElementById('InventoryList');
+        if (inventorySubmenu) {
+            const collapseInventory = bootstrap.Collapse.getOrCreateInstance(inventorySubmenu);
+            collapseInventory.hide();
+        }
+
+        const adminSubmenu = document.getElementById('AdministratorConfig');
+        if (adminSubmenu) {
+            const collapseAdmin = bootstrap.Collapse.getOrCreateInstance(adminSubmenu);
+            collapseAdmin.hide();
+        }
+
         document.getElementById("sidebar").style.width = "90px";
 
         document.querySelectorAll(".nav-list").forEach(element => {

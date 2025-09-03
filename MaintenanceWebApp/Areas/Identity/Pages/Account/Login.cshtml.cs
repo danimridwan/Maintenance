@@ -28,7 +28,7 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
         /// </summary>
         public void OnGet()
         {
-            ReturnUrl = Url.Content("~/");
+            ReturnUrl = Url.Content("~/Dashboard");
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace MaintenanceWebApp.Areas.Identity.Pages.Account
         /// </summary>
         public async Task<IActionResult> OnPostAsync()
         {
-            ReturnUrl = Url.Content("~/");
+            ReturnUrl = Url.Content("~/Dashboard");
 
             if (!ModelState.IsValid)
             {

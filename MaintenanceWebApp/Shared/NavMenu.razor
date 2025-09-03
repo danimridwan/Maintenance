@@ -31,7 +31,7 @@
                 <Authorized>
                     @*Inventory*@
                     <div class="nav-item">
-                        <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#InventoryList" aria-expanded="false" aria-controls="collapseExample">
+                        <a class="nav-link" onclick="expandSidebarIfNeeded()" data-bs-toggle="collapse" data-bs-target="#InventoryList" aria-expanded="false" aria-controls="collapseExample">
                             <span class="oi oi-wrench" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Inventory</label>
                         </a>
                         <div class="collapse sub-menu" id="InventoryList" style="background-color: #0d2b59;">
@@ -89,7 +89,7 @@
                 <Authorized>
                     @*Administrator*@
                     <div class="nav-item">
-                        <a class="nav-link" data-bs-toggle="collapse" data-bs-target="#AdministratorConfig" aria-expanded="false" aria-controls="collapseExample">
+                        <a class="nav-link" onclick="expandSidebarIfNeeded()" data-bs-toggle="collapse" data-bs-target="#AdministratorConfig" aria-expanded="false" aria-controls="collapseExample">
                             <span class="oi oi-cog" aria-hidden="true"></span><label style="font-weight: 100;" class="nav-list">Administrator</label>
                         </a>
                         <div class="collapse" id="AdministratorConfig">

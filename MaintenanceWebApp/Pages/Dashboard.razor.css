@@ -1,0 +1,30 @@
+﻿/* Styling untuk Chart Container dan Overlay */
+.chart-container {
+    position: relative;
+    min-height: 300px; /* Atur tinggi minimum agar spinner terlihat */
+}
+
+.chart-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.7); /* Latar belakang transparan */
+    z-index: 10;
+    border-radius: .375rem; /* Menyesuaikan dengan radius card */
+}
+
+/* Styling untuk Kartu KPI */
+.kpi-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.kpi-value {
+    font-weight: 700;
+}
