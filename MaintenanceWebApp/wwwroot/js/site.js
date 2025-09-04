@@ -72,6 +72,27 @@ window.blazorInterop = {
     replaceHistoryState: () => {
         // Mengganti entri riwayat saat ini.
         history.replaceState(null, '', location.href);
+    },
+
+    // Fungsi ini akan dipanggil saat modal terbuka
+    disableBackButton: () => {
+        // Mendorong state baru ke history saat modal dibuka
+        history.pushState(null, '', location.href);
+        // Tambahkan listener untuk event 'popstate' (saat back/forward ditekan)
+        window.addEventListener('popstate', blazorInterop.handleBackButtonTrap);
+    },
+
+    // Fungsi ini akan dipanggil saat modal ditutup
+    enableBackButton: () => {
+        // Hapus listener agar tombol back berfungsi normal kembali
+        window.removeEventListener('popstate', blazorInterop.handleBackButtonTrap);
+    },
+
+    // Inilah yang "menjebak" tombol back
+    handleBackButtonTrap: () => {
+        // Saat pengguna menekan back, kita dorong lagi state yang sama ke history.
+        // Ini secara efektif "membatalkan" aksi 'back' dan membuat URL tetap sama.
+        history.pushState(null, '', location.href);
     }
 };
 

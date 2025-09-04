@@ -70,7 +70,7 @@ else if (ppmTask != null && supervisor != null && userInfo != null)
                             }
                             @if (CanApproveOrComplete())
                             {
-                                <button type="button" class="btn btn-success mx-2" data-bs-toggle="modal" data-bs-target="#approvalModal">
+                                <button @onclick="ShowApprovalModal" type="button" class="btn btn-success mx-2" data-bs-toggle="modal" data-bs-target="#approvalModal">
                                     @(IsMaintenanceOnProgress ? "Selesai" : "Setuju")
                                 </button>
                             }
@@ -102,6 +102,7 @@ else if (ppmTask != null && supervisor != null && userInfo != null)
                    IsMaintenanceSupervisor="dataPermissionMaintenanceSupervisor"
                    IsMaintenance="dataPermissionMaintenance"
                    OnMaintenanceCategoryChanged="LoadMaintenancePICsAsync"
+                   OnInventoryMaintenanceHistoryChanged="LoadInventoryMaintenanceHistoryAsync"
                    OnDeleteHistory="DeleteSelectedHistory"
                    OnSubmitSuccess="HandleApprovalSuccess" />
 
@@ -306,6 +307,12 @@ else
         await CRUDService.DeleteAsync(history);
         await LoadInventoryMaintenanceHistoryAsync();
         await NotificationService.AlertMessage("Berhasil! Riwayat item telah dihapus dari PPM ini.");
+    }
+
+    public async Task ShowApprovalModal()
+    {
+        await JSRuntime.InvokeVoidAsync("blazorInterop.disableBackButton");
+        await JSRuntime.InvokeVoidAsync("showModal", "approvalModal");
     }
 
     // --- 7. Metode Helper Otorisasi ---

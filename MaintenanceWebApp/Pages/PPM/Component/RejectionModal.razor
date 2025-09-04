@@ -2,6 +2,7 @@
 @using MaintenanceWebApp.Services
 
 @* Services *@
+@inject CRUDService CRUDService
 @inject NotificationService NotificationService
 
 @* Rejection Modal *@
@@ -40,6 +41,9 @@
 </div>
 
 @code {
+    // --- Properti Internal Komponen ---
+    private int totalRejectedPPM;
+
     // --- Parameter & Event Callbacks ---
 
     // Menerima data PPM dari komponen induk
@@ -58,12 +62,66 @@
         // Memeriksa validitas sebelum mengirim event
         if (PpmTask != null && !string.IsNullOrWhiteSpace(PpmTask.RejectionNote))
         {
+            // Menetapkan PPM ID
+            if (PpmTask.Level == PPMStatusLevel.Request || PpmTask.Level == PPMStatusLevel.ApprovedByManager || PpmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+            {
+                var month = DateTime.Now;
+                GetRejectedPPMTotal();
+                totalRejectedPPM++;
+                PpmTask.PPMID = $"REJ-{totalRejectedPPM}/{GetRoleAbbreviation(PpmTask.PPMSection)}/{GetMonthRomansNumeral(month.Month)}/{DateTime.Now.ToString("yyyy")}";
+            }
             await OnRejectSubmit.InvokeAsync();
         }
         else
         {
             // Memberi notifikasi jika alasan kosong, meskipun validasi standar seharusnya sudah menangani ini
             await NotificationService.AlertMessage("Alasan penolakan tidak boleh kosong.");
+        }
+    }
+
+    private async Task GetRejectedPPMTotal()
+    {
+        try
+        {
+            var rejectedPpmList = await CRUDService.ReadAllAsync<PPMTask>(filter: p => p.PPMID.Contains("REJ"));
+            totalRejectedPPM = rejectedPpmList.Count();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Tidak dapat memuat data rejected PPM. Detail: {ex}");
+        }
+    }
+
+    private string GetRoleAbbreviation(string role)
+    {
+        switch (role)
+        {
+            case "Operation": return "OPS";
+            case "Formalities": return "FRM";
+            case "Security": return "SEC";
+            case "HSE": return "HSE";
+            case "HR/GA": return "HR-GA";
+            default: return string.Empty; // Return Empty String
+        }
+    }
+
+    private string GetMonthRomansNumeral(int monthNumber)
+    {
+        switch (monthNumber)
+        {
+            case 1: return "I";
+            case 2: return "II";
+            case 3: return "III";
+            case 4: return "IV";
+            case 5: return "V";
+            case 6: return "VI";
+            case 7: return "VII";
+            case 8: return "VIII";
+            case 9: return "IX";
+            case 10: return "X";
+            case 11: return "XI";
+            case 12: return "XII";
+            default: return string.Empty; // Return Empty String
         }
     }
 }

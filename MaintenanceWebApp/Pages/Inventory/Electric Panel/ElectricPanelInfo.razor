@@ -123,11 +123,14 @@ else
                                 <div class="col-sm-5 form-group">
                                     <h5 class="display-6">Riwayat Maintenance</h5>
                                 </div>
-                                <div class="col-sm-7 d-flex justify-content-end align-items-center">
-                                    <button type="button" class="btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#addHistoryModal">
-                                        + Tambah
-                                    </button>
-                                </div>
+                                @if (canEditData)
+                                {
+                                    <div class="col-sm-7 d-flex justify-content-end align-items-center">
+                                        <button type="button" class="btn btn-primary mx-2" data-bs-toggle="modal" data-bs-target="#addHistoryModal">
+                                            + Tambah
+                                        </button>
+                                    </div>
+                                }
                             </div>
                             <hr />
                             @if (electricPanelHistoryList != null && electricPanelHistoryList.Any())
@@ -250,7 +253,7 @@ else
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" min="@todayDate" required/>
+                                    <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" required/>
                                     <label for="MaintenanceDate">Tanggal Maintenance<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceDate)" />
                                 </div>
@@ -290,7 +293,7 @@ else
                                     {
                                         <InputFile id="Foto" class="form-control"
                                         accept=".jpg,.jpeg,.png"
-                                                   OnChange="HandleFileUpload" />
+                                        OnChange="HandleFileUpload" />
                                         <small class="form-text text-muted">Opsional: Unggah foto (JPG, JPEG, PNG).</small>
                                     }
                                     else
@@ -358,9 +361,9 @@ else
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     private ElectricPanel? electricPanel;
     private bool isLoading = true;
+    private bool canEditData;
     private int? previousId;
     private PaginationState pagination = new() { ItemsPerPage = 10 };
-    private string todayDate = string.Empty;
 
     // Konstanta
     private string _webStorageRoot = string.Empty;
@@ -385,8 +388,8 @@ else
         if (PanelID != previousId)
         {
             isLoading = true;
-            todayDate = DateTime.Now.ToString("yyyy-MM-dd");
             previousId = PanelID;
+            newMaintenanceHistory.MaintenanceDate = DateTime.Today;
             await LoadElectricPanelAsync();
             await LoadElectricPanelMaintenanceHistoryAsync();
             await LoadUserAsync();
@@ -442,6 +445,8 @@ else
         var authenticationState = await authenticationStateTask;
         var userPrincipal = authenticationState.User;
         var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+        canEditData = userPrincipal.IsInRole("Admin") || userPrincipal.IsInRole("Maintenance") || userPrincipal.IsInRole("Maintenance Supervisor");
+
         if (userPrincipal.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(userId))
         {
             try

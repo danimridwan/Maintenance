@@ -22,8 +22,7 @@ namespace MaintenanceWebApp.Data
         [StringLength(25, ErrorMessage = "Input Lokasi melebihi batas karakter (maks 25 karakter).")]
         public string Location { get; set; }
 
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Kapasitas Panel Listrik dengan benar!")]
-        public double? CapacityValue { get; set; }
+        public string? CapacityValue { get; set; }
 
         public string? CapacityUnit { get; set; }
 

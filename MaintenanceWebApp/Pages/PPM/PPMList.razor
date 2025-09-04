@@ -64,6 +64,34 @@
         }
     </div>
 
+    @* Table Select *@
+    <div class="row align-items-center mb-3 mt-3">
+        <div class="col-md-8">
+            <div class="btn-group" role="group">
+                <button @onclick="() => SetTableChoice(TableChoice.All)"
+                        class="btn @(tableChoice == TableChoice.All ? "btn-outline-primary active" : "btn-outline-secondary")">
+                    Semua
+                </button>
+                @if (!userPermissions.IsAdmin)
+                {
+                    <button @onclick="() => SetTableChoice(TableChoice.Approval)"
+                            class="btn @(tableChoice == TableChoice.Approval ? "btn-outline-primary active" : "btn-outline-secondary") ms-2">
+                        @(userPermissions.IsMaintenance ? "On Going" : "Butuh Persetujuan")
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (HasAnyPPM)
+        {
+            @* Kotak Pencarian *@
+            <div class="col-md-4">
+                <input type="search" class="form-control" placeholder="Cari ID PPM atau Jenis Pekerjaan..."
+                       @bind="searchFilter" @bind:event="oninput" />
+            </div>
+        }
+    </div>
+
     <div>
     @* Tampilan Data PPM *@
         @if (isLoading)
@@ -90,30 +118,6 @@
         }
         else
         {
-            @* Table Select *@
-            <div class="row align-items-center mb-3">
-                <div class="col-md-8">
-                    <div class="btn-group" role="group">
-                        <button @onclick="() => SetTableChoice(TableChoice.All)"
-                                class="btn @(tableChoice == TableChoice.All ? "btn-outline-primary active" : "btn-outline-secondary")">
-                            Semua
-                        </button>
-                        @if (!userPermissions.IsAdmin)
-                        {
-                            <button @onclick="() => SetTableChoice(TableChoice.Approval)"
-                                    class="btn @(tableChoice == TableChoice.Approval ? "btn-outline-primary active" : "btn-outline-secondary") ms-2">
-                                @(userPermissions.IsMaintenance ? "On Going" : "Butuh Persetujuan")
-                            </button>
-                        }
-                    </div>
-                </div>
-
-                @* Kotak Pencarian *@
-                <div class="col-md-4">
-                    <input type="search" class="form-control" placeholder="Cari ID PPM atau Jenis Pekerjaan..."
-                           @bind="searchFilter" @bind:event="oninput" />
-                </div>
-            </div>
 
             @* Tabel Data PPM *@
             <QuickGrid Items="@(CurrentPpmData)" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">

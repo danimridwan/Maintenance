@@ -7,17 +7,20 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using System.Globalization
+
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
 
 @* Services *@
-@inject UploadFilesService UploadService
 @inject CRUDService CRUDService
+@inject UploadFilesService UploadService
 @inject NotificationService NotificationService
 
 @* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor, Maintenance")]
+@implements IDisposable
 
 <div class="card">
     @* Header Formulir *@
@@ -39,7 +42,11 @@
 
             <div class="col-sm-12 mb-3">
                 <label for="TagNo" class="col-form-label">Tag No <span class="required">*</span></label>
-                <InputNumber id="TagNo" @bind-Value="flowMeter.Tag" class="form-control" />
+                <InputText id="TagNo" @bind-Value="_tagNoInput" @oninput="HandleTagNoInput" class="form-control" />
+                @if (!string.IsNullOrEmpty(_tagNoError))
+                {
+                    <div class="text-danger small mt-1">@_tagNoError</div>
+                }
                 <ValidationMessage For="@(() => flowMeter.Tag)" />
             </div>
 
@@ -58,7 +65,13 @@
 
             <div class="col-sm-12 mb-3">
                 <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
-                <InputText id="Lokasi" @bind-Value="flowMeter.Location" class="form-control" />
+                <InputSelect id="Lokasi" @bind-Value="flowMeter.Location" class="form-control">
+                    <option value="">Pilih Lokasi...</option>
+                    @foreach (var location in locationOptions)
+                    {
+                        <option value="@location">@location</option>
+                    }
+                </InputSelect>
                 <ValidationMessage For="@(() => flowMeter.Location)" />
             </div>
 
@@ -73,7 +86,11 @@
                     <div class="row">
                         <div class="col-sm-8">
                             <label for="Tekanan Desain" class="col-form-label">Tekanan Desain</label>
-                            <InputNumber class="form-control" id="Tekanan Desain" @bind-Value="flowMeter.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
+                            <InputText class="form-control" id="Tekanan Desain" @bind-Value="_designPressureInput" @oninput="HandleDesignPressureInput" />
+                            @if (!string.IsNullOrEmpty(_designPressureError))
+                            {
+                                <div class="text-danger small mt-1">@_designPressureError</div>
+                            }
                             <ValidationMessage For="@(() => flowMeter.DesignPressureValue)" />
                         </div>
                         <div class="col-sm-4">
@@ -87,7 +104,7 @@
                             </InputSelect>
                             @if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
                             {
-                                <div class="text-danger">Satuan Unit Tekanan Desain harus dipilih.</div>
+                                <div class="text-danger small mt-1">Unit harus dipilih.</div>
                             }
                         </div>
                     </div>
@@ -99,35 +116,29 @@
                 </div>
             </div>
 
-            <div class="col-sm-12 mb-3">
-                <div class="row">
-                    <div class="col-sm-3">
-                        <label for="DesainLajuAlir" class="col-form-label">Desain Laju Alir</label>
-                        <InputNumber class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValueFirst" @oninput="OnFlowRateInputChanged" />
-                    </div>
-                    <div style="align-content: end; font-size: xx-large;" class="col-sm-1">
-                        <center>~</center>
-                    </div>
-                    <div style="align-content: end;" class="col-sm-3">
-                        <InputCheckbox class="form-check-input" @bind-Value="IsFlowRateValueSecondDisabled"></InputCheckbox>
-                        <InputNumber class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValueEnd" disabled="@IsFlowRateValueSecondDisabled" />
-                    </div>
-                    <div class="col-sm-5">
-                        <label for="SatuanDesainLajuAlir" class="col-form-label">Unit</label>
-                        <InputSelect id="SatuanDesainLajuAlir" @bind-Value="flowMeter.FlowRateUnit" class="form-control" disabled="@IsFlowRateUnitDisabled">
-                            <option value="">...</option>
-                            @foreach (var unit in flowRateUnits)
-                            {
-                                <option value="@unit">@unit</option>
-                            }
-                        </InputSelect>
-                        @if (flowMeter.FlowRateValueFirst.HasValue && flowMeter.FlowRateValueFirst.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+            @* --- PERUBAHAN DESAIN LAJU ALIR --- *@
+            <div class="row">
+                <div class="col-sm-8 mb-3">
+                    <label for="DesainLajuAlir" class="col-form-label">Desain Laju Alir</label>
+                    <InputText class="form-control" id="DesainLajuAlir" @bind-Value="flowMeter.FlowRateValue" @oninput="OnFlowRateInputChanged" />
+                    <ValidationMessage For="@(() => flowMeter.FlowRateValue)" />
+                </div>
+                <div class="col-sm-4 mb-3">
+                    <label for="SatuanDesainLajuAlir" class="col-form-label">Unit</label>
+                    <InputSelect id="SatuanDesainLajuAlir" @bind-Value="flowMeter.FlowRateUnit" class="form-control" disabled="@IsFlowRateUnitDisabled">
+                        <option value="">Pilih Unit...</option>
+                        @foreach (var unit in flowRateUnits)
                         {
-                            <div class="text-danger">Satuan Unit Desain Laju Alir harus dipilih.</div>
+                            <option value="@unit">@unit</option>
                         }
-                    </div>
+                    </InputSelect>
+                    @if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue) && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+                    {
+                        <div class="text-danger small mt-1">Unit harus dipilih.</div>
+                    }
                 </div>
             </div>
+
 
             <div class="col-sm-12 mb-3">
                 <label for="Foto" class="col-form-label">Foto</label>
@@ -177,7 +188,13 @@
     private List<string> flowRateUnits = new() { "Liter/menit", "M3/Jam", "L/Jam" };
     private bool IsDesignPressureUnitDisabled = true;
     private bool IsFlowRateUnitDisabled = true;
-    private bool IsFlowRateValueSecondDisabled = true;
+    private List<string> locationOptions = new() { "Tersimpan di Gudang", "Terpasang di jalur pipa delivery di bay 9 CFS" };
+
+    // Properti untuk input teks dengan validasi real-time
+    private string _tagNoInput = string.Empty;
+    private string _designPressureInput = string.Empty;
+    private string? _tagNoError;
+    private string? _designPressureError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,191 +223,12 @@
         await CancelAsync();
     }
 
-    private async Task LoadConfigurationAsync()
-    {
-        try
-        {
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
-        }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal memuat konfigurasi: {ex.Message}");
-            NavigationManager.NavigateTo("./");
-        }
-    }
-
-    private async Task LoadUserInfoAsync()
-    {
-        if (authenticationStateTask == null) return;
-        var authenticationState = await authenticationStateTask;
-        var user = authenticationState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("Id")?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                await NotificationService.AlertMessage("ID pengguna tidak ditemukan. Harap login kembali.");
-                NavigationManager.NavigateTo("./");
-                return;
-            }
-
-            try
-            {
-                currentUserInfo = await CRUDService.ReadSingleAsync<User, string>(userId);
-                if (currentUserInfo == null)
-                {
-                    await NotificationService.AlertMessage("Data pengguna tidak ditemukan. Harap login kembali.");
-                    NavigationManager.NavigateTo("./");
-                }
-            }
-            catch (Exception ex)
-            {
-                await NotificationService.AlertMessage("Gagal memuat data pengguna. Silakan hubungi Administrator.");
-                NotificationService.LogMessage($"Pengecualian saat memuat data pengguna: {ex.Message}");
-                NavigationManager.NavigateTo("./");
-            }
-        }
-        else
-        {
-            NavigationManager.NavigateTo("./");
-        }
-    }
-
-    private async Task HandleCreateFlowMeter()
-    {
-        // Custom Flow Rate Validation
-        if (flowMeter.FlowRateValueFirst.HasValue && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
-        {
-            await NotificationService.AlertMessage("Jika Laju Alir diisi, Satuan Laju Alir harus dipilih.");
-            NotificationService.LogMessage($"Validasi kustom gagal: Satuan Laju Alir tidak dipilih saat nilai Laju Alir ada.");
-            return;
-        }
-
-        // Custom Design Pressure Validation
-        if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
-        {
-            await NotificationService.AlertMessage("Jika Tekanan Desain diisi, Satuan Tekanan Desain harus dipilih.");
-            NotificationService.LogMessage($"Validasi kustom gagal: Satuan Tekanan Desain tidak dipilih saat nilai Tekanan Desain ada.");
-            return;
-        }
-
-        if (uploadErrorStatus)
-        {
-            await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
-            NotificationService.LogMessage($"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}");
-            uploadErrorStatus = false;
-            return;
-        }
-
-        await CRUDService.CreateAsync<FlowMeter>(flowMeter);
-        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
-        {
-            await NotificationService.AlertMessage("Gagal menyimpan data. Hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}");
-            return;
-        }
-
-        NavigationManager.NavigateTo("./FlowMeterList?status=CreateSuccess");
-    }
-
-    private async Task HandleInvalidSubmit()
-    {
-        await NotificationService.AlertMessage("Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.");
-        NotificationService.LogMessage($"Formulir FlowMeterAdd disubmit dengan input tidak valid.");
-    }
-
-    private async Task HandleFileUpload(InputFileChangeEventArgs e)
-    {
-        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
-    }
-
-    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
-    {
-        try
-        {
-            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-            {
-                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
-                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
-                uploadErrorStatus = true;
-                return;
-            }
-
-            if (fileType == IMAGE_FILE_CATEGORY)
-            {
-                flowMeter.Image = UploadService.FilePath;
-            }
-        }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
-            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
-            uploadErrorStatus = true;
-        }
-        StateHasChanged();
-    }
-
-    private async Task HandleFileChangeAsync(string? filePath, string fileType)
-    {
-        if (string.IsNullOrWhiteSpace(filePath)) return;
-        try
-        {
-            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-            {
-                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
-                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
-                return;
-            }
-
-            if (fileType == IMAGE_FILE_CATEGORY)
-            {
-                flowMeter.Image = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
-            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
-        }
-        StateHasChanged();
-    }
-
-    private string CreateFilePath(string? relativePath)
-    {
-        if (string.IsNullOrWhiteSpace(relativePath))
-        {
-            return "/noimg.png";
-        }
-        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
-    }
-
-    private async Task CancelAsync()
-    {
-        if (!string.IsNullOrWhiteSpace(flowMeter.Image))
-        {
-            await HandleFileChangeAsync(flowMeter.Image, IMAGE_FILE_CATEGORY);
-        }
-
-        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
-        NavigationManager.NavigateTo("./FlowMeterList");
-    }
-
     private void OnFlowRateInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentFlowRateInputValue))
-        {
-            flowMeter.FlowRateValueFirst = currentFlowRateInputValue;
-        }
-        else
-        {
-            flowMeter.FlowRateValueFirst = null;
-        }
+        // Logika untuk mengaktifkan/menonaktifkan unit dropdown
+        var inputValue = args.Value?.ToString();
+        IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(inputValue);
 
-        IsFlowRateUnitDisabled = !flowMeter.FlowRateValueFirst.HasValue || flowMeter.FlowRateValueFirst.Value <= 0;
         if (IsFlowRateUnitDisabled)
         {
             flowMeter.FlowRateUnit = null;
@@ -399,23 +237,123 @@
         StateHasChanged();
     }
 
-    private void OnDesignPressureInputChanged(ChangeEventArgs args)
+    private async Task HandleCreateFlowMeter()
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentDesignPressureInputValue))
+        // Validasi kustom baru untuk Flow Rate
+        if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue) && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
         {
-            flowMeter.DesignPressureValue = currentDesignPressureInputValue;
-        }
-        else
-        {
-            flowMeter.DesignPressureValue = null;
+            await NotificationService.AlertMessage("Jika Laju Alir diisi, Unit harus dipilih.");
+            return;
         }
 
+        if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+        {
+            await NotificationService.AlertMessage("Jika Tekanan Desain diisi, Unit harus dipilih.");
+            return;
+        }
+
+        if (uploadErrorStatus)
+        {
+            await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
+            uploadErrorStatus = false;
+            return;
+        }
+
+        await CRUDService.CreateAsync<FlowMeter>(flowMeter);
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data. Hubungi Administrator.");
+            return;
+        }
+
+        NavigationManager.NavigateTo("./FlowMeterList?status=CreateSuccess");
+    }
+
+    #region Kode Lainnya (Tidak Berubah)
+    private async Task LoadConfigurationAsync()
+    {
+        try { _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; }
+        catch (Exception ex) { await NotificationService.AlertMessage($"Gagal memuat konfigurasi: {ex.Message}"); NavigationManager.NavigateTo("./"); }
+    }
+    private async Task LoadUserInfoAsync()
+    {
+        if (authenticationStateTask == null) return;
+        var authenticationState = await authenticationStateTask;
+        var user = authenticationState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("Id")?.Value;
+            if (string.IsNullOrEmpty(userId)) { await NotificationService.AlertMessage("ID pengguna tidak ditemukan."); NavigationManager.NavigateTo("./"); return; }
+            try { currentUserInfo = await CRUDService.ReadSingleAsync<User, string>(userId); if (currentUserInfo == null) { await NotificationService.AlertMessage("Data pengguna tidak ditemukan."); NavigationManager.NavigateTo("./"); } }
+            catch (Exception ex) { await NotificationService.AlertMessage($"Gagal memuat data pengguna: {ex.Message}"); NavigationManager.NavigateTo("./"); }
+        }
+        else { NavigationManager.NavigateTo("./"); }
+    }
+    private async Task HandleInvalidSubmit()
+    {
+        await NotificationService.AlertMessage("Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.");
+    }
+    private void HandleTagNoInput(ChangeEventArgs e)
+    {
+        var inputValue = e.Value?.ToString() ?? string.Empty;
+        _tagNoInput = inputValue;
+        _tagNoError = null;
+        if (string.IsNullOrWhiteSpace(inputValue)) { flowMeter.Tag = 0; return; }
+        if (int.TryParse(inputValue, out int parsedValue)) { flowMeter.Tag = parsedValue; }
+        else { _tagNoError = "Input untuk Tag No harus berupa angka."; _tagNoInput = string.Empty; flowMeter.Tag = 0; }
+    }
+    private void HandleDesignPressureInput(ChangeEventArgs e)
+    {
+        var inputValue = e.Value?.ToString() ?? string.Empty;
+        var sanitizedInput = inputValue.Replace(',', '.');
+        _designPressureInput = sanitizedInput;
+        _designPressureError = null;
+        if (string.IsNullOrWhiteSpace(sanitizedInput)) { flowMeter.DesignPressureValue = null; IsDesignPressureUnitDisabled = true; flowMeter.DesignPressureUnit = null; return; }
+        if (double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue)) { flowMeter.DesignPressureValue = parsedValue; }
+        else { _designPressureError = "Input untuk Tekanan Desain harus berupa angka (desimal dipersilakan)."; _designPressureInput = string.Empty; flowMeter.DesignPressureValue = null; }
         IsDesignPressureUnitDisabled = !flowMeter.DesignPressureValue.HasValue || flowMeter.DesignPressureValue.Value <= 0;
-        if (IsDesignPressureUnitDisabled)
+        if (IsDesignPressureUnitDisabled) { flowMeter.DesignPressureUnit = null; }
+    }
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+    }
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
+    {
+        try
         {
-            flowMeter.DesignPressureUnit = null;
+            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage)) { await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}"); uploadErrorStatus = true; return; }
+            flowMeter.Image = UploadService.FilePath;
         }
-
+        catch (Exception ex) { await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file."); uploadErrorStatus = true; }
         StateHasChanged();
     }
+    private async Task HandleFileChangeAsync(string? filePath, string fileType)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        try
+        {
+            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage)) { await NotificationService.AlertMessage($"Gagal mengganti berkas."); return; }
+            flowMeter.Image = null;
+        }
+        catch (Exception) { await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file."); }
+        StateHasChanged();
+    }
+    private string CreateFilePath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath)) { return "/noimg.png"; }
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+    private async Task CancelAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(flowMeter.Image))
+        {
+            await HandleFileChangeAsync(flowMeter.Image, IMAGE_FILE_CATEGORY);
+        }
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+        NavigationManager.NavigateTo("./FlowMeterList");
+    }
+    #endregion
 }

@@ -28,12 +28,7 @@ namespace MaintenanceWebApp.Data
 
         [StringLength(100, ErrorMessage = "Input Deskripsi melebihi batas karakter (maks 100 karakter).")]
         public string? Description { get; set; }
-
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Desain Laju Alir dengan benar!")]
-        public double? FlowRateValueFirst { get; set; }
-
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Desain Laju Alir dengan benar!")]
-        public double? FlowRateValueEnd { get; set; }
+        public string? FlowRateValue { get; set; }
         public string? FlowRateUnit { get; set; }
 
         [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Tekanan Desain dengan benar!")]

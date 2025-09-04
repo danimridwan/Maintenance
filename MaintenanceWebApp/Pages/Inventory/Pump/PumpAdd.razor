@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using System.Globalization
+
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
@@ -18,6 +20,7 @@
 
 @* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor, Maintenance")]
+@implements IDisposable
 
 <div class="card">
     @* Header Formulir *@
@@ -41,7 +44,7 @@
                 <div class="col-sm-12 mb-3">
                     <label for="NamaPompa" class="col-form-label">Nama Pompa <span class="required">*</span></label>
                     <InputSelect id="NamaPompa" @bind-Value="pump.Name" class="form-control">
-                        <option value="">...</option>
+                        <option value="">Pilih Nama Pompa...</option>
                         @foreach (var name in pumpName)
                         {
                             <option value="@name">@name</option>
@@ -58,25 +61,49 @@
 
                 <div class="col-sm-6 mb-3">
                     <label for="Merk" class="col-form-label">Merk</label>
-                    <InputText id="Merk" @bind-Value="pump.Brand" class="form-control" />
+                    <InputSelect id="Merk" @bind-Value="pump.Brand" class="form-control">
+                        <option value="">Pilih Merk...</option>
+                        @foreach (var brand in brandOptions)
+                        {
+                            <option value="@brand">@brand</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => pump.Brand)" />
                 </div>
 
                 <div class="col-sm-6 mb-3">
                     <label for="Material" class="col-form-label">Material</label>
-                    <InputText id="Material" @bind-Value="pump.Material" class="form-control" />
+                    <InputSelect id="Material" @bind-Value="pump.Material" class="form-control">
+                        <option value="">Pilih Material...</option>
+                        @foreach (var material in materialOptions)
+                        {
+                            <option value="@material">@material</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => pump.Material)" />
                 </div>
 
                 <div class="col-sm-6 mb-3">
                     <label for="Jenis" class="col-form-label">Jenis</label>
-                    <InputText id="Jenis" @bind-Value="pump.Category" class="form-control" />
+                    <InputSelect id="Jenis" @bind-Value="pump.Category" class="form-control">
+                        <option value="">Pilih Jenis...</option>
+                        @foreach (var category in categoryOptions)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => pump.Category)" />
                 </div>
 
                 <div class="col-sm-6 mb-3">
                     <label for="Lokasi" class="col-form-label">Lokasi <span class="required">*</span></label>
-                    <InputText id="Lokasi" @bind-Value="pump.Location" class="form-control" />
+                    <InputSelect id="Lokasi" @bind-Value="pump.Location" class="form-control">
+                        <option value="">Pilih Lokasi...</option>
+                        @foreach (var location in locationOptions)
+                        {
+                            <option value="@location">@location</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => pump.Location)" />
                 </div>
             </div>
@@ -92,7 +119,11 @@
                     <div class="row">
                         <div class="col-sm-8">
                             <label for="Kapasitas" class="col-form-label">Kapasitas</label>
-                            <InputNumber class="form-control" id="Kapasitas" @bind-Value="pump.CapacityValue" @oninput="OnCapacityInputChanged" />
+                            <InputText class="form-control" id="Kapasitas" @bind-Value="_capacityInput" @oninput="HandleCapacityInput" />
+                            @if (!string.IsNullOrEmpty(_capacityError))
+                            {
+                                <div class="text-danger small mt-1">@_capacityError</div>
+                            }
                             <ValidationMessage For="@(() => pump.CapacityValue)" />
                         </div>
                         <div class="col-sm-4">
@@ -106,7 +137,7 @@
                             </InputSelect>
                             @if (pump.CapacityValue.HasValue && pump.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
                             {
-                                <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
+                                <div class="text-danger">Unit harus dipilih.</div>
                             }
                         </div>
                     </div>
@@ -118,7 +149,11 @@
                     <div class="row">
                         <div class="col-sm-8">
                             <label for="Tenaga" class="col-form-label">Tenaga</label>
-                            <InputNumber class="form-control" id="Tenaga" @bind-Value="pump.PowerValue" @oninput="OnPowerInputChanged" />
+                            <InputText class="form-control" id="Tenaga" @bind-Value="_powerInput" @oninput="HandlePowerInput" />
+                            @if (!string.IsNullOrEmpty(_powerError))
+                            {
+                                <div class="text-danger small mt-1">@_powerError</div>
+                            }
                             <ValidationMessage For="@(() => pump.PowerValue)" />
                         </div>
                         <div class="col-sm-4">
@@ -132,7 +167,7 @@
                             </InputSelect>
                             @if (pump.PowerValue.HasValue && pump.PowerValue.Value > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
                             {
-                                <div class="text-danger">Satuan Tenaga harus dipilih.</div>
+                                <div class="text-danger">Unit harus dipilih.</div>
                             }
                         </div>
                     </div>
@@ -178,6 +213,12 @@
     private bool IsCapacityUnitDisabled = true;
     private bool IsPowerUnitDisabled = true;
 
+    // Properti untuk validasi real-time
+    private string _capacityInput = string.Empty;
+    private string _powerInput = string.Empty;
+    private string? _capacityError;
+    private string? _powerError;
+
     // Konstanta
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string IMAGE_FILE_CATEGORY = "img";
@@ -188,6 +229,10 @@
     private List<string> pumpName = new() { "Fire Pump", "Transfer Pump", "Submersible Pump" };
     private List<string> capacityUnits = new() { "m3/hour", "GPM" };
     private List<string> powerUnits = new() { "HP", "kW" };
+    private List<string> materialOptions = new() { "Alumunium", "Braze - Kuningan", "Carbon Steel", "Stainless Steel" };
+    private List<string> categoryOptions = new() { "Booster Pump", "Centrifugal", "Centrifugal self priming", "Diaphragma 1 Inch", "Diaphragma 2 Inch", "Diaphragma 3 Inch", "Gear", "LUBE", "Multi stage", "Plunger Pump", "Screw", "Submersible", "Submersible/Satelit", "Vertical Pump" };
+    private List<string> locationOptions = new() { "Blader Tank", "Box Culvert", "Dump Filing", "Fire Pump Room", "Guesthouse", "Hose Pit 1", "New Pumpit", "Pump Pit 1", "Pump Pit 2", "Pump Pit 2/5", "Pump Pit 4", "Pump Pit 6", "Pump Pit 7", "Sea Water Intake", "Separator", "Tank Pit 1", "Tank Pit 2", "Tank Pit 5", "Tank Pit 6", "Tangki T307", "Tangki T308", "Tangki T502", "Tangki T608", "Utility Building" };
+    private List<string> brandOptions = new() { "ARO", "BSK", "CROWN", "DAB PUMP", "DABITALI", "DENSIN", "EBARRA", "GPA PUMP", "GRUNDFOS", "INGERSOLL RAND", "KSA", "MTX", "NIKUNI", "PATTERSON", "ROTOR", "SANYO", "SEEPEX", "SP Pump", "STERLING SSP", "SUNNY KING", "TORISHIMA", "VIKING PUMP", "WORTHINGTON", "XA PUMP", "YONJOU", "YORK" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -273,7 +318,6 @@
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
-            NotificationService.LogMessage($"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}");
             uploadErrorStatus = false;
             return;
         }
@@ -308,7 +352,6 @@
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
                 await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
-                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
                 uploadErrorStatus = true;
                 return;
             }
@@ -336,7 +379,6 @@
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
                 await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
-                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
                 return;
             }
 
@@ -351,6 +393,72 @@
             NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
         }
         StateHasChanged();
+    }
+
+    private void HandleCapacityInput(ChangeEventArgs e)
+    {
+        var inputValue = e.Value?.ToString() ?? string.Empty;
+        var sanitizedInput = inputValue.Replace(',', '.');
+        _capacityInput = sanitizedInput;
+        _capacityError = null;
+
+        if (string.IsNullOrWhiteSpace(sanitizedInput))
+        {
+            pump.CapacityValue = null;
+            IsCapacityUnitDisabled = true;
+            pump.CapacityUnit = null;
+            return;
+        }
+
+        if (double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+        {
+            pump.CapacityValue = parsedValue;
+        }
+        else
+        {
+            _capacityError = "Input Kapasitas harus berupa angka (desimal dipersilakan).";
+            _capacityInput = string.Empty;
+            pump.CapacityValue = null;
+        }
+
+        IsCapacityUnitDisabled = !pump.CapacityValue.HasValue || pump.CapacityValue.Value <= 0;
+        if (IsCapacityUnitDisabled)
+        {
+            pump.CapacityUnit = null;
+        }
+    }
+
+    private void HandlePowerInput(ChangeEventArgs e)
+    {
+        var inputValue = e.Value?.ToString() ?? string.Empty;
+        var sanitizedInput = inputValue.Replace(',', '.');
+        _powerInput = sanitizedInput;
+        _powerError = null;
+
+        if (string.IsNullOrWhiteSpace(sanitizedInput))
+        {
+            pump.PowerValue = null;
+            IsPowerUnitDisabled = true;
+            pump.PowerUnit = null;
+            return;
+        }
+
+        if (double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+        {
+            pump.PowerValue = parsedValue;
+        }
+        else
+        {
+            _powerError = "Input Tenaga harus berupa angka (desimal dipersilakan).";
+            _powerInput = string.Empty;
+            pump.PowerValue = null;
+        }
+
+        IsPowerUnitDisabled = !pump.PowerValue.HasValue || pump.PowerValue.Value <= 0;
+        if (IsPowerUnitDisabled)
+        {
+            pump.PowerUnit = null;
+        }
     }
 
     private string CreateFilePath(string? relativePath)
@@ -370,45 +478,5 @@
         }
         await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
         NavigationManager.NavigateTo("./PumpList");
-    }
-
-    private void OnPowerInputChanged(ChangeEventArgs args)
-    {
-        if (double.TryParse(args.Value?.ToString(), out double currentPowerInputValue))
-        {
-            pump.PowerValue = currentPowerInputValue;
-        }
-        else
-        {
-            pump.PowerValue = null;
-        }
-
-        IsPowerUnitDisabled = !pump.PowerValue.HasValue || pump.PowerValue.Value <= 0;
-
-        if (IsPowerUnitDisabled)
-        {
-            pump.PowerUnit = null;
-        }
-        StateHasChanged();
-    }
-
-    private void OnCapacityInputChanged(ChangeEventArgs args)
-    {
-        if (double.TryParse(args.Value?.ToString(), out double currentCapacityInputValue))
-        {
-            pump.CapacityValue = currentCapacityInputValue;
-        }
-        else
-        {
-            pump.CapacityValue = null;
-        }
-
-        IsCapacityUnitDisabled = !pump.CapacityValue.HasValue || pump.CapacityValue.Value <= 0;
-
-        if (IsCapacityUnitDisabled)
-        {
-            pump.CapacityUnit = null;
-        }
-        StateHasChanged();
     }
 }

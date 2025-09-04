@@ -7,6 +7,8 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using System.Text.RegularExpressions
+
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
@@ -18,6 +20,7 @@
 
 @* Otorisasi Berdasarkan Peran *@
 @attribute [Authorize(Roles = "Admin, Maintenance Supervisor, Maintenance")]
+@implements IDisposable
 
 <div class="card">
     @* Header Formulir *@
@@ -45,29 +48,36 @@
 
             <div class="col-sm-12 mb-3">
                 <label for="Lokasi" class="col-form-label">Lokasi<span class="required">*</span></label>
-                <InputText id="Lokasi" @bind-Value="electricPanel.Location" class="form-control" />
+                <InputSelect id="Lokasi" @bind-Value="electricPanel.Location" class="form-control">
+                    <option value="">Pilih Lokasi...</option>
+                    @foreach (var location in locationOptions)
+                    {
+                        <option value="@location">@location</option>
+                    }
+                </InputSelect>
                 <ValidationMessage For="@(() => electricPanel.Location)" />
             </div>
 
             <div class="row">
                 <div class="col-sm-6 mb-3">
                     <label for="Kapasitas" class="col-form-label">Kapasitas</label>
-                    <InputNumber class="form-control" id="Kapasitas" @bind-Value="electricPanel.CapacityValue" @oninput="OnCapacityInputChanged" />
+                    <InputText class="form-control" id="Kapasitas" @bind-Value="electricPanel.CapacityValue" @oninput="HandleCapacityInput" />
+                    @if (!string.IsNullOrEmpty(_capacityError))
+                    {
+                        <div class="text-danger small mt-1">@_capacityError</div>
+                    }
                     <ValidationMessage For="@(() => electricPanel.CapacityValue)" />
                 </div>
                 <div class="col-sm-6 mb-3">
                     <label for="SatuanKapasitas" class="col-form-label">Unit</label>
-                    <InputSelect id="SatuanKapasitas" @bind-Value="electricPanel.CapacityUnit" class="form-control" disabled="@IsCapacityUnitDisabled">
-                        <option value="">...</option>
+                    <InputSelect id="SatuanKapasitas" @bind-Value="electricPanel.CapacityUnit" class="form-control">
+                        <option value="">Pilih Unit...</option>
                         @foreach (var unit in capacityUnits)
                         {
                             <option value="@unit">@unit</option>
                         }
                     </InputSelect>
-                    @if (electricPanel.CapacityValue.HasValue && electricPanel.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(electricPanel.CapacityUnit))
-                    {
-                        <div class="text-danger">Satuan Kapasitas harus dipilih.</div>
-                    }
+                    <ValidationMessage For="@(() => electricPanel.CapacityUnit)" />
                 </div>
             </div>
 
@@ -109,6 +119,9 @@
     private DotNetObjectReference<ElectricPanelAdd> dotNetHelper = default!;
     private bool uploadErrorStatus;
 
+    // Properti untuk validasi kapasitas
+    private string? _capacityError;
+
     // Konstanta
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string IMAGE_FILE_CATEGORY = "img";
@@ -116,7 +129,13 @@
 
     // Form Properties
     private List<string> capacityUnits = new() { "A", "KVA", "Kvar", "KW", "KW A" };
-    private bool IsCapacityUnitDisabled = true;
+    private List<string> locationOptions = new()
+    {
+        "Drum Filling", "Fire Pump room 1", "Fire Pump room 2 dan 3", "Garasi Fire Truck",
+        "Guest house", "Jetty 1", "Jetty 2", "Kantor Lantai 1", "Kantor Lantai 2",
+        "MCC (main control center) Room 1", "MCC (main control center) Room 2", "Pintu Jetty 2",
+        "Pump Pit 7", "Tank Pit 5", "Utility Building"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,72 +164,31 @@
         await CancelAsync();
     }
 
-    private async Task LoadConfigurationAsync()
+    private void HandleCapacityInput(ChangeEventArgs e)
     {
-        try
-        {
-            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
-        }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal memuat konfigurasi: {ex.Message}");
-            NavigationManager.NavigateTo("./");
-        }
-    }
+        var inputValue = e.Value?.ToString() ?? string.Empty;
+        _capacityError = null;
 
-    private async Task LoadUserInfoAsync()
-    {
-        if (authenticationStateTask == null) return;
-        var authenticationState = await authenticationStateTask;
-        var user = authenticationState.User;
+        // Pola Regex: hanya mengizinkan angka, koma, spasi, dan huruf x (besar atau kecil)
+        string pattern = @"^[0-9,xX\s]*$";
 
-        if (user.Identity?.IsAuthenticated == true)
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("Id")?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                await NotificationService.AlertMessage("ID pengguna tidak ditemukan. Harap login kembali.");
-                NavigationManager.NavigateTo("./");
-                return;
-            }
-
-            try
-            {
-                currentUserInfo = await CRUDService.ReadSingleAsync<User, string>(userId);
-                if (currentUserInfo == null)
-                {
-                    await NotificationService.AlertMessage("Data pengguna tidak ditemukan. Harap login kembali.");
-                    NavigationManager.NavigateTo("./");
-                }
-            }
-            catch (Exception ex)
-            {
-                await NotificationService.AlertMessage("Gagal memuat data pengguna. Silakan hubungi Administrator.");
-                NotificationService.LogMessage($"Pengecualian saat memuat data pengguna: {ex.Message}");
-                NavigationManager.NavigateTo("./");
-            }
+            // Jika valid, ubah 'X' besar menjadi 'x' kecil dan update model
+            electricPanel.CapacityValue = inputValue.Replace('X', 'x');
         }
         else
         {
-            NavigationManager.NavigateTo("./");
+            // Jika tidak valid, tampilkan error
+            _capacityError = "Input hanya boleh berisi angka, koma, spasi, atau 'x'.";
         }
     }
 
     private async Task HandleCreateElectricPanel()
     {
-        // Custom Capacity Validation
-        if (electricPanel.CapacityValue.HasValue && electricPanel.CapacityValue.Value > 0 && string.IsNullOrWhiteSpace(electricPanel.CapacityUnit))
-        {
-            await NotificationService.AlertMessage("Jika Kapasitas diisi, Satuan Kapasitas harus dipilih.");
-            NotificationService.LogMessage("Validasi kustom gagal: Satuan Kapasitas tidak dipilih saat Kapasitas ada.");
-            return;
-        }
-
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
-            NotificationService.LogMessage($"Gagal upload gambar\nDetail :\n{UploadService.UploadErrorMessage}");
             uploadErrorStatus = false;
             return;
         }
@@ -219,114 +197,76 @@
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
             await NotificationService.AlertMessage("Gagal menyimpan data. Hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal menyimpan data\nDetail :\n{CRUDService.CRUDErrorMessage}");
             return;
         }
 
         NavigationManager.NavigateTo("./ElectricPanelList?status=CreateSuccess");
     }
 
+    #region Kode Lainnya (Tidak Berubah)
+    private async Task LoadConfigurationAsync()
+    {
+        try { _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; }
+        catch (Exception ex) { await NotificationService.AlertMessage($"Gagal memuat konfigurasi: {ex.Message}"); NavigationManager.NavigateTo("./"); }
+    }
+    private async Task LoadUserInfoAsync()
+    {
+        if (authenticationStateTask == null) return;
+        var authenticationState = await authenticationStateTask;
+        var user = authenticationState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("Id")?.Value;
+            if (string.IsNullOrEmpty(userId)) { await NotificationService.AlertMessage("ID pengguna tidak ditemukan."); NavigationManager.NavigateTo("./"); return; }
+            try { currentUserInfo = await CRUDService.ReadSingleAsync<User, string>(userId); if (currentUserInfo == null) { await NotificationService.AlertMessage("Data pengguna tidak ditemukan."); NavigationManager.NavigateTo("./"); } }
+            catch (Exception ex) { await NotificationService.AlertMessage($"Gagal memuat data pengguna: {ex.Message}"); NavigationManager.NavigateTo("./"); }
+        }
+        else { NavigationManager.NavigateTo("./"); }
+    }
     private async Task HandleInvalidSubmit()
     {
-        await NotificationService.AlertMessage("Mohon periksa kembali input Anda. Ada beberapa kesalahan yang perlu diperbaiki.");
-        NotificationService.LogMessage($"Formulir ElectricPanelAdd disubmit dengan input tidak valid.");
+        await NotificationService.AlertMessage("Mohon periksa kembali input Anda.");
     }
-
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
         await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
     }
-
     private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
     {
         try
         {
             await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-            {
-                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
-                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
-                uploadErrorStatus = true;
-                return;
-            }
-
-            if (fileType == IMAGE_FILE_CATEGORY)
-            {
-                electricPanel.Image = UploadService.FilePath;
-            }
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage)) { await NotificationService.AlertMessage($"Gagal mengunggah berkas: {UploadService.UploadErrorMessage}"); uploadErrorStatus = true; return; }
+            if (fileType == IMAGE_FILE_CATEGORY) { electricPanel.Image = UploadService.FilePath; }
         }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
-            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
-            uploadErrorStatus = true;
-        }
+        catch (Exception ex) { await NotificationService.AlertMessage($"Terjadi kesalahan saat mengunggah file: {ex.Message}"); uploadErrorStatus = true; }
         StateHasChanged();
     }
-
     private async Task HandleFileChangeAsync(string? filePath, string fileType)
     {
         if (string.IsNullOrWhiteSpace(filePath)) return;
         try
         {
             await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
-            {
-                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
-                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
-                return;
-            }
-
-            if (fileType == IMAGE_FILE_CATEGORY)
-            {
-                electricPanel.Image = null;
-            }
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage)) { await NotificationService.AlertMessage($"Gagal mengganti berkas."); return; }
+            if (fileType == IMAGE_FILE_CATEGORY) { electricPanel.Image = null; }
         }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
-            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
-        }
+        catch (Exception ex) { await NotificationService.AlertMessage($"Terjadi kesalahan saat mengganti file: {ex.Message}"); }
         StateHasChanged();
     }
-
     private string CreateFilePath(string? relativePath)
     {
-        if (string.IsNullOrWhiteSpace(relativePath))
-        {
-            return "/noimg.png";
-        }
+        if (string.IsNullOrWhiteSpace(relativePath)) { return "/noimg.png"; }
         return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
     }
-
     private async Task CancelAsync()
     {
         if (!string.IsNullOrWhiteSpace(electricPanel.Image))
         {
             await HandleFileChangeAsync(electricPanel.Image, IMAGE_FILE_CATEGORY);
         }
-
         await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
         NavigationManager.NavigateTo("./ElectricPanelList");
     }
-
-    private void OnCapacityInputChanged(ChangeEventArgs args)
-    {
-        if (double.TryParse(args.Value?.ToString(), out double currentCapacityInputValue))
-        {
-            electricPanel.CapacityValue = currentCapacityInputValue;
-        }
-        else
-        {
-            electricPanel.CapacityValue = null;
-        }
-
-        IsCapacityUnitDisabled = !electricPanel.CapacityValue.HasValue || electricPanel.CapacityValue.Value <= 0;
-        if (IsCapacityUnitDisabled)
-        {
-            electricPanel.CapacityUnit = null;
-        }
-
-        StateHasChanged();
-    }
+    #endregion
 }

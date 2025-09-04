@@ -18,7 +18,7 @@
                 <DataAnnotationsValidator />
                 <div class="modal-header">
                     <h5 class="modal-title" id="inputMaintenanceHistoryModalLabel">Input Data Riwayat Pemeliharaan</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                    <button @onclick="HandleCancel" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body">
                     <div class="col-12">
@@ -42,11 +42,11 @@
                             <span class="ms-2">Memuat item...</span>
                         </div>
                     }
-                    else if (currentInventoryItems != null && currentInventoryItems.Any())
+                    else if (!string.IsNullOrEmpty(SelectedInventoryCategory) && currentInventoryItems != null && currentInventoryItems.Any())
                     {
                         <div class="col-12">
                             <div class="form-floating mb-3" style="position: relative;" @ref="_searchContainer">
-                                <input type="text" id="itemSearchInput" class="form-control" placeholder="Ketik untuk mencari item..." value="@_searchText" @oninput="UpdateSearch" @onfocus="ShowDropdown" autocomplete="off" />
+                                <input type="text" id="itemSearchInput" class="form-control" placeholder="Ketik untuk mencari item..." value="@_searchText" @oninput="UpdateSearch" @onfocus="ShowDropdown" autocomplete="off" required/>
 
                                 <label for="itemSearchInput">Item<span class="required">*</span></label>
 
@@ -64,7 +64,7 @@
                             </div>
                         </div>
                     }
-                    else if (currentInventoryItems != null)
+                    else if (!string.IsNullOrEmpty(SelectedInventoryCategory) && currentInventoryItems != null)
                     {
                         <div class="col-12">
                             <p class="text-center text-muted border p-3 rounded">
@@ -165,6 +165,7 @@
 
     // Properti & Konstanta Lainnya
     private string _webInventoryRoot = string.Empty;
+    private int? _selectedItemId;
     private readonly List<string> INVENTORY_CATEGORY_LIST = new() { "Breather Valve", "Electric Panel", "Flow Meter", "IT", "PCV Valve Tank", "PRV Valve", "Pump", "Valve", "Tank" };
     private readonly List<string> MAINTENANCE_HISTORY_CATEGORY_LIST = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
 
@@ -191,14 +192,31 @@
         // Mengambil path root dari konfigurasi
         _webInventoryRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
         // Membuat referensi .NET yang bisa dipanggil dari JavaScript
-        _dotNetHelper = DotNetObjectReference.Create(this);
     }
 
-    // Membersihkan referensi dan event listener saat komponen dihancurkan untuk mencegah kebocoran memori (memory leak)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", _dotNetHelper);
+        }
+    }
+
     public void Dispose()
     {
         JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
         _dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await HandleCancel();
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+
+        await JSRuntime.InvokeVoidAsync("hideModal", "inputMaintenanceHistoryModal");
     }
 
     // --- Metode untuk JS Interop ---
@@ -270,7 +288,9 @@
     {
         _selectedInventoryItemObject = item;
         _searchText = item.DisplayItem;
+        _selectedItemId = int.Parse(item.ItemId);
         _isDropdownVisible = false;
+
         // Hapus event listener setelah item dipilih
         await JSRuntime.InvokeVoidAsync("blazorInterop.removeOutsideClickHandler", _searchContainer);
     }
@@ -282,24 +302,62 @@
 
         _filteredItems = currentInventoryItems;
         _isDropdownVisible = true;
+
         // Daftarkan event listener untuk mendeteksi klik di luar komponen
         await JSRuntime.InvokeVoidAsync("blazorInterop.addOutsideClickHandler", _searchContainer, _dotNetHelper);
     }
 
     // --- Metode Penanganan Form (Submit & Cancel) ---
 
+    // Validasi ID
+    private async Task<bool> ValidateInventoryId(string inventoryType, int inventoryId)
+    {
+        return inventoryType switch
+        {
+            "Breather Valve" => await CheckItemExists<BreatherValve>(p => p.BreatherValveID == inventoryId),
+            "Electric Panel" => await CheckItemExists<ElectricPanel>(p => p.PanelID == inventoryId),
+            "Flow Meter" => await CheckItemExists<FlowMeter>(p => p.FlowMeterID == inventoryId),
+            "IT" => await CheckItemExists<IT>(p => p.DeviceID == inventoryId),
+            "PCV Valve Tank" => await CheckItemExists<PCVValveTank>(p => p.PCVValveTankID == inventoryId),
+            "PRV Valve" => await CheckItemExists<PRVValve>(p => p.PRVValveID == inventoryId),
+            "Pump" => await CheckItemExists<Pump>(p => p.PumpID == inventoryId),
+            "Valve" => await CheckItemExists<Valve>(p => p.ValveID == inventoryId),
+            _ => false, // Jika tipe tidak ditemukan, anggap tidak valid
+        };
+    }
+
+    private async Task<bool> CheckItemExists<T>(System.Linq.Expressions.Expression<Func<T, bool>> filter) where T : class
+    {
+        var result = await CRUDService.ReadAllAsync<T>(filter: filter);
+        return result.Any();
+    }
+
     // Menangani submit form jika semua validasi berhasil
     private async Task HandleCreateInventoryMaintenanceHistory()
     {
-        if (newInventoryMaintenanceHistory == null || CurrentUser == null || string.IsNullOrEmpty(PpmId) || _selectedInventoryItemObject == null)
+        if (newInventoryMaintenanceHistory == null || CurrentUser == null || string.IsNullOrEmpty(PpmId))
         {
             await NotificationService.AlertMessage("Mohon pastikan semua isian yang wajib telah dilengkapi.");
             return;
         }
+
+        if (!_selectedItemId.HasValue)
+        {
+            await NotificationService.AlertMessage("Anda harus memilih item yang valid dari daftar.");
+            return;
+        }
+
+        bool isItemValid = await ValidateInventoryId(selectedInventoryCategory, _selectedItemId.Value);
+        if (!isItemValid)
+        {
+            await NotificationService.AlertMessage("Anda harus memilih item yang valid dari daftar.");
+            return;
+        }
+
         _isSaving = true;
 
         // Melengkapi data sebelum disimpan
-        newInventoryMaintenanceHistory.InventoryId = int.Parse(_selectedInventoryItemObject.ItemId);
+        newInventoryMaintenanceHistory.InventoryId = _selectedItemId.Value;
         newInventoryMaintenanceHistory.InventoryName = selectedInventoryCategory;
         newInventoryMaintenanceHistory.MaintenanceDate = DateTime.Now;
         newInventoryMaintenanceHistory.MaintenanceCategory = selectedMaintenanceHistoryCategory;

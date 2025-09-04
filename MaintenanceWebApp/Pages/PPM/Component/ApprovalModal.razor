@@ -49,7 +49,7 @@
                                                 <option value="@cat">@cat</option>
                                             }
                                         </InputSelect>
-                                        <label for="KategoriMaintenance">Kategori Perawatan<span class="required">*</span></label>
+                                        <label for="KategoriMaintenance">Kategori Maintenance<span class="required">*</span></label>
                                         <ValidationMessage For="@(() => SelectedMaintenanceCategory)" />
                                     </div>
                                 </div>
@@ -65,7 +65,7 @@
                                                     <option value="@maintenance.FullName">@maintenance.FullName</option>
                                                 }
                                             </InputSelect>
-                                            <label for="MaintenancePIC">Penanggung Jawab Perawatan<span class="required">*</span></label>
+                                            <label for="MaintenancePIC">Penanggung Jawab Maintenance<span class="required">*</span></label>
                                             <ValidationMessage For="@(() => PpmTask.MaintenancePIC)" />
                                         </div>
                                     </div>
@@ -100,16 +100,16 @@
                                 <div class="col-12">
                                     <div class="mb-3">
                                         <label for="Foto" class="form-label">Foto Kondisi Akhir<span class="required">*</span></label>
-                                        @if (!imageAfterStatus)
+                                        @if (string.IsNullOrEmpty(PpmTask.ImageAfter))
                                         {
                                             <InputFile id="Foto" class="form-control" accept=".jpg,.jpeg,.png" OnChange="HandleFileUpload" />
-                                            <ValidationMessage For="@(() => imageAfterPath)" />
+                                            <ValidationMessage For="@(() => PpmTask.ImageAfter)" />
                                         }
                                         else
                                         {
                                             <div class="d-flex align-items-center mt-2">
-                                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(imageAfterPath)" alt="Image After">
-                                                <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(PpmTask.ImageAfter)" alt="Image After">
+                                                <button @onclick="() => HandleFileChange(PpmTask.ImageAfter)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                                             </div>
                                         }
                                     </div>
@@ -191,7 +191,7 @@
                         </div>
 
                         <div class="modal-footer mt-4">
-                            <button @onclick="HandleCancel" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button @onclick="HandleCancel" type="button" class="btn btn-secondary">Batal</button>
                             <button type="submit" class="btn btn-success">
                                 @(IsMaintenanceOnProgress ? "Selesaikan" : "Setuju")
                             </button>
@@ -224,12 +224,11 @@
     [Parameter] public EventCallback<string> OnMaintenanceCategoryChanged { get; set; }
     [Parameter] public EventCallback<InventoryMaintenanceHistory> OnDeleteHistory { get; set; }
     [Parameter] public EventCallback OnSubmitSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnInventoryMaintenanceHistoryChanged { get; set; }
 
     // --- Properti Internal Komponen ---
+    private int totalApprovedPPM;
     private string? _selectedMaintenanceCategory;
-    private string? originalImageAfterPath;
-    private string? imageAfterPath;
-    private bool imageAfterStatus;
     private readonly string todayDate = DateTime.Now.ToString("yyyy-MM-dd");
     private readonly string subFolderName = "PPM";
     private readonly string folderName = "Image";
@@ -249,17 +248,6 @@
         }
     }
 
-    protected override void OnParametersSet()
-    {
-        // Sinkronkan state gambar setiap kali parameter di-update
-        if (PpmTask != null)
-        {
-            imageAfterStatus = !string.IsNullOrWhiteSpace(PpmTask.ImageAfter);
-            originalImageAfterPath = PpmTask.ImageAfter;
-            imageAfterPath = PpmTask.ImageAfter;
-        }
-    }
-
     // --- Logika Otorisasi (Sekarang Terenkapsulasi) ---
     private bool CanApproveWithTargetDate() => IsTerminalManager && PpmTask?.Level == PPMStatusLevel.ApprovedByManager;
     private bool CanApproveWithMaintenancePIC() => IsMaintenanceSupervisor && PpmTask?.Level == PPMStatusLevel.ApprovedByTerminalManager;
@@ -276,11 +264,19 @@
         var authState = await authenticationStateTask;
         var userPrincipal = authState.User;
 
+        // Menetapkan PPM ID
+        if (PpmTask.Level == PPMStatusLevel.ApprovedByTerminalManager)
+        {
+            var month = DateTime.Now;
+            GetApprovedPPMTotal();
+            totalApprovedPPM++;
+            PpmTask.PPMID = $"{totalApprovedPPM}/{GetRoleAbbreviation(PpmTask.PPMSection)}/{GetMonthRomansNumeral(month.Month)}/{DateTime.Now.ToString("yyyy")}";
+        }
+
         // Logika untuk menentukan TargetCompletion
         if (PpmTask.Level == PPMStatusLevel.OnProgress)
         {
             PpmTask.TargetCompletion = !IsTargetDatePassed();
-            PpmTask.ImageAfter = imageAfterPath;
         }
 
         // Menetapkan kategori maintenance jika dipilih
@@ -317,7 +313,10 @@
             };
 
         // Logika deskripsi riwayat...
-        newPpmHistory.Description = $"{CurrentUser.FullName} melakukan aksi: {actionType}";
+        if (PpmTask.Level == PPMStatusLevel.Request || PpmTask.Level == PPMStatusLevel.ApprovedByManager) { newPpmHistory.UpdateType = "Approve"; newPpmHistory.Description = $"{CurrentUser.FullName} menyetujui PPM."; }
+        else if (PpmTask.Level == PPMStatusLevel.ApprovedByTerminalManager) { newPpmHistory.UpdateType = "Assign"; newPpmHistory.Description = $"{CurrentUser.FullName} menugaskan {PpmTask.MaintenancePIC} dari bagian {PpmTask.MaintenanceCategory} sebagai PIC."; }
+        else if (PpmTask.Level == PPMStatusLevel.OnProgress) { newPpmHistory.UpdateType = "Report"; newPpmHistory.Description = $"{CurrentUser.FullName} melaporkan penyelesaian PPM."; }
+        else if (PpmTask.Level == PPMStatusLevel.Checking) { newPpmHistory.UpdateType = "Completion"; newPpmHistory.Description = $"{CurrentUser.FullName} sudah melakukan pengecekan dan menyelesaikan PPM."; }
 
         await CRUDService.CreateAsync(newPpmHistory);
     }
@@ -328,30 +327,43 @@
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
             await NotificationService.AlertMessage($"Gagal upload gambar: {UploadService.UploadErrorMessage}");
-            imageAfterPath = null;
+            PpmTask.ImageAfter = null;
             return;
         }
-        imageAfterPath = UploadService.FilePath;
-        imageAfterStatus = true;
+        PpmTask.ImageAfter = UploadService.FilePath;
     }
 
-    private async Task HandleFileChange()
+    private async Task HandleFileChange(string photo)
     {
-        if (imageAfterStatus && imageAfterPath != null)
+        if (!string.IsNullOrWhiteSpace(photo))
         {
-            await UploadService.FileChange(imageAfterPath, subFolderName);
-            imageAfterPath = null;
+            await UploadService.FileChange(photo, subFolderName);
+            PpmTask.ImageAfter = null;
         }
-        imageAfterStatus = false;
     }
 
     private async Task HandleCancel()
     {
-        // Jika ada gambar baru yang diunggah tapi dibatalkan, hapus file tersebut
-        if (PpmTask != null && imageAfterPath != PpmTask.ImageAfter)
+        await CleanUpUnsavedFiles();
+
+        if (InventoryMaintenanceHistoryList != null && InventoryMaintenanceHistoryList.Any() && PpmTask != null)
         {
-            await HandleFileChange();
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.PPMId == PpmTask.PPMID);
+            await OnInventoryMaintenanceHistoryChanged.InvokeAsync();
         }
+
+        await JSRuntime.InvokeVoidAsync("blazorInterop.enableBackButton");
+        await JSRuntime.InvokeVoidAsync("hideModal", "approvalModal");
+    }
+
+    private async Task CleanUpUnsavedFiles()
+    {
+        if (!string.IsNullOrWhiteSpace(PpmTask.ImageAfter) && PpmTask.Level == PPMStatusLevel.OnProgress)
+        {
+            await UploadService.FileChange(PpmTask.ImageAfter, subFolderName);
+            PpmTask.ImageAfter = null;
+        }
+        
     }
 
     private async Task DeleteSelectedHistory(InventoryMaintenanceHistory history)
@@ -363,5 +375,52 @@
     {
         var webRoot = Configuration.GetValue<string>("WebPPMRoot") ?? "/";
         return string.IsNullOrWhiteSpace(relativePath) ? "" : Path.Combine(webRoot, relativePath).Replace("\\", "/");
+    }
+
+    private async Task GetApprovedPPMTotal()
+    {
+        try
+        {
+            // Get All Data using CRUD Service
+            var approvedPpmList = await CRUDService.ReadAllAsync<PPMTask>(filter: p => !p.PPMID.Contains("REQ") && !p.PPMID.Contains("REJ"));
+            totalApprovedPPM = approvedPpmList.Count();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage($"Tidak dapat memuat data approved PPM. Detail: {ex}");
+        }
+    }
+
+    private string GetRoleAbbreviation(string role)
+    {
+        switch (role)
+        {
+            case "Operation": return "OPS";
+            case "Formalities": return "FRM";
+            case "Security": return "SEC";
+            case "HSE": return "HSE";
+            case "HR/GA": return "HR-GA";
+            default: return string.Empty; // Return Empty String
+        }
+    }
+
+    private string GetMonthRomansNumeral(int monthNumber)
+    {
+        switch (monthNumber)
+        {
+            case 1: return "I";
+            case 2: return "II";
+            case 3: return "III";
+            case 4: return "IV";
+            case 5: return "V";
+            case 6: return "VI";
+            case 7: return "VII";
+            case 8: return "VIII";
+            case 9: return "IX";
+            case 10: return "X";
+            case 11: return "XI";
+            case 12: return "XII";
+            default: return string.Empty; // Return Empty String
+        }
     }
 }

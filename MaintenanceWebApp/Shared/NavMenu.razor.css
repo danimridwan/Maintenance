@@ -1,4 +1,8 @@
-﻿/* Sidebar container */
+﻿#sidebar {
+    position: relative;
+}
+
+/* Sidebar container */
 .nav-scrollable {
     background-color: #0d2b59; /* Main deep blue color for a professional brand feel */
     color: #ecf0f1; /* Light gray text for better contrast on dark background */
