@@ -56,8 +56,16 @@
 
                     <div class="col-sm-6 mb-3">
                         <label for="email" class="col-form-label">Email <span class="required">*</span></label>
-                        <InputText id="email" @bind-Value="user.Email" class="form-control" />
+                        @* --- PERUBAHAN DI SINI: Menambahkan @oninput --- *@
+                        <InputText id="email" @bind-Value="user.Email" @oninput="HandleEmailInput" class="form-control" />
                         <ValidationMessage For="@(() => user.Email)" />
+
+                        @if (showEmailChangeAlert)
+                        {
+                            <div class="alert alert-warning mt-2" role="alert">
+                                <strong>Perhatian:</strong> Mengubah email akan mengatur ulang kata sandi Anda menjadi sama dengan email yang baru saat disimpan.
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -109,7 +117,7 @@
                     <div class="col-sm-12 mb-3">
                         <label for="signature" class="col-form-label">Tanda Tangan <span class="required">*</span></label>
                         <div class="d-flex align-items-center">
-                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(user.Signature)" alt="Tanda Tangan Pengguna">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(user.Signature)" alt="Tanda Tangan Pengguna">
                         </div>
                     </div>
                 }
@@ -139,34 +147,27 @@
 </div>
 
 @code {
-    // Parameter Halaman
     [Parameter]
     public string Id { get; set; } = default!;
 
-    // Properti Halaman
     private DotNetObjectReference<UserPersonalEdit> dotNetHelper;
-
-    // Properti State
     private User? user;
     private bool isLoading = true;
     private string? previousId;
     private string? originalUserRole;
+    private string? originalEmail;
+    private bool showEmailChangeAlert = false;
 
-    // State Formulir dan Validasi Kustom
     private Dictionary<string, string> validationMessages = new();
-
-    // State File Upload
     private bool profilePhotoStatus;
     private string? profilePhotoPath;
     private string? originalprofilePhotoPath;
 
-    // Konstanta
     private const string SUB_FOLDER_NAME = "User";
     private const string FILE_CATEGORY = "img";
     private const string FOLDER_NAME = "Image";
     private string? webUserRoot;
 
-    // Metode Lifecycle
     protected override async Task OnInitializedAsync()
     {
         await LoadConfigurationAsync();
@@ -202,33 +203,7 @@
                 originalprofilePhotoPath = null;
                 profilePhotoPath = null;
             }
-
             isLoading = false;
-        }
-    }
-
-    [JSInvokable]
-    public async Task HandleBackNavigation()
-    {
-        if (profilePhotoPath != originalprofilePhotoPath)
-        {
-            await UploadService.FileChange(profilePhotoPath, SUB_FOLDER_NAME);
-        }
-
-        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");        
-    }
-
-    // Metode Bantuan (Helper Methods)
-    private async Task LoadConfigurationAsync()
-    {
-        try
-        {
-            webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/";
-        }
-        catch (Exception ex)
-        {
-            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebUserRoot`. Hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebUserRoot`: {ex}");
         }
     }
 
@@ -240,47 +215,20 @@
             var currentRoles = await UserManager.GetRolesAsync(user);
             originalUserRole = currentRoles.FirstOrDefault();
             user.Role = originalUserRole ?? string.Empty;
-
+            originalEmail = user.Email;
             originalprofilePhotoPath = user.UserPhoto;
         }
     }
 
-    private bool ValidateForm()
+    private void HandleEmailInput(ChangeEventArgs e)
     {
-        validationMessages.Clear();
-        bool isValid = true;
-
-        if (string.IsNullOrWhiteSpace(user?.Role))
-        {
-            validationMessages["role"] = "Jabatan harus dipilih.";
-            isValid = false;
-        }
-
-        if ((user?.Role == "Supervisor" || user?.Role == "Manager") && string.IsNullOrWhiteSpace(user.Section))
-        {
-            validationMessages["section"] = "Bagian harus dipilih.";
-            isValid = false;
-        }
-
-        if ((user?.Role == "Maintenance" || (user?.Role == "Supervisor" && user.Section == "Operation")) && string.IsNullOrWhiteSpace(user.RoleCategory))
-        {
-            validationMessages["roleCategory"] = "Divisi harus dipilih.";
-            isValid = false;
-        }
-
-        if (user?.Role != "Admin" && string.IsNullOrWhiteSpace(user?.Signature))
-        {
-            validationMessages["signature"] = "Tanda tangan harus diunggah.";
-            isValid = false;
-        }
-
-        return isValid;
+        var currentEmail = e.Value?.ToString();
+        showEmailChangeAlert = (currentEmail != originalEmail);
     }
 
     private async Task HandleUpdateUserAsync()
     {
         if (user == null) return;
-
         if (profilePhotoStatus)
         {
             if (profilePhotoPath != originalprofilePhotoPath)
@@ -307,15 +255,16 @@
             return;
         }
 
-        // Membersihkan field yang tidak relevan berdasarkan Role
         ClearIrrelevantFields(user);
         user.UserName = user.Email;
         user.NormalizedEmail = user.Email?.ToUpperInvariant();
         user.NormalizedUserName = user.UserName?.ToUpperInvariant();
 
+        // Simpan status perubahan email dalam sebuah variabel
+        bool emailWasChanged = user.Email != originalEmail;
+
         try
         {
-            // Perbarui peran pengguna jika ada perubahan
             if (user.Role != originalUserRole)
             {
                 await EnsureRoleExists(user.Role);
@@ -331,7 +280,30 @@
             var updateResult = await UserManager.UpdateAsync(user);
             if (updateResult.Succeeded)
             {
-                NotificationService.AlertMessage("Data berhasil diedit");
+                // Jika email diubah, jalankan logika reset password
+                if (emailWasChanged)
+                {
+                    var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+                    var passwordResult = await UserManager.ResetPasswordAsync(user, token, user.Email!);
+
+                    if (passwordResult.Succeeded)
+                    {
+                        await NotificationService.AlertMessage("Data pengguna dan kata sandi berhasil diperbarui. Kata sandi baru sama dengan email.");
+                    }
+                    else
+                    {
+                        // Jika data berhasil diupdate TAPI reset password gagal
+                        var errors = string.Join(", ", passwordResult.Errors.Select(e => e.Description));
+                        await NotificationService.AlertMessage($"Data pengguna berhasil diupdate, tetapi gagal mereset kata sandi. Detail: {errors}");
+                    }
+                }
+                else
+                {
+                    // Jika email tidak berubah, tampilkan notifikasi standar
+                    await NotificationService.AlertMessage("Data berhasil diedit");
+                }
+
+                // Pindahkan refresh ke paling akhir setelah semua logika selesai
                 NavigationManager.Refresh();
             }
             else
@@ -341,9 +313,57 @@
         }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Terjadi kesalahan tak terduga saat memperbarui pengguna. Silakan coba lagi.");
             NotificationService.LogMessage($"Kesalahan tak terduga saat memperbarui pengguna: {ex.Message}");
+            NavigationManager.Refresh();
         }
+    }
+
+    #region Kode Lainnya (Tidak Berubah)
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        if (profilePhotoPath != originalprofilePhotoPath)
+        {
+            await UploadService.FileChange(profilePhotoPath, SUB_FOLDER_NAME);
+        }
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+    }
+
+    private async Task LoadConfigurationAsync()
+    {
+        try { webUserRoot = Configuration.GetValue<string>("WebUserRoot") ?? "/"; }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebUserRoot`. Hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebUserRoot`: {ex}");
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        validationMessages.Clear();
+        bool isValid = true;
+        if (string.IsNullOrWhiteSpace(user?.Role))
+        {
+            validationMessages["role"] = "Jabatan harus dipilih.";
+            isValid = false;
+        }
+        if ((user?.Role == "Supervisor" || user?.Role == "Manager") && string.IsNullOrWhiteSpace(user.Section))
+        {
+            validationMessages["section"] = "Bagian harus dipilih.";
+            isValid = false;
+        }
+        if ((user?.Role == "Maintenance" || (user?.Role == "Supervisor" && user.Section == "Operation")) && string.IsNullOrWhiteSpace(user.RoleCategory))
+        {
+            validationMessages["roleCategory"] = "Divisi harus dipilih.";
+            isValid = false;
+        }
+        if (user?.Role != "Admin" && string.IsNullOrWhiteSpace(user?.Signature))
+        {
+            validationMessages["signature"] = "Tanda tangan harus diunggah.";
+            isValid = false;
+        }
+        return isValid;
     }
 
     private async Task HandleInvalidSubmitAsync()
@@ -362,20 +382,13 @@
         try
         {
             await UploadService.FilesUpload(file, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
-
             if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
             {
                 await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
                 NotificationService.LogMessage($"Pengunggahan gambar gagal: {UploadService.UploadErrorMessage}");
-
-                if (fileType == "UserPhoto")
-                {
-                    profilePhotoPath = null;
-                }
-
+                if (fileType == "UserPhoto") { profilePhotoPath = null; }
                 return;
             }
-
             if (fileType == "UserPhoto")
             {
                 profilePhotoPath = UploadService.FilePath;
@@ -392,14 +405,12 @@
     private async Task HandleProfilePhotoChange()
     {
         if (user == null || string.IsNullOrWhiteSpace(profilePhotoPath)) return;
-
         if (profilePhotoStatus)
         {
             if (profilePhotoPath != originalprofilePhotoPath)
             {
                 HandleFileChange(profilePhotoPath);
             }
-
             profilePhotoStatus = false;
         }
         else
@@ -411,7 +422,6 @@
     private async Task HandleFileChange(string ImagePath)
     {
         await UploadService.FileChange(ImagePath, SUB_FOLDER_NAME);
-
         if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
         {
             await NotificationService.AlertMessage($"Terjadi kesalahan saat mengubah file. Silakan coba lagi.");
@@ -422,23 +432,14 @@
 
     private string GetFilePath(string? relativePath)
     {
-        if (string.IsNullOrWhiteSpace(relativePath))
-        {
-            return "/noimg.png";
-        }
+        if (string.IsNullOrWhiteSpace(relativePath)) { return "/noimg.png"; }
         return Path.Combine(webUserRoot!, relativePath).Replace("\\", "/");
     }
 
     private void ClearIrrelevantFields(User user)
     {
-        if (user.Role != "Supervisor" && user.Role != "Manager")
-        {
-            user.Section = null;
-        }
-        if (user.Role != "Maintenance" && !(user.Role == "Supervisor" && user.Section == "Operation"))
-        {
-            user.RoleCategory = null;
-        }
+        if (user.Role != "Supervisor" && user.Role != "Manager") { user.Section = null; }
+        if (user.Role != "Maintenance" && !(user.Role == "Supervisor" && user.Section == "Operation")) { user.RoleCategory = null; }
     }
 
     private async Task EnsureRoleExists(string roleName)
@@ -461,4 +462,5 @@
         dotNetHelper?.Dispose();
         JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
     }
+    #endregion
 }

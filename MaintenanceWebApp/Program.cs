@@ -44,7 +44,8 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
 })
     //  Enables role-based authorization and specifies that IdentityRole will be used for managing roles.
     .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<DataContext>();
+    .AddEntityFrameworkStores<DataContext>()
+    .AddDefaultTokenProviders();
 
 builder.Services.AddTransient<DataSeeder>();
 
