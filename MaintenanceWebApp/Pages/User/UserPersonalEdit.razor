@@ -108,22 +108,9 @@
                 {
                     <div class="col-sm-12 mb-3">
                         <label for="signature" class="col-form-label">Tanda Tangan <span class="required">*</span></label>
-                        @if (!signatureStatus)
-                        {
-                            <InputFile id="signature" class="form-control" accept=".jpg,.jpeg,.png" OnChange="HandleSignatureUploadAsync" />
-                            <small class="form-text text-muted">Unggah foto tanda tangan digital (JPG, JPEG, PNG).</small>
-                        }
-                        else
-                        {
-                            <div class="d-flex align-items-center">
-                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(signaturePath)" alt="Tanda Tangan Pengguna">
-                                <button @onclick="HandleSignatureChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
-                            </div>
-                        }
-                        @if (validationMessages.ContainsKey("signature"))
-                        {
-                            <div class="text-danger mt-2">@validationMessages["signature"]</div>
-                        }
+                        <div class="d-flex align-items-center">
+                                <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@GetFilePath(user.Signature)" alt="Tanda Tangan Pengguna">
+                        </div>
                     </div>
                 }
 
@@ -170,11 +157,8 @@
 
     // State File Upload
     private bool profilePhotoStatus;
-    private bool signatureStatus;
     private string? profilePhotoPath;
-    private string? signaturePath;
     private string? originalprofilePhotoPath;
-    private string? originalsignaturePath;
 
     // Konstanta
     private const string SUB_FOLDER_NAME = "User";
@@ -205,18 +189,6 @@
             previousId = Id;
 
             await LoadUserDataAsync();
-            if (!string.IsNullOrWhiteSpace(user.Signature))
-            {
-                signatureStatus = true;
-                originalsignaturePath = user.Signature;
-                signaturePath = user.Signature;
-            }
-            else
-            {
-                signatureStatus = false;
-                originalsignaturePath = null;
-                signaturePath = null;
-            }
 
             if (!string.IsNullOrWhiteSpace(user.UserPhoto))
             {
@@ -238,10 +210,6 @@
     [JSInvokable]
     public async Task HandleBackNavigation()
     {
-        if (signaturePath != originalsignaturePath)
-        {
-            await UploadService.FileChange(signaturePath, SUB_FOLDER_NAME);
-        }
         if (profilePhotoPath != originalprofilePhotoPath)
         {
             await UploadService.FileChange(profilePhotoPath, SUB_FOLDER_NAME);
@@ -274,7 +242,6 @@
             user.Role = originalUserRole ?? string.Empty;
 
             originalprofilePhotoPath = user.UserPhoto;
-            originalsignaturePath = user.Signature;
         }
     }
 
@@ -313,26 +280,6 @@
     private async Task HandleUpdateUserAsync()
     {
         if (user == null) return;
-
-        if (signatureStatus)
-        {
-            if (signaturePath != originalsignaturePath)
-            {
-                if (!string.IsNullOrWhiteSpace(originalsignaturePath))
-                {
-                    HandleFileChange(originalsignaturePath);
-                }
-                user.Signature = signaturePath;
-            }
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(originalsignaturePath))
-            {
-                HandleFileChange(originalsignaturePath);
-            }
-            user.Signature = null;
-        }
 
         if (profilePhotoStatus)
         {
@@ -409,11 +356,6 @@
         await HandleFileUploadAsync(e.File, fileType: "UserPhoto");
     }
 
-    private async Task HandleSignatureUploadAsync(InputFileChangeEventArgs e)
-    {
-        await HandleFileUploadAsync(e.File, fileType: "Signature");
-    }
-
     private async Task HandleFileUploadAsync(IBrowserFile file, string fileType)
     {
         if (user == null) return;
@@ -430,10 +372,6 @@
                 {
                     profilePhotoPath = null;
                 }
-                else
-                {
-                    signaturePath = null;
-                }
 
                 return;
             }
@@ -442,11 +380,6 @@
             {
                 profilePhotoPath = UploadService.FilePath;
                 profilePhotoStatus = true;
-            }
-            else
-            {
-                signaturePath = UploadService.FilePath;
-                signatureStatus = true;
             }
         }
         catch (Exception ex)
@@ -472,25 +405,6 @@
         else
         {
             profilePhotoStatus = true;
-        }
-    }
-
-    private async Task HandleSignatureChange()
-    {
-        if (user == null || string.IsNullOrWhiteSpace(signaturePath)) return;
-
-        if (signatureStatus)
-        {
-            if (signaturePath != originalsignaturePath)
-            {
-                HandleFileChange(signaturePath);
-            }
-
-            signatureStatus = false;
-        }
-        else
-        {
-            signatureStatus = true;
         }
     }
 

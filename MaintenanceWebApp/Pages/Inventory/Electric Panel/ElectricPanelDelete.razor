@@ -148,8 +148,7 @@
         }
         else
         {
-            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
-            return;
+            NavigationManager.NavigateTo("./ElectricPanelList?status=DeleteSuccess");
         }
     }
 

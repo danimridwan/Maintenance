@@ -13,10 +13,18 @@
 @inject NotificationService NotificationService
 @inject PPMWorkflowService PPMWorkflowService
 @inject UploadFilesService UploadService
+@inject NavigationLockStateService NavLockState
 
 @* Otorisasi Halaman *@
 @attribute [Authorize(Roles = "Admin, Supervisor, Manager, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
+
+@if (_isProcessingFinalAction)
+{
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    <span class="ms-1">Memproses...</span>
+}
 @if (_isLoading)
 {
     <div class="text-center py-4">
@@ -31,7 +39,7 @@ else if (ppmTask != null && supervisor != null && userInfo != null)
             @* Header dengan Navigasi Tab *@
             <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
                 <li class="nav-item">
-                    <a @onclick="NavigateToPPMList" class="nav-link" aria-label="Kembali ke Daftar PPM" style="cursor: pointer;">
+                    <a @onclick="NavigateToPPMListWithBypass" class="nav-link" aria-label="Kembali ke Daftar PPM" style="cursor: pointer;">
                         <span class="oi oi-chevron-left"></span>
                     </a>
                 </li>
@@ -55,9 +63,9 @@ else if (ppmTask != null && supervisor != null && userInfo != null)
         <div class="card-body">
             @* Memanggil Komponen Konten Tab yang Telah Diekstrak *@
             <PpmTabContent PpmTask="ppmTask"
-                           Supervisor="supervisor"
-                           PpmHistoryList="ppmHistoryList"
-                           OnExportToPdf="ExportToPdf">
+            Supervisor="supervisor"
+            PpmHistoryList="ppmHistoryList"
+            OnExportToPdf="ExportToPdf">
                 <ActionButtons>
                     @if (CanShowActionButtons())
                     {
@@ -92,26 +100,26 @@ else if (ppmTask != null && supervisor != null && userInfo != null)
     <RejectionModal PpmTask="ppmTask" OnRejectSubmit='() => HandleAction("Reject")' />
 
     <ApprovalModal PpmTask="ppmTask"
-                   CurrentUser="userInfo"
-                   InventoryMaintenanceHistoryList="inventoryMaintenanceHistoryList"
-                   MaintenancePICs="MaintenancePICs"
-                   MaintenanceCategories="MaintenanceCategories"
-                   IsSupervisor="dataPermissionSupervisor"
-                   IsManager="dataPermissionManager"
-                   IsTerminalManager="dataPermissionTerminalManager"
-                   IsMaintenanceSupervisor="dataPermissionMaintenanceSupervisor"
-                   IsMaintenance="dataPermissionMaintenance"
-                   OnMaintenanceCategoryChanged="LoadMaintenancePICsAsync"
-                   OnInventoryMaintenanceHistoryChanged="LoadInventoryMaintenanceHistoryAsync"
-                   OnDeleteHistory="DeleteSelectedHistory"
-                   OnSubmitSuccess="HandleApprovalSuccess" />
+    CurrentUser="userInfo"
+    InventoryMaintenanceHistoryList="inventoryMaintenanceHistoryList"
+    MaintenancePICs="MaintenancePICs"
+    MaintenanceCategories="MaintenanceCategories"
+    IsSupervisor="dataPermissionSupervisor"
+    IsManager="dataPermissionManager"
+    IsTerminalManager="dataPermissionTerminalManager"
+    IsMaintenanceSupervisor="dataPermissionMaintenanceSupervisor"
+    IsMaintenance="dataPermissionMaintenance"
+    OnMaintenanceCategoryChanged="LoadMaintenancePICsAsync"
+    OnInventoryMaintenanceHistoryChanged="LoadInventoryMaintenanceHistoryAsync"
+    OnDeleteHistory="DeleteSelectedHistory"
+    OnSubmitSuccess="HandleApprovalSuccess" />
 
     <CancelModal OnConfirm="HandleCancel" />
 
     <InputMaintenanceHistoryModal PpmId="@ppmTask.PPMID"
-                                  CurrentUser="@userInfo"
-                                  OnSaveSuccess="HandleHistorySaveSuccess"
-                                  OnCancel="HandleHistoryCancel" />
+    CurrentUser="@userInfo"
+    OnSaveSuccess="HandleHistorySaveSuccess"
+    OnCancel="HandleHistoryCancel" />
 }
 else
 {
@@ -137,6 +145,8 @@ else
     private string? userId;
     private string _webPPMRoot = string.Empty;
     private bool _isLoading = true;
+    private bool _isProcessingFinalAction = false;
+    private bool _shouldBypassLock = false;
     private bool dataPermissionSupervisor;
     private bool dataPermissionManager;
     private bool dataPermissionTerminalManager;
@@ -171,6 +181,27 @@ else
         }
 
         _isLoading = false;
+    }
+
+    private void NavigateToPPMListWithBypass()
+    {
+        NavLockState.RequestBypass();
+
+        NavigationManager.NavigateTo("./PPMList");
+    }
+
+    private async Task OnBeforeInternalNavigation(LocationChangingContext context)
+    {
+        // Cek status dari service
+        if (NavLockState.ShouldBypass)
+        {
+            NavLockState.Reset(); // Reset status setelah digunakan
+            return; // Izinkan navigasi
+        }
+
+        // Jalankan logika custom (refresh) jika tidak ada permintaan bypass
+        context.PreventNavigation();
+        await JSRuntime.InvokeVoidAsync("location.reload");
     }
 
     // --- 4. Metode Pemuatan Data ---
@@ -249,6 +280,8 @@ else
     // --- 5. Metode Penanganan Aksi Utama ---
     private async Task HandleAction(string actionType)
     {
+        _isProcessingFinalAction = true;
+
         if (ppmTask == null || authenticationStateTask == null) return;
         var authState = await authenticationStateTask;
         var userPrincipal = authState.User;
@@ -258,31 +291,51 @@ else
         {
             await UploadNewPPMHistory(actionType);
             await JSRuntime.InvokeVoidAsync("hideModal", "rejectionModal");
-            NavigationManager.NavigateTo($"/PPMList?status={actionType}Success", forceLoad: true);
+            NavLockState.RequestBypass();
+            NavigationManager.NavigateTo($"./PPMList?status={actionType}Success", forceLoad: true);
         }
         else
         {
             await NotificationService.AlertMessage(result.ErrorMessage);
+            _isProcessingFinalAction = false;
         }
     }
 
     private async Task HandleApprovalSuccess()
     {
-        NavigationManager.NavigateTo($"/PPMList?status=ApproveSuccess", forceLoad: true);
+        _isProcessingFinalAction = true;
+        NavLockState.RequestBypass();
+        NavigationManager.NavigateTo($"./PPMList?status=ApproveSuccess", forceLoad: true);
     }
 
     private async Task HandleCancel()
     {
-        if (ppmTask == null) return;
+        _isProcessingFinalAction = true;
+
+        if (ppmTask == null)
+        {
+            _isProcessingFinalAction = false; // Hentikan loading jika ada guard clause
+            return;
+        }
+
         await UploadNewPPMHistory("Cancel");
+
+        var imageBefore = ppmTask.ImageBefore;
+        var document = ppmTask.Document;
         await CRUDService.DeleteAsync(ppmTask);
+
         if (string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
+            await UploadService.FileChange(imageBefore, "PPM");
+            await UploadService.FileChange(document, "PPM");
+
+            NavLockState.RequestBypass();
             NavigationManager.NavigateTo("./PPMList?status=DeleteSuccess", forceLoad: true);
         }
         else
         {
             await NotificationService.AlertMessage("Proses pembatalan PPM gagal. Data mungkin sudah diubah oleh pengguna lain. Silakan muat ulang halaman dan coba lagi.");
+            _isProcessingFinalAction = false;
         }
     }
 
@@ -311,7 +364,7 @@ else
 
     public async Task ShowApprovalModal()
     {
-        await JSRuntime.InvokeVoidAsync("blazorInterop.disableBackButton");
+        //await JSRuntime.InvokeVoidAsync("blazorInterop.disableBackButton");
         await JSRuntime.InvokeVoidAsync("showModal", "approvalModal");
     }
 
@@ -396,11 +449,12 @@ else
         await CRUDService.CreateAsync(newPpmHistory);
     }
 
-    private void NavigateToPPMList() => NavigationManager.NavigateTo("./PPMList");
-
     private void ExportToPdf()
     {
         if (ppmTask == null) return;
+
+        NavLockState.RequestBypass();
+
         NavigationManager.NavigateTo($"/PDFViewer/{ppmTask.TaskID}", true);
     }
 }

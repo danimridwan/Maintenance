@@ -46,6 +46,7 @@ window.blazorInterop = {
      * @param {DotNetObjectReference} dotNetHelper - Referensi ke objek .NET (Blazor) untuk pemanggilan balik.
      */
     promptOnBack: (dotNetHelper) => {
+        console.log("TES: Fungsi promptOnBack dijalankan!");
         // Menambahkan entri baru ke riwayat browser, ini memanipulasi tombol "back".
         history.pushState(null, '', location.href);
 

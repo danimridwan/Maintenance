@@ -164,23 +164,23 @@
         await CancelAsync();
     }
 
+    // --- METODE VALIDASI KAPASITAS YANG DIPERBARUI ---
     private void HandleCapacityInput(ChangeEventArgs e)
     {
         var inputValue = e.Value?.ToString() ?? string.Empty;
-        _capacityError = null;
+        _capacityError = null; // Selalu hapus error di awal
 
-        // Pola Regex: hanya mengizinkan angka, koma, spasi, dan huruf x (besar atau kecil)
-        string pattern = @"^[0-9,xX\s]*$";
+        string pattern = @"^[0-9,xX\s]*$"; // Pola: hanya izinkan angka, koma, spasi, x/X
 
         if (Regex.IsMatch(inputValue, pattern))
         {
-            // Jika valid, ubah 'X' besar menjadi 'x' kecil dan update model
+            // Jika input valid, ubah 'X' besar menjadi 'x' kecil
             electricPanel.CapacityValue = inputValue.Replace('X', 'x');
         }
         else
         {
-            // Jika tidak valid, tampilkan error
-            _capacityError = "Input hanya boleh berisi angka, koma, spasi, atau 'x'.";
+            // Jika input tidak valid, kosongkan nilai di model
+            electricPanel.CapacityValue = string.Empty;
         }
     }
 

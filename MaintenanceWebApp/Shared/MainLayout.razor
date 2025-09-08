@@ -10,6 +10,8 @@
 @* Services *@
 @inject CRUDService CRUDService
 @inject NotificationService NotificationService
+@inject NavigationLockStateService NavLockState
+@inject NavigationManager NavManager
 
 <PageTitle>RPU Maintenance Web</PageTitle>
 
@@ -44,7 +46,7 @@
                         <h6 class="dropdown-header fw-bold text-uppercase pb-2 border-bottom mb-2">Pemberitahuan</h6>
                         @if (notificationCount > 0)
                         {
-                            <a class="dropdown-item py-2" href="PPMList">
+                            <a class="dropdown-item py-2" @onclick='() => GoTo($"./PPMList")'>
                                 <div class="d-flex w-100 align-items-center">
                                     <div class="flex-grow-1">
                                         <p class="mb-0 fw-bold">PPM</p>
@@ -100,12 +102,12 @@
                             <div class="dropdown-divider"></div>
                         }
 
-                        <a class="dropdown-item" href="./UserPersonalInfo/@user.Id"><span class="oi oi-person" aria-hidden="true"></span>&nbsp;Profil Anda</a>
-                        <a class="dropdown-item" href="./UserPersonalEdit/@user.Id"><span class="oi oi-pencil" aria-hidden="true"></span>&nbsp;Edit Data Pribadi</a>
-                        <a class="dropdown-item" href="./ChangePassword"><span class="oi oi-key" aria-hidden="true"></span>&nbsp;Ubah Password</a>
+                        <a class="dropdown-item" @onclick='() => GoTo($"./UserPersonalInfo/{user.Id}")'><span class="oi oi-person" aria-hidden="true"></span>&nbsp;Profil Anda</a>
+                        <a class="dropdown-item" @onclick='() => GoTo($"./UserPersonalEdit/{user.Id}")'><span class="oi oi-pencil" aria-hidden="true"></span>&nbsp;Edit Data Pribadi</a>
+                        <a class="dropdown-item" @onclick='() => GoTo("./ChangePassword")'><span class="oi oi-key" aria-hidden="true"></span>&nbsp;Ubah Password</a>
 
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item" href="./logout"><span class="oi oi-account-logout" aria-hidden="true"></span>&nbsp;Logout</a>
+                        <a class="dropdown-item" @onclick='() => GoTo("./logout")'><span class="oi oi-account-logout" aria-hidden="true"></span>&nbsp;Logout</a>
                     </div>
                 </div>
             </div>
@@ -163,6 +165,14 @@
         }
 
         isLoading = false;
+    }
+
+    private void GoTo(string url)
+    {
+        // 1. Kirim sinyal untuk bypass
+        NavLockState.RequestBypass();
+
+        NavManager.NavigateTo(url, forceLoad: true);
     }
 
     private string CreateFilePath(string relativePath)

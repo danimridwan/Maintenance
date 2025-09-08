@@ -1,4 +1,10 @@
-﻿<div id="sidebar" class="sidebar-container">
+﻿@using MaintenanceWebApp.Services
+
+@* Services *@
+@inject NavigationLockStateService NavLockState
+@inject NavigationManager NavManager
+
+<div id="sidebar" class="sidebar-container">
     <div class="top-row navbar navbar-dark">
         <div style="margin-left: 2%;" class="row">
             <div id="nav-logo" class="col-md-2 nav-logo" style="padding: 2px;">
@@ -14,14 +20,14 @@
         <nav class="flex-column">
             @*Maintenance*@
             <div class="nav-item">
-                <NavLink class="nav-link" href="./Dashboard">
+                <NavLink class="nav-link" @onclick='() => GoTo("./Dashboard")'>
                     <span class="oi oi-bar-chart" aria-hidden="true"></span><label class="nav-list">Dashboard</label>
                 </NavLink>
             </div>
 
             @*PPM*@
             <div class="nav-item">
-                <NavLink class="nav-link" href="./PPMList">
+                <NavLink class="nav-link" @onclick='() => GoTo("./PPMList")'>
                     <span class="oi oi-document" aria-hidden="true"></span><label class="nav-list">PPM</label>
                 </NavLink>
             </div>
@@ -36,12 +42,12 @@
                         </a>
                         <div class="collapse sub-menu" id="InventoryList" style="background-color: #0d2b59;">
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./PumpList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./PumpList")'>
                                     <label class="nav-list">Pompa</label>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./ElectricPanelList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./ElectricPanelList")'>
                                     <label class="nav-list">Panel Listrik</label>
                                 </NavLink>
                             </div>
@@ -51,12 +57,12 @@
                                 </NavLink>
                             </div>*@
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./ITList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./ITList")'>
                                     <label class="nav-list">IT</label>
                                 </NavLink>
                             </div>
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./FlowMeterList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./FlowMeterList")'>
                                     <label class="nav-list">Flow Meter</label>
                                 </NavLink>
                             </div>
@@ -76,7 +82,7 @@
                                 </NavLink>
                             </div>*@
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./BreatherValveList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./BreatherValveList")'>
                                     <label class="nav-list">Breather Valve</label>
                                 </NavLink>
                             </div>
@@ -94,7 +100,7 @@
                         </a>
                         <div class="collapse" id="AdministratorConfig">
                             <div class="nav-item">
-                                <NavLink class="nav-link" href="./UserList">
+                                <NavLink class="nav-link" @onclick='() => GoTo("./UserList")'>
                                     <span class="oi oi-person" aria-hidden="true"></span><label class="nav-list">Pengguna</label>
                                 </NavLink>
                             </div>
@@ -105,3 +111,13 @@
         </nav>
     </div>
 </div>
+
+@code {
+    private void GoTo(string url)
+    {
+        // 1. Kirim sinyal untuk bypass
+        NavLockState.RequestBypass();
+
+        NavManager.NavigateTo(url);
+    }
+}

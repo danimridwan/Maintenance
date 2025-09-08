@@ -148,15 +148,14 @@
         }
         else
         {
-            NotificationService.AlertMessage("Tidak ada riwayat pemeliharaan atau terjadi kesalahan saat memuat data.");
-            return;
+            NavigationManager.NavigateTo("./PumpList?status=DeleteSuccess");
         }
     }
 
     //Cancel Delete
     private void CancelDelete()
     {
-        NavigationManager.NavigateTo("/PumpList");
+        NavigationManager.NavigateTo("./PumpList");
     }
 
     private void GoBack()

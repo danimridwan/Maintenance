@@ -194,7 +194,8 @@
         }
         else
         {
-            _capacityError = "Input hanya boleh berisi angka, koma, spasi, atau 'x'.";
+            // Jika tidak valid, kosongkan nilai di model
+            electricPanel!.CapacityValue = string.Empty;
         }
     }
 

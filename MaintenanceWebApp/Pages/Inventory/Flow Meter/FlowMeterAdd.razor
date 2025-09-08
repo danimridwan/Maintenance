@@ -8,6 +8,7 @@
 @using System.Security.Claims
 @using System.IO
 @using System.Globalization
+@using System.Text.RegularExpressions
 
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
@@ -116,7 +117,6 @@
                 </div>
             </div>
 
-            @* --- PERUBAHAN DESAIN LAJU ALIR --- *@
             <div class="row">
                 <div class="col-sm-8 mb-3">
                     <label for="DesainLajuAlir" class="col-form-label">Desain Laju Alir</label>
@@ -138,7 +138,6 @@
                     }
                 </div>
             </div>
-
 
             <div class="col-sm-12 mb-3">
                 <label for="Foto" class="col-form-label">Foto</label>
@@ -225,16 +224,21 @@
 
     private void OnFlowRateInputChanged(ChangeEventArgs args)
     {
-        // Logika untuk mengaktifkan/menonaktifkan unit dropdown
-        var inputValue = args.Value?.ToString();
-        IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(inputValue);
+        var inputValue = args.Value?.ToString() ?? string.Empty;
+        string pattern = @"^[0-9,~\s]*$"; // Pola: hanya izinkan angka, koma, spasi, x/X
 
+        if (!Regex.IsMatch(inputValue, pattern))
+        {
+            // Jika input tidak valid, langsung kosongkan isinya
+            flowMeter!.FlowRateValue = string.Empty;
+        }
+
+        // Logika untuk mengaktifkan/menonaktifkan unit dropdown
+        IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(flowMeter.FlowRateValue);
         if (IsFlowRateUnitDisabled)
         {
             flowMeter.FlowRateUnit = null;
         }
-
-        StateHasChanged();
     }
 
     private async Task HandleCreateFlowMeter()

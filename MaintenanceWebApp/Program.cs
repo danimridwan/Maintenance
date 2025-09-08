@@ -20,6 +20,7 @@ builder.Services.AddScoped<UrlStatusService>();
 builder.Services.AddScoped<TableService>();
 builder.Services.AddScoped<PPMWorkflowService>();
 builder.Services.AddScoped<IdentityService>();
+builder.Services.AddScoped<NavigationLockStateService>();
 
 
 //Mailer
