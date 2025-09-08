@@ -130,7 +130,13 @@ else
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label text-muted">Daya</label>
-                                        <p class="info-text">@pump.PowerValue @pump.PowerUnit</p>
+                                        <p class="info-text">
+                                            @if (!string.IsNullOrWhiteSpace(@pump.PowerDescription))
+                                            {
+                                                @pump.PowerDescription <span>-&nbsp;</span>
+                                            }
+                                            @pump.PowerValue @pump.PowerUnit
+                                        </p>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label text-muted">Kode Explotion Proof</label>

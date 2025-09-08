@@ -23,7 +23,7 @@ namespace MaintenanceWebApp.Data
         public string? Type { get; set; }
 
         [Required(ErrorMessage = "Lokasi harus diisi.")]
-        [StringLength(25, ErrorMessage = "Input Lokasi melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(50, ErrorMessage = "Input Lokasi melebihi batas karakter (maks 50 karakter).")]
         public string Location { get; set; }
 
         [StringLength(100, ErrorMessage = "Input Deskripsi melebihi batas karakter (maks 100 karakter).")]

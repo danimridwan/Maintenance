@@ -254,16 +254,16 @@
 
     private void NavigateToPumpInfo(Pump pump)
     {
-        NavigationManager.NavigateTo(PUMP_INFO_PATH);
+        NavigationManager.NavigateTo(string.Format(PUMP_INFO_PATH, pump.PumpID));
     }
 
     private void NavigateToEditPump(Pump pump)
     {
-        NavigationManager.NavigateTo(PUMP_EDIT_PATH);
+        NavigationManager.NavigateTo(string.Format(PUMP_EDIT_PATH, pump.PumpID));
     }
 
     private void NavigateToDeletePump(Pump pump)
     {
-        NavigationManager.NavigateTo(PUMP_DELETE_PATH);
+        NavigationManager.NavigateTo(string.Format(PUMP_DELETE_PATH, pump.PumpID));
     }
 }

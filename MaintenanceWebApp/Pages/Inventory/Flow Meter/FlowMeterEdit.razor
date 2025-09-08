@@ -53,12 +53,24 @@
                 <div class="row">
                     <div class="col-sm-6 mb-3">
                         <label for="Merk" class="col-form-label">Merk</label>
-                        <InputText id="Merk" @bind-Value="flowMeter.Brand" class="form-control" />
+                        <InputSelect id="Merk" @bind-Value="flowMeter.Brand" class="form-control">
+                            <option value="">Pilih Merk...</option>
+                            @foreach (var brand in brandOptions)
+                            {
+                                <option value="@brand">@brand</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="@(() => flowMeter.Brand)" />
                     </div>
                     <div class="col-sm-6 mb-3">
                         <label for="Tipe" class="col-form-label">Tipe</label>
-                        <InputText id="Tipe" @bind-Value="flowMeter.Type" class="form-control" />
+                        <InputSelect id="Tipe" @bind-Value="flowMeter.Type" class="form-control">
+                            <option value="">Pilih Tipe...</option>
+                            @foreach (var type in typeOptions)
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="@(() => flowMeter.Type)" />
                     </div>
                 </div>
@@ -111,7 +123,13 @@
                     </div>
                     <div class="col-sm-6 mb-3">
                         <label for="TempDesain" class="col-form-label">Temperatur Desain</label>
-                        <InputText id="TempDesain" @bind-Value="flowMeter.TempDesign" class="form-control" />
+                        <InputSelect id="TempDesain" @bind-Value="flowMeter.TempDesign" class="form-control">
+                            <option value="">Pilih Temperatur...</option>
+                            @foreach (var temp in tempDesignOptions)
+                            {
+                                <option value="@temp">@temp</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="@(() => flowMeter.TempDesign)" />
                     </div>
                 </div>
@@ -197,9 +215,14 @@
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string FILE_CATEGORY = "img";
     private const string FOLDER_NAME = "Flow Meter";
-    private readonly List<string> designPressureUnits = new() { "bar" };
-    private readonly List<string> flowRateUnits = new() { "Liter/menit", "M3/Jam", "L/Jam" };
-    private readonly List<string> locationOptions = new() { "Tersimpan di Gudang", "Terpasang di jalur pipa delivery di bay 9 CFS" };
+
+    // Form Properties
+    private List<string> brandOptions = new() { "Liquid Control", "Krohne" };
+    private List<string> typeOptions = new() { "LC M30", "Optic flux 430", "LCR-600" };
+    private List<string> tempDesignOptions = new() { "Ambien" };
+    private List<string> designPressureUnits = new() { "bar" };
+    private List<string> flowRateUnits = new() { "Liter/menit", "M3/Jam", "L/Jam" };
+    private List<string> locationOptions = new() { "Tersimpan di Gudang", "Terpasang di jalur pipa delivery di bay 9 CFS" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -235,43 +258,52 @@
         }
     }
 
-    private void OnFlowRateInputChanged(ChangeEventArgs args)
+    private bool ValidateFormOnSubmit()
     {
-        var inputValue = args.Value?.ToString() ?? string.Empty;
-        string pattern = @"^[0-9,~\s]*$"; // Pola: hanya izinkan angka, koma, spasi, x/X
-
-        if (!Regex.IsMatch(inputValue, pattern))
+        // Validasi untuk Tekanan Desain (Diperbaiki)
+        if (!string.IsNullOrWhiteSpace(_designPressureInput))
         {
-            // Jika input tidak valid, langsung kosongkan isinya
-            flowMeter!.FlowRateValue = string.Empty;
+            var sanitizedInput = _designPressureInput.Replace(',', '.');
+            // Cek 1: Pastikan formatnya adalah angka desimal yang valid
+            if (!double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+            {
+                return false; // Gagal jika format salah
+            }
+
+            // Cek 2: Pastikan unit dipilih jika ada nilai
+            if (parsedValue > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+            {
+                return false; // Gagal jika unit kosong
+            }
         }
 
-        // Logika untuk mengaktifkan/menonaktifkan unit dropdown
-        IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(flowMeter.FlowRateValue);
-        if (IsFlowRateUnitDisabled)
+        // Validasi untuk Desain Laju Alir
+        if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue))
         {
-            flowMeter.FlowRateUnit = null;
+            if (string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+            {
+                return false;
+            }
+            string pattern = @"^[0-9,~\s]*$";
+            if (!Regex.IsMatch(flowMeter.FlowRateValue, pattern))
+            {
+                return false;
+            }
         }
+        return true;
     }
 
     private async Task HandleUpdateFlowMeter()
     {
         if (flowMeter == null) return;
 
-        if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue) && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+        if (!ValidateFormOnSubmit())
         {
-            await NotificationService.AlertMessage("Jika Laju Alir diisi, Unit harus dipilih.");
-            return;
-        }
-
-        if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
-        {
-            await NotificationService.AlertMessage("Jika Tekanan Desain diisi, Unit harus dipilih.");
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Tekanan Desain dan Laju Alir, pastikan format benar dan unit telah dipilih.");
             return;
         }
 
         flowMeter.Image = fileStatus ? filePath : null;
-
         if (filePath != originalFilePath)
         {
             await DeleteOldFileAsync(originalFilePath);
@@ -288,6 +320,28 @@
     }
 
     #region Kode Lainnya
+    private void OnFlowRateInputChanged(ChangeEventArgs args)
+    {
+        var inputValue = args.Value?.ToString() ?? string.Empty;
+        string pattern = @"^[0-9,~\s]*$";
+        if (flowMeter is null) return;
+
+        if (Regex.IsMatch(inputValue, pattern))
+        {
+            flowMeter.FlowRateValue = inputValue;
+        }
+        else
+        {
+            flowMeter!.FlowRateValue = string.Empty;
+        }
+
+        IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(flowMeter.FlowRateValue);
+        if (IsFlowRateUnitDisabled)
+        {
+            flowMeter.FlowRateUnit = null;
+        }
+    }
+
     private async Task LoadConfigurationAsync()
     {
         try { _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; }

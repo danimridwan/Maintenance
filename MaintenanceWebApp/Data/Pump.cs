@@ -50,6 +50,8 @@ namespace MaintenanceWebApp.Data
 
         public string? PowerUnit { get; set; }
 
+        public string? PowerDescription { get; set; }
+
         [StringLength(25, ErrorMessage = "Input Kode Explotion Proof melebihi batas karakter (maks 25 karakter).")]
         public string? ExplotionProofCode { get; set; }
 

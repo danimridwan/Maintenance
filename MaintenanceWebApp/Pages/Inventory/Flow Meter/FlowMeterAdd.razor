@@ -54,12 +54,24 @@
             <div class="row">
                 <div class="col-sm-6 mb-3">
                     <label for="Merk" class="col-form-label">Merk</label>
-                    <InputText id="Merk" @bind-Value="flowMeter.Brand" class="form-control" />
+                    <InputSelect id="Merk" @bind-Value="flowMeter.Brand" class="form-control">
+                        <option value="">Pilih Merk...</option>
+                        @foreach (var brand in brandOptions)
+                        {
+                            <option value="@brand">@brand</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => flowMeter.Brand)" />
                 </div>
                 <div class="col-sm-6 mb-3">
                     <label for="Tipe" class="col-form-label">Tipe</label>
-                    <InputText id="Tipe" @bind-Value="flowMeter.Type" class="form-control" />
+                    <InputSelect id="Tipe" @bind-Value="flowMeter.Type" class="form-control">
+                        <option value="">Pilih Tipe...</option>
+                        @foreach (var type in typeOptions)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => flowMeter.Type)" />
                 </div>
             </div>
@@ -112,7 +124,13 @@
                 </div>
                 <div class="col-sm-6 mb-3">
                     <label for="TempDesain" class="col-form-label">Temperatur Desain</label>
-                    <InputText id="TempDesain" @bind-Value="flowMeter.TempDesign" class="form-control" />
+                    <InputSelect id="TempDesain" @bind-Value="flowMeter.TempDesign" class="form-control">
+                        <option value="">Pilih Temperatur...</option>
+                        @foreach (var temp in tempDesignOptions)
+                        {
+                            <option value="@temp">@temp</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => flowMeter.TempDesign)" />
                 </div>
             </div>
@@ -183,6 +201,9 @@
     private string _webStorageRoot = string.Empty;
 
     // Form Properties
+    private List<string> brandOptions = new() { "Liquid Control", "Krohne" };
+    private List<string> typeOptions = new() { "LC M30", "Optic flux 430", "LCR-600" };
+    private List<string> tempDesignOptions = new() { "Ambien" };
     private List<string> designPressureUnits = new() { "bar" };
     private List<string> flowRateUnits = new() { "Liter/menit", "M3/Jam", "L/Jam" };
     private bool IsDesignPressureUnitDisabled = true;
@@ -225,15 +246,17 @@
     private void OnFlowRateInputChanged(ChangeEventArgs args)
     {
         var inputValue = args.Value?.ToString() ?? string.Empty;
-        string pattern = @"^[0-9,~\s]*$"; // Pola: hanya izinkan angka, koma, spasi, x/X
+        string pattern = @"^[0-9,~\s]*$";
 
-        if (!Regex.IsMatch(inputValue, pattern))
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            // Jika input tidak valid, langsung kosongkan isinya
+            flowMeter.FlowRateValue = inputValue;
+        }
+        else
+        {
             flowMeter!.FlowRateValue = string.Empty;
         }
 
-        // Logika untuk mengaktifkan/menonaktifkan unit dropdown
         IsFlowRateUnitDisabled = string.IsNullOrWhiteSpace(flowMeter.FlowRateValue);
         if (IsFlowRateUnitDisabled)
         {
@@ -241,18 +264,47 @@
         }
     }
 
-    private async Task HandleCreateFlowMeter()
+
+    private bool ValidateFormOnSubmit()
     {
-        // Validasi kustom baru untuk Flow Rate
-        if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue) && string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+        // Validasi untuk Tekanan Desain (Diperbaiki)
+        if (!string.IsNullOrWhiteSpace(_designPressureInput))
         {
-            await NotificationService.AlertMessage("Jika Laju Alir diisi, Unit harus dipilih.");
-            return;
+            var sanitizedInput = _designPressureInput.Replace(',', '.');
+            // Cek 1: Pastikan formatnya adalah angka desimal yang valid
+            if (!double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+            {
+                return false; // Gagal jika format salah
+            }
+
+            // Cek 2: Pastikan unit dipilih jika ada nilai
+            if (parsedValue > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+            {
+                return false; // Gagal jika unit kosong
+            }
         }
 
-        if (flowMeter.DesignPressureValue.HasValue && flowMeter.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(flowMeter.DesignPressureUnit))
+        // Validasi untuk Desain Laju Alir
+        if (!string.IsNullOrWhiteSpace(flowMeter.FlowRateValue))
         {
-            await NotificationService.AlertMessage("Jika Tekanan Desain diisi, Unit harus dipilih.");
+            if (string.IsNullOrWhiteSpace(flowMeter.FlowRateUnit))
+            {
+                return false;
+            }
+            string pattern = @"^[0-9,~\s]*$";
+            if (!Regex.IsMatch(flowMeter.FlowRateValue, pattern))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private async Task HandleCreateFlowMeter()
+    {
+        if (!ValidateFormOnSubmit())
+        {
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Tekanan Desain dan Laju Alir, pastikan format benar dan unit telah dipilih.");
             return;
         }
 
@@ -273,7 +325,7 @@
         NavigationManager.NavigateTo("./FlowMeterList?status=CreateSuccess");
     }
 
-    #region Kode Lainnya (Tidak Berubah)
+    #region Kode Lainnya
     private async Task LoadConfigurationAsync()
     {
         try { _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/"; }
@@ -330,7 +382,7 @@
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage)) { await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}"); uploadErrorStatus = true; return; }
             flowMeter.Image = UploadService.FilePath;
         }
-        catch (Exception ex) { await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file."); uploadErrorStatus = true; }
+        catch (Exception) { await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file."); uploadErrorStatus = true; }
         StateHasChanged();
     }
     private async Task HandleFileChangeAsync(string? filePath, string fileType)

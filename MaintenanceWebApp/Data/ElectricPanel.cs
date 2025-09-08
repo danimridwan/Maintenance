@@ -15,11 +15,11 @@ namespace MaintenanceWebApp.Data
         public int PanelID { get; set; }
 
         [Required(ErrorMessage = "Nama Panel Listrik harus diisi.")]
-        [StringLength(25, ErrorMessage = "Input Nama Panel Listrik melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(50, ErrorMessage = "Input Nama Panel Listrik melebihi batas karakter (maks 50 karakter).")]
         public string Name { get; set; }
 
         [Required(ErrorMessage = "Lokasi harus diisi.")]
-        [StringLength(25, ErrorMessage = "Input Lokasi melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(50, ErrorMessage = "Input Lokasi melebihi batas karakter (maks 50 karakter).")]
         public string Location { get; set; }
 
         public string? CapacityValue { get; set; }

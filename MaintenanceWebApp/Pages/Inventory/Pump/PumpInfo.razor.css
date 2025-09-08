@@ -1,0 +1,10 @@
+﻿.info-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: 0rem;
+    margin-bottom: 0rem;
+}
+
+::deep .quickgrid tbody tr:not([aria-rowindex]) {
+    display: none;
+}

@@ -184,8 +184,34 @@
         }
     }
 
+    private bool ValidateFormOnSubmit()
+    {
+        // Cek hanya jika ada input pada Kapasitas
+        if (!string.IsNullOrWhiteSpace(electricPanel.CapacityValue))
+        {
+            if (string.IsNullOrWhiteSpace(electricPanel.CapacityUnit))
+            {
+                return false; // Validasi gagal jika unit kosong
+            }
+
+            string pattern = @"^[0-9,xX\s]*$";
+            if (!Regex.IsMatch(electricPanel.CapacityValue, pattern))
+            {
+                return false; // Validasi gagal jika format tidak sesuai
+            }
+        }
+
+        return true; // Semua validasi lolos
+    }
+
     private async Task HandleCreateElectricPanel()
     {
+        if (!ValidateFormOnSubmit())
+        {
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Kapasitas, pastikan format benar dan unit telah dipilih.");
+            return;
+        }
+
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
@@ -196,7 +222,7 @@
         await CRUDService.CreateAsync<ElectricPanel>(electricPanel);
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
-            await NotificationService.AlertMessage("Gagal menyimpan data. Hubungi Administrator.");
+            await NotificationService.AlertMessage($"Gagal menyimpan data. Hubungi Administrator.Detail:{CRUDService.CRUDErrorMessage}");
             return;
         }
 

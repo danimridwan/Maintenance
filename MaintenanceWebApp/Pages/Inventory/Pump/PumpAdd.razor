@@ -72,6 +72,18 @@
                 </div>
 
                 <div class="col-sm-6 mb-3">
+                    <label for="Tipe" class="col-form-label">Tipe</label>
+                    <InputSelect id="Tipe" @bind-Value="pump.Type" class="form-control">
+                        <option value="">Pilih Tipe...</option>
+                        @foreach (var type in typeOptions)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => pump.Type)" />
+                </div>
+
+                <div class="col-sm-6 mb-3">
                     <label for="Material" class="col-form-label">Material</label>
                     <InputSelect id="Material" @bind-Value="pump.Material" class="form-control">
                         <option value="">Pilih Material...</option>
@@ -146,10 +158,15 @@
 
             <div class="row">
                 <div class="col-sm-6 mb-3">
+                    <div class="mb-3">
+                        <label for="DeskripsiDaya" class="col-form-label">Deskripsi Daya (Opsional)</label>
+                        <InputText id="DeskripsiDaya" @bind-Value="pump.PowerDescription" class="form-control" placeholder="Contoh: Diesel Engine Cummins" />
+                    </div>
+
                     <div class="row">
                         <div class="col-sm-8">
-                            <label for="Tenaga" class="col-form-label">Tenaga</label>
-                            <InputText class="form-control" id="Tenaga" @bind-Value="_powerInput" @oninput="HandlePowerInput" />
+                            <label for="Daya" class="col-form-label">Daya</label>
+                            <InputText class="form-control" id="Daya" @bind-Value="_powerInput" @oninput="HandlePowerInput" />
                             @if (!string.IsNullOrEmpty(_powerError))
                             {
                                 <div class="text-danger small mt-1">@_powerError</div>
@@ -157,8 +174,8 @@
                             <ValidationMessage For="@(() => pump.PowerValue)" />
                         </div>
                         <div class="col-sm-4">
-                            <label for="SatuanTenaga" class="col-form-label">Unit</label>
-                            <InputSelect id="SatuanTenaga" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
+                            <label for="SatuanDaya" class="col-form-label">Unit</label>
+                            <InputSelect id="SatuanDaya" @bind-Value="pump.PowerUnit" class="form-control" disabled="@IsPowerUnitDisabled">
                                 <option value="">...</option>
                                 @foreach (var unit in powerUnits)
                                 {
@@ -172,6 +189,12 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="ExplotionProof" class="col-form-label">Kode Explotion Proof</label>
+                <InputText id="ExplotionProof" @bind-Value="pump.ExplotionProofCode" class="form-control" />
+                <ValidationMessage For="@(() => pump.ExplotionProofCode)" />
             </div>
 
             <div class="col-sm-12 mb-3">
@@ -226,13 +249,24 @@
     private string webStorageRoot = string.Empty;
 
     // Form Properties
-    private List<string> pumpName = new() { "Fire Pump", "Transfer Pump", "Submersible Pump" };
-    private List<string> capacityUnits = new() { "m3/hour", "GPM" };
-    private List<string> powerUnits = new() { "HP", "kW" };
+    private List<string> pumpName = new() { "Pompa Delivery", "Pompa Pendukung Operasional", "Pompa Air Bersih", "Pompa Kondisi Darurat Kebakaran" };
+    private List<string> capacityUnits = new() { "GPM", "LPM", "M3/h", "M3/min" };
+    private List<string> powerUnits = new() { "HP", "kW", "Watt" };
     private List<string> materialOptions = new() { "Alumunium", "Braze - Kuningan", "Carbon Steel", "Stainless Steel" };
     private List<string> categoryOptions = new() { "Booster Pump", "Centrifugal", "Centrifugal self priming", "Diaphragma 1 Inch", "Diaphragma 2 Inch", "Diaphragma 3 Inch", "Gear", "LUBE", "Multi stage", "Plunger Pump", "Screw", "Submersible", "Submersible/Satelit", "Vertical Pump" };
     private List<string> locationOptions = new() { "Blader Tank", "Box Culvert", "Dump Filing", "Fire Pump Room", "Guesthouse", "Hose Pit 1", "New Pumpit", "Pump Pit 1", "Pump Pit 2", "Pump Pit 2/5", "Pump Pit 4", "Pump Pit 6", "Pump Pit 7", "Sea Water Intake", "Separator", "Tank Pit 1", "Tank Pit 2", "Tank Pit 5", "Tank Pit 6", "Tangki T307", "Tangki T308", "Tangki T502", "Tangki T608", "Utility Building" };
     private List<string> brandOptions = new() { "ARO", "BSK", "CROWN", "DAB PUMP", "DABITALI", "DENSIN", "EBARRA", "GPA PUMP", "GRUNDFOS", "INGERSOLL RAND", "KSA", "MTX", "NIKUNI", "PATTERSON", "ROTOR", "SANYO", "SEEPEX", "SP Pump", "STERLING SSP", "SUNNY KING", "TORISHIMA", "VIKING PUMP", "WORTHINGTON", "XA PUMP", "YONJOU", "YORK" };
+    private List<string> typeOptions = new()
+    {
+        "200 x 150 CN 6", "RG31 7SP-100-38", "8 x 6 MABSH", "K1A2340/A70", "CR 10-18",
+        "P-H137AC-S", "JET 82 M", "66M3 SUS", "PD20A-APP-FTT", "PD10A-APP-FTT",
+        "BA80AL09T3A", "SP-30", "S 200 E", "50DS 52", "80 DL", "3D1DM3", "4SYK 16-10P",
+        "CDWP 30", "CER 80-200", "ETA 65-20", "EC 65-20", "N 4 337", "CPEN 65-200",
+        "SKH 100-28", "EC 80-25", "ETA 150-40", "65-CP-200", "100 CFC", "EC 65-20",
+        "CPEN 50-200", "SPL-.750", "BM-52", "ETA-N200x150", "ETA-N 80x65x160",
+        "RA-50-25 G3", "GU-50-200", "50/20", "32/10", "IH100-65-200A/2-304/CEX", "80/20"
+    };
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -313,8 +347,47 @@
         }
     }
 
+    private bool ValidatePowerAndCapacityInputs()
+    {
+        // Cek input Kapasitas
+        if (!string.IsNullOrWhiteSpace(_capacityInput))
+        {
+            var sanitizedInput = _capacityInput.Replace(',', '.');
+            if (!double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+            {
+                return false;
+            }
+            if (parsedValue > 0 && string.IsNullOrWhiteSpace(pump.CapacityUnit))
+            {
+                return false;
+            }
+        }
+
+        // Cek input Daya
+        if (!string.IsNullOrWhiteSpace(_powerInput))
+        {
+            var sanitizedInput = _powerInput.Replace(',', '.');
+            if (!double.TryParse(sanitizedInput, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsedValue))
+            {
+                return false;
+            }
+            if (parsedValue > 0 && string.IsNullOrWhiteSpace(pump.PowerUnit))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private async Task HandleCreatePump()
     {
+        if (!ValidatePowerAndCapacityInputs())
+        {
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Kapasitas dan Daya, pastikan format angka benar dan unit telah dipilih.");
+            return;
+        }
+
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
@@ -401,7 +474,6 @@
         var sanitizedInput = inputValue.Replace(',', '.');
         _capacityInput = sanitizedInput;
         _capacityError = null;
-
         if (string.IsNullOrWhiteSpace(sanitizedInput))
         {
             pump.CapacityValue = null;
@@ -434,7 +506,6 @@
         var sanitizedInput = inputValue.Replace(',', '.');
         _powerInput = sanitizedInput;
         _powerError = null;
-
         if (string.IsNullOrWhiteSpace(sanitizedInput))
         {
             pump.PowerValue = null;
@@ -449,7 +520,7 @@
         }
         else
         {
-            _powerError = "Input Tenaga harus berupa angka (desimal dipersilakan).";
+            _powerError = "Input Daya harus berupa angka (desimal dipersilakan).";
             _powerInput = string.Empty;
             pump.PowerValue = null;
         }
