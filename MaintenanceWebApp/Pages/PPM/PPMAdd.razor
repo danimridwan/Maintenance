@@ -251,7 +251,7 @@
         };
         await CRUDService.CreateAsync(ppmTaskHistory);
 
-        NavigationManager.NavigateTo("/PPMList?status=CreateSuccess");
+        NavigationManager.NavigateTo("./PPMList?status=CreateSuccess");
     }
 
     private Task HandleInvalidSubmitAsync()
@@ -413,6 +413,6 @@
         
         await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
 
-        NavigationManager.NavigateTo("/PPMList");
+        NavigationManager.NavigateTo("./PPMList");
     }
 }

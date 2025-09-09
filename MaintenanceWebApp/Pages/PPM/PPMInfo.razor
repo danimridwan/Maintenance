@@ -158,6 +158,11 @@ else
     private bool IsOnProgressState => ppmTask?.Level == PPMStatusLevel.OnProgress;
     private bool IsInCheckingState => ppmTask?.Level == PPMStatusLevel.Checking;
     private bool IsCompletedOrRejected => ppmTask?.Level == PPMStatusLevel.Completed || ppmTask?.Level == PPMStatusLevel.Rejected;
+    private IMailerService _mailer;
+    public PPMInfo(IMailerService mailer)
+    {
+        _mailer = mailer;
+    }
 
     // --- 3. Metode Lifecycle ---
     protected override async Task OnInitializedAsync()
@@ -165,6 +170,7 @@ else
         _isLoading = true;
         await Authorization();
         if (string.IsNullOrEmpty(userId)) { NavigationManager.NavigateTo("./"); return; }
+
         await LoadPPMDetails();
         if (ppmTask == null) { NavigationManager.NavigateTo("./PPMList"); return; }
         await LoadDependentData();
@@ -304,6 +310,7 @@ else
     private async Task HandleApprovalSuccess()
     {
         _isProcessingFinalAction = true;
+
         NavLockState.RequestBypass();
         NavigationManager.NavigateTo($"./PPMList?status=ApproveSuccess", forceLoad: true);
     }
@@ -455,6 +462,6 @@ else
 
         NavLockState.RequestBypass();
 
-        NavigationManager.NavigateTo($"/PDFViewer/{ppmTask.TaskID}", true);
+        NavigationManager.NavigateTo($"./PDFViewer/{ppmTask.TaskID}", true);
     }
 }
