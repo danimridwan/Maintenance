@@ -1,0 +1,282 @@
+﻿@page "/TankAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using System.IO
+@implements IDisposable
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+    @* Header Formulir *@
+    <div class="card-header bg-light border-primary">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a style="cursor: pointer;" @onclick="CancelAsync" class="nav-link" aria-label="Kembali">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Tambah Tangki</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <EditForm Model="tank" OnValidSubmit="HandleCreateTankAsync" OnInvalidSubmit="HandleInvalidSubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="col-sm-12 mb-3">
+                <label for="TankNo" class="col-form-label">Nomor Tangki <span class="required">*</span></label>
+                <InputText id="TankNo" @bind-Value="tank.TankNo" class="form-control" />
+                <ValidationMessage For="@(() => tank.TankNo)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Capacity" class="col-form-label">Kapasitas (KL) <span class="required">*</span></label>
+                <InputNumber id="Capacity" @bind-Value="tank.Capacity" class="form-control" />
+                <ValidationMessage For="@(() => tank.Capacity)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Material" class="col-form-label">Material <span class="required">*</span></label>
+                <InputSelect id="Material" @bind-Value="tank.Material" class="form-select">
+                    <option value="">Pilih Material...</option>
+                    @foreach (var material in materialOptions)
+                    {
+                        <option value="@material">@material</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => tank.Material)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="InternalCoating" class="col-form-label">Internal Coating</label>
+                <InputSelect id="InternalCoating" @bind-Value="tank.InternalCoating" class="form-select">
+                    <option value="">Pilih Tipe Coating...</option>
+                    @foreach (var coating in internalCoatingOptions)
+                    {
+                        <option value="@coating">@coating</option>
+                    }
+                </InputSelect>
+                <ValidationMessage For="@(() => tank.InternalCoating)" />
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Foto" class="col-form-label">Foto</label>
+                @if (string.IsNullOrWhiteSpace(tank.Image))
+                {
+                    <InputFile id="Foto" class="form-control"
+                               accept=".jpg,.jpeg,.png"
+                               OnChange="HandleFileUpload" />
+                    <small class="form-text text-muted">Opsional: Unggah foto Tangki (JPG, JPEG, PNG).</small>
+                    <ValidationMessage For="@(() => tank.Image)" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center">
+                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(tank.Image)" alt="Tank Image">
+                        <button @onclick="() => HandleFileChangeAsync(tank.Image, IMAGE_FILE_CATEGORY)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                    </div>
+                }
+            </div>
+
+
+            @* Tombol Aksi Formulir *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary me-2" @onclick="CancelAsync">Cancel</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    // State Halaman
+    private Tank tank = new();
+    private string _webStorageRoot = string.Empty;
+    private DotNetObjectReference<TankAdd> dotNetHelper = default!;
+
+    // Form Properties
+    private static readonly List<string> internalCoatingOptions = new()
+    {
+        "Interline 850",
+        "Phenolic - Interline 944",
+        "Sigma Phen Guard",
+        "Zinc-Interzinc 22",
+        "Sigma Guard 750"
+    };
+    private static readonly List<string> materialOptions = new()
+    {
+        "Abs-Grade A (Carbon Steel)",
+        "SS - 400 (Carbon Steel)",
+        "SS - 41 (Carbon Steel)",
+        "Stainless Steel SUS 316",
+        "Stainless Steel SUS 304",
+        "A 283-Grade C (Carbon Steel)",
+        "ASTM A-36 (Carbon Steel)",
+        "ASTM 283 Gr. C (Carbon Steel)"
+    };
+
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string IMAGE_FILE_CATEGORY = "img";
+    private const string IMAGE_FOLDER_NAME = "Tank";
+
+    // Metode Lifecycle Blazor
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    // Metode Dispose untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            // Mengambil path root dari konfigurasi
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            // Menampilkan notifikasi jika gagal memuat konfigurasi
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi: {ex.Message}");
+            NavigationManager.NavigateTo("./");
+        }
+    }
+
+    // Penanganan Submit Formulir
+    private async Task HandleCreateTankAsync()
+    {
+        // Menyimpan data menggunakan CRUDService
+        await CRUDService.CreateAsync(tank);
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal menyimpan data tangki. Kesalahan: {CRUDService.CRUDErrorMessage}");
+            return;
+        }
+
+        // Arahkan ke halaman daftar dengan status sukses
+        NavigationManager.NavigateTo("./TankList?status=CreateSuccess");
+    }
+
+    private Task HandleInvalidSubmitAsync()
+    {
+        // Tampilkan pesan jika formulir tidak valid
+        return NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
+
+    // Penanganan Unggahan & Perubahan File
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+    }
+
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                tank.Image = UploadService.FilePath;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleFileChangeAsync(string? filePath, string fileType)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        try
+        {
+            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
+                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                tank.Image = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return "/noimg.png";
+        }
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    // Penanganan Tombol Batal
+    private async Task CancelAsync()
+    {
+        // Hapus file yang sudah diunggah jika pengguna membatalkan
+        if (!string.IsNullOrWhiteSpace(tank.Image))
+        {
+            await HandleFileChangeAsync(tank.Image, IMAGE_FILE_CATEGORY);
+        }
+
+        // Kembali ke halaman daftar
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+        NavigationManager.NavigateTo("./TankList");
+    }
+}

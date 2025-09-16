@@ -14,75 +14,111 @@
 @inject CRUDService CrudService
 @inject NotificationService NotificationService
 
-@* Status Pemuatan *@
+@* Tampilan Halaman dan Status Pemuatan *@
 <div class="pdf-viewer-container">
-    <div style="text-align: center; margin-bottom: 20px;">
-        @if (isLoading)
-        {
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary mb-2" role="status"></div>
-                <p class="text-muted">Membuat Laporan PDF...</p>
+    @if (isLoading)
+    {
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary mb-2" role="status"></div>
+            <p class="text-muted">Membuat Laporan PDF...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row mb-3 align-items-center">
+            <div class="col-8">
+                <h5 class="mb-0">Laporan PPM: @ppmId</h5>
             </div>
-        }
-    </div>
-    <iframe id="pdf-frame" style="width:100%; height:100vh; border:0;" frameborder="0" allowfullscreen></iframe>
+            <div class="col-4 text-end">
+                <button class="btn btn-primary" @onclick="ShowDownloadModal">
+                    <i class="oi oi-data-transfer-download me-2"></i> Unduh
+                </button>
+            </div>
+        </div>
+    }
+
+    <iframe id="pdf-frame" style="width:100%; height:100vh; border:0; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" frameborder="0" allowfullscreen></iframe>
 </div>
 
+<div class="modal @(showDownloadModal ? "show d-block" : "d-none")" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Unduh Laporan</h5>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda ingin mengunduh laporan ini sebagai file PDF?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseDownloadModal">Tidak</button>
+                <button type="button" class="btn btn-primary" @onclick="DownloadPdf">Ya, Unduh</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @(showDownloadModal ? "show" : "d-none")"></div>
+
 @code {
-    // Parameter dari URL
     [Parameter]
     public string TaskId { get; set; } = string.Empty;
 
-    // Properti State
     private bool isLoading = true;
+    private bool showDownloadModal = false;
     private byte[]? pdfBytes;
+    private string? ppmId;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await GenerateAndDisplayPdf();
+            await GeneratePdfAndDisplay();
         }
     }
 
-    private async Task GenerateAndDisplayPdf()
+    private async Task GeneratePdfAndDisplay()
     {
         try
         {
+            isLoading = true;
+            StateHasChanged();
+
             // Memuat data PPM, requestor, dan user terkait secara asinkron
             var (ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager) = await LoadPpmData(TaskId);
 
-            // Jika ada data yang tidak ditemukan, tampilkan pesan peringatan
+            // Periksa data yang tidak ditemukan, terpusat
             if (ppmTask == null)
             {
-                NotificationService.AlertMessage($"Gagal mengakses data PPM. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage($"Gagal mengakses data PPM.");
                 return;
             }
             if (requestor == null)
             {
-                NotificationService.AlertMessage($"Gagal mengakses data Pemohon. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage($"Gagal mengakses data Pemohon.");
                 return;
             }
             if (manager == null && (requestor.Section == "Operation" || requestor.Section == "HSE"))
             {
-                NotificationService.AlertMessage($"Gagal mengakses data Atasan Pemohon. Pastikan hanya ada satu manajer untuk seksi ini. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage("Gagal mengakses data Atasan Pemohon. Pastikan hanya ada satu manajer untuk seksi ini.");
                 return;
             }
             if (maintenance == null)
             {
-                NotificationService.AlertMessage($"Gagal mengakses data Pelaksana Maintenance. Pastikan hanya ada satu personel maintenance untuk kategori ini. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage("Gagal mengakses data Pelaksana Maintenance. Pastikan hanya ada satu personel maintenance untuk kategori ini.");
                 return;
             }
             if (maintenanceSupervisor == null)
             {
-                NotificationService.AlertMessage($"Gagal mengakses data Atasan Pelaksana. Pastikan hanya ada satu maintenance supervisor. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage("Gagal mengakses data Atasan Pelaksana. Pastikan hanya ada satu maintenance supervisor.");
                 return;
             }
             if (terminalManager == null)
             {
-                NotificationService.AlertMessage($"Gagal mengakses data Terminal Manager. Pastikan hanya ada satu Terminal Manager. Silakan hubungi Administrator.\n{CrudService.CRUDErrorMessage}");
+                NotificationService.AlertMessage("Gagal mengakses data Terminal Manager. Pastikan hanya ada satu Terminal Manager.");
                 return;
             }
+
+            ppmId = ppmTask.PPMID;
 
             // Mengonversi gambar menjadi format Base64 untuk disematkan dalam HTML
             var base64Images = await LoadBase64Images(ppmTask, requestor, manager, maintenance, maintenanceSupervisor, terminalManager);
@@ -97,7 +133,7 @@
                 pdfBytes = memoryStream.ToArray();
             }
 
-            // Menampilkan PDF di iframe
+            // Menampilkan PDF di iframe dan kemudian menampilkan modal
             if (pdfBytes != null && pdfBytes.Length > 0)
             {
                 string base64PdfData = Convert.ToBase64String(pdfBytes);
@@ -118,6 +154,41 @@
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private void ShowDownloadModal()
+    {
+        if (pdfBytes != null && pdfBytes.Length > 0)
+        {
+            showDownloadModal = true;
+            StateHasChanged();
+        }
+        else
+        {
+            NotificationService.AlertMessage("File PDF tidak tersedia untuk diunduh.");
+        }
+    }
+
+    private async Task DownloadPdf()
+    {
+        if (pdfBytes != null && pdfBytes.Length > 0 && ppmId != null)
+        {
+            showDownloadModal = false; // Sembunyikan modal
+            StateHasChanged();
+            string base64PdfData = Convert.ToBase64String(pdfBytes);
+            string fileName = $"{ppmId}.pdf";
+            await JSRuntime.InvokeVoidAsync("downloadPdf", base64PdfData, fileName);
+        }
+        else
+        {
+            NotificationService.AlertMessage("File PDF tidak tersedia untuk diunduh.");
+        }
+    }
+
+    private void CloseDownloadModal()
+    {
+        showDownloadModal = false;
+        StateHasChanged();
     }
 
     private async Task<(PPMTask? ppmTask, User? requestor, User? manager, User? maintenance, User? maintenanceSupervisor, User? terminalManager)> LoadPpmData(string taskId)
@@ -197,6 +268,7 @@
     private string GetHtmlTemplate(PPMTask ppmTask, User requestor, User? manager, User? maintenance, User? maintenanceSupervisor, User? terminalManager, Base64Images images)
     {
         string ppmDateCreated = ppmTask.DateCreated.ToString("dd-MM-yyyy");
+        string ppmTargetDate = ppmTask.TargetDate?.ToString("dd-MM-yyyy");
         string printTimestamp = DateTime.Now.ToString("dd-MM-yyyy HH:mm");
         string targetCompletionStatus = (ppmTask.TargetCompletion ?? false) ? "Ya" : "Tidak";
 
@@ -302,7 +374,7 @@
                             </td>
                             <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
                                 <b>Evaluasi Pelaksanaan</b><br>
-                                1. Target Penyelesaian : {ppmTask.TargetDate}<br>
+                                1. Target Penyelesaian : {ppmTargetDate}<br>
                                 2. Kesesuaian terhadap Target : {targetCompletionStatus}<br>
                                 3. Evaluasi :<br>
         {ppmTask.EvaluationNote}
@@ -449,7 +521,7 @@
                             </td>
                             <td rowspan=""4"" colspan=""1"" style=""width: 40%;"">
                                 <b>Evaluasi Pelaksanaan</b><br>
-                                1. Target Penyelesaian : {ppmTask.TargetDate}<br>
+                                1. Target Penyelesaian : {ppmTargetDate}<br>
                                 2. Kesesuaian terhadap Target : {targetCompletionStatus}<br>
                                 3. Evaluasi :<br>
         {ppmTask.EvaluationNote}
@@ -513,8 +585,19 @@
 }
 
 <script>
+    // Fungsi yang akan dipanggil untuk menampilkan PDF di iframe
     function showPdfInIframe(base64Data) {
         var iframe = document.getElementById('pdf-frame');
-        iframe.src = "data:application/pdf;base64," + base64Data;
+        iframe.src = "data:application/pdf;base64," + base64Data + "#toolbar=0&navpanes=0";
+    }
+
+    // Fungsi untuk mengunduh PDF
+    function downloadPdf(base64Data, fileName) {
+        const link = document.createElement('a');
+        link.href = "data:application/pdf;base64," + base64Data;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>

@@ -48,6 +48,7 @@ namespace MaintenanceWebApp.Services
                         {
                             nextStatus = PPMStatusLevel.ApprovedByTerminalManager;
                             ppm.TargetDate = ppmTaskUpdates.TargetDate; // Update TargetDate
+                            ppm.Priority = ppmTaskUpdates.Priority;
                         }
                         else if (currentUser.IsInRole("Maintenance Supervisor") && currentStatus == PPMStatusLevel.ApprovedByTerminalManager)
                         {

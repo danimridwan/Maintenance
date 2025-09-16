@@ -3,6 +3,7 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
+@using System.Text.RegularExpressions
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -20,12 +21,12 @@
         @* Header Halaman *@
         <ul class="nav nav-tabs card-header-tabs">
             <li class="nav-item">
-                <a @onclick="CancelAsync" class="nav-link" aria-label="Kembali ke Daftar PRV Valve">
+                <a @onclick="CancelAsync" style="cursor: pointer;" class="nav-link" aria-label="Kembali ke Daftar PRV Valve">
                     <span class="oi oi-chevron-left"></span>
                 </a>
             </li>
             <li class="nav-item">
-                <span class="nav-link active" aria-current="page">Informasi PRV Valve</span>
+                <span class="nav-link active" aria-current="page">Ubah PRV Valve</span>
             </li>
         </ul>
     </div>
@@ -40,98 +41,135 @@
                     <label for="Kategori" class="col-form-label">Kategori <span class="required">*</span></label>
                     <InputSelect id="Kategori" @bind-Value="prvValve.Category" class="form-control">
                         <option value="">...</option>
-                        @foreach (var category in prvValveCategory)
-                        {
-                            <option value="@category">@category</option>
-                        }
+                        <option value="PRV Valve Pompa">PRV Valve Pompa</option>
+                        <option value="PRV Valve Tank">PRV Valve Tank</option>
                     </InputSelect>
                     <ValidationMessage For="@(() => prvValve.Category)" />
                 </div>
 
+                <div class="col-sm-12 mb-3">
+                    <label for="NomorTangki" class="col-form-label">Nomor Tangki<span class="required">*</span></label>
+                    <InputText id="NomorTangki" @bind-Value="prvValve.TankNumber" class="form-control" />
+                    <ValidationMessage For="@(() => prvValve.TankNumber)" />
+                </div>
+
+                @if (prvValve.Category == "PRV Valve Tank")
+                {
+                    <div class="col-sm-12 mb-3">
+                        <label for="Material" class="col-form-label">Material</label>
+                        <InputSelect id="Material" @bind-Value="prvValve.Material" class="form-control">
+                            <option value="">...</option>
+                            @foreach (var material in prvValveMaterial)
+                            {
+                                <option value="@material">@material</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => prvValve.Material)" />
+                    </div>
+                }
+
                 <div class="row">
                     <div class="col-sm-6 mb-3">
                         <label for="Merk" class="col-form-label">Merk</label>
-                        <InputText id="Merk" @bind-Value="prvValve.Brand" class="form-control" />
+                        <InputSelect id="Merk" @bind-Value="prvValve.Brand" class="form-control">
+                            <option value="">...</option>
+                            @foreach (var brand in prvValveBrand)
+                            {
+                                <option value="@brand">@brand</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="@(() => prvValve.Brand)" />
                     </div>
                     <div class="col-sm-6 mb-3">
                         <label for="Tipe" class="col-form-label">Tipe</label>
-                        <InputText id="Tipe" @bind-Value="prvValve.Type" class="form-control" />
+                        <InputSelect id="Tipe" @bind-Value="prvValve.Type" class="form-control">
+                            <option value="">...</option>
+                            @foreach (var type in prvValveType)
+                            {
+                                <option value="@type">@type</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="@(() => prvValve.Type)" />
                     </div>
                 </div>
 
-                <div class="col-sm-12 mb-3">
-                    <div class="row">
-                        <div class="col-sm-8">
-                            <label for="TekananDesain" class="col-form-label">Tekanan Desain</label>
-                            <InputNumber class="form-control" id="TekananDesain" @bind-Value="prvValve.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
-                            <ValidationMessage For="@(() => prvValve.DesignPressureValue)" />
-                        </div>
-                        <div class="col-sm-4">
-                            <label for="SatuanTekanan" class="col-form-label">Unit</label>
-                            <InputSelect id="SatuanTekanan" @bind-Value="prvValve.DesignPressureUnit" class="form-control" disabled="@IsDesignPressureUnitDisabled">
-                                <option value="">...</option>
-                                @foreach (var unit in designPressureUnits)
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="TekananDesain" class="col-form-label">Tekanan Desain</label>
+                                <InputNumber class="form-control" id="TekananDesain" @bind-Value="prvValve.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
+                                <ValidationMessage For="@(() => prvValve.DesignPressureValue)" />
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="SatuanTekanan" class="col-form-label">Unit</label>
+                                <InputSelect id="SatuanTekanan" @bind-Value="prvValve.DesignPressureUnit" class="form-control" disabled="@IsDesignPressureUnitDisabled">
+                                    <option value="">...</option>
+                                    @foreach (var unit in designPressureUnits)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </InputSelect>
+                                @if (prvValve.DesignPressureValue.HasValue && prvValve.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DesignPressureUnit))
                                 {
-                                    <option value="@unit">@unit</option>
+                                    <div class="text-danger">Satuan Unit Tekanan Desain harus dipilih.</div>
                                 }
-                            </InputSelect>
-                            @* Pesan validasi kustom untuk Satuan Tekanan Desain *@
-                            @if (prvValve.DesignPressureValue.HasValue && prvValve.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DesignPressureUnit))
-                            {
-                                <div class="text-danger">Satuan Unit Tekanan Desain harus dipilih.</div>
-                            }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="DiameterValve" class="col-form-label">Diameter Valve</label>
+                                <InputText class="form-control" id="DiameterValve" @bind-Value="prvValve.DiameterValue" @oninput="OnDiameterValveInputChanged" />
+                                <ValidationMessage For="@(() => prvValve.DiameterValue)" />
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="SatuanDiameter" class="col-form-label">Unit</label>
+                                <InputSelect id="SatuanDiameter" @bind-Value="prvValve.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
+                                    <option value="">...</option>
+                                    @foreach (var unit in diameterUnits)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </InputSelect>
+                                @if (!string.IsNullOrWhiteSpace(prvValve.DiameterValue) && string.IsNullOrWhiteSpace(prvValve.DiameterUnit))
+                                {
+                                    <div class="text-danger">Satuan Diameter harus dipilih.</div>
+                                }
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="col-sm-12 mb-3">
-                    <div class="row">
-                        <div class="col-sm-8">
-                            <label for="DiameterValve" class="col-form-label">Diameter Valve</label>
-                            <InputNumber class="form-control" id="DiameterValve" @bind-Value="prvValve.DiameterValue" @oninput="OnDiameterValveInputChanged" />
-                            <ValidationMessage For="@(() => prvValve.DiameterValue)" />
-                        </div>
-                        <div class="col-sm-4">
-                            <label for="SatuanDiameter" class="col-form-label">Unit</label>
-                            <InputSelect id="SatuanDiameter" @bind-Value="prvValve.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
-                                <option value="">...</option>
-                                @foreach (var unit in diameterUnits)
-                                {
-                                    <option value="@unit">@unit</option>
-                                }
-                            </InputSelect>
-                            @* Pesan validasi kustom untuk Satuan Diameter *@
-                            @if (prvValve.DiameterValue.HasValue && prvValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DiameterUnit))
-                            {
-                                <div class="text-danger">Satuan Diameter harus dipilih.</div>
-                            }
-                        </div>
-                    </div>
+                    <label for="Jumlah" class="col-form-label">Jumlah</label>
+                    <InputNumber id="Jumlah" @bind-Value="prvValve.Quantity" class="form-control" />
+                    <ValidationMessage For="@(() => prvValve.Quantity)" />
                 </div>
 
                 <div class="col-sm-12 mb-3">
                     <label for="Foto" class="col-form-label">Foto</label>
-                    @if (!fileStatus)
+                    @if (string.IsNullOrWhiteSpace(prvValve.Image))
                     {
                         <InputFile id="Foto" class="form-control"
                                    accept=".jpg,.jpeg,.png"
                                    OnChange="HandleFileUploadAsync" />
-                        <ValidationMessage For="@(() => filePath)" />
+                        <small class="form-text text-muted">Opsional: Unggah foto PRV Valve (JPG, JPEG, PNG).</small>
+                        <ValidationMessage For="@(() => prvValve.Image)" />
                     }
                     else
                     {
                         <div class="d-flex align-items-center">
-                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="PRV Valve Image">
-                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(prvValve.Image)" alt="PRV Valve Image">
+                            <button @onclick="() => HandleFileChangeAsync(prvValve.Image, FILE_CATEGORY)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
                     }
                 </div>
 
                 @* Tombol Aksi *@
                 <div class="float-end mt-3">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelAsync">Cancel</button>
+                    <button type="button" class="btn btn-secondary me-2" @onclick="CancelAsync">Batal</button>
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </EditForm>
@@ -150,7 +188,6 @@
 
     // Properti Halaman
     private PRVValve? prvValve;
-    private EditContext? editContext;
     private DotNetObjectReference<PRVValveEdit>? dotNetHelper;
     private string _webStorageRoot = string.Empty;
 
@@ -160,16 +197,18 @@
 
     // State File
     private string? originalFilePath;
-    private string? filePath;
-    private bool fileStatus;
 
     // Konstanta
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string FILE_CATEGORY = "img";
     private const string FOLDER_NAME = "PRV Valve";
-    private readonly List<string> prvValveCategory = new() { "GOYAL", "ARTEC" };
-    private readonly List<string> designPressureUnits = new() { "MMH20", "PSIG", "BAR", "MMHG" };
-    private readonly List<string> diameterUnits = new() { "Inch", "MM" };
+
+    // Form Properties
+    private List<string> prvValveBrand = new() { "S3W-A", "T-ONE 317 Safety Valve", "317 Safety Valve", "HISEC" };
+    private List<string> prvValveType = new() { "Safety Valve", "317 Safety Valve", "SV-B27", "MFW-A", "317 Hisec" };
+    private List<string> prvValveMaterial = new() { "Carbon Steel", "Stainless Steel 316", "Kuningan" };
+    private List<string> designPressureUnits = new() { "Bar", "MMH2O" };
+    private List<string> diameterUnits = new() { "inch", "mm" };
 
     // Metode Lifecycle
     protected override async Task OnInitializedAsync()
@@ -187,7 +226,6 @@
         }
     }
 
-    // Metode Bantuan (Helper Methods)
     private async Task LoadConfigurationAsync()
     {
         try
@@ -211,29 +249,19 @@
         }
         else
         {
-            // Inisialisasi EditContext dan status file
-            editContext = new EditContext(prvValve);
-            editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
-            editContext.OnFieldChanged += (sender, e) => StateHasChanged();
-
-            InitializeFileStatus(prvValve.Image);
+            originalFilePath = prvValve.Image;
 
             // Inisialisasi status unit
             IsDesignPressureUnitDisabled = !prvValve.DesignPressureValue.HasValue || prvValve.DesignPressureValue.Value <= 0;
-            IsDiameterUnitDisabled = !prvValve.DiameterValue.HasValue || prvValve.DiameterValue.Value <= 0;
+            IsDiameterUnitDisabled = string.IsNullOrWhiteSpace(prvValve.DiameterValue);
         }
-    }
-
-    private void InitializeFileStatus(string? imagePath)
-    {
-        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
-        originalFilePath = imagePath;
-        filePath = imagePath;
     }
 
     // Metode Unggah File
     private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
     {
+        if (prvValve == null) return;
+
         try
         {
             await UploadService.FilesUpload(e.File, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
@@ -241,36 +269,42 @@
             {
                 await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
                 NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
-                filePath = null;
                 return;
             }
-
-            filePath = UploadService.FilePath;
-            fileStatus = true;
-            editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
+            prvValve.Image = UploadService.FilePath;
         }
         catch (Exception ex)
         {
             await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
             NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
         }
+        StateHasChanged();
     }
 
-    private async Task HandleFileChangeAsync()
+    private async Task HandleFileChangeAsync(string? filePath, string fileType)
     {
-        if (fileStatus)
+        if (prvValve == null || string.IsNullOrWhiteSpace(filePath)) return;
+        try
         {
-            // Hapus file lama jika filePath berubah
-            if (filePath != originalFilePath)
+            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
-                await DeleteOldFileAsync(filePath);
+                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
+                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
             }
-            fileStatus = false;
+
+            if (fileType == FILE_CATEGORY)
+            {
+                prvValve.Image = null;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            fileStatus = true;
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
         }
+        StateHasChanged();
     }
 
     private async Task DeleteOldFileAsync(string? path)
@@ -286,7 +320,7 @@
         }
     }
 
-    private string CreateFilePath(string relativePath)
+    private string CreateFilePath(string? relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath))
         {
@@ -298,13 +332,15 @@
     // Metode Validasi Input
     private void OnDesignPressureInputChanged(ChangeEventArgs args)
     {
+        if (prvValve == null) return;
+
         if (double.TryParse(args.Value?.ToString(), out double designPressureValue))
         {
-            prvValve!.DesignPressureValue = designPressureValue;
+            prvValve.DesignPressureValue = designPressureValue;
         }
         else
         {
-            prvValve!.DesignPressureValue = null;
+            prvValve.DesignPressureValue = null;
         }
 
         IsDesignPressureUnitDisabled = !prvValve.DesignPressureValue.HasValue || prvValve.DesignPressureValue.Value <= 0;
@@ -312,30 +348,29 @@
         {
             prvValve.DesignPressureUnit = null;
         }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => prvValve!.DesignPressureValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => prvValve!.DesignPressureUnit));
+        StateHasChanged();
     }
 
     private void OnDiameterValveInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double diameterValue))
+        string? inputValue = args.Value?.ToString();
+        string pattern = @"^[0-9,/s]*$";
+
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            prvValve!.DiameterValue = diameterValue;
+            prvValve.DiameterValue = inputValue;
         }
         else
         {
-            prvValve!.DiameterValue = null;
+            prvValve.DiameterValue = string.Empty;
         }
 
-        IsDiameterUnitDisabled = !prvValve.DiameterValue.HasValue || prvValve.DiameterValue.Value <= 0;
+        IsDiameterUnitDisabled = string.IsNullOrWhiteSpace(inputValue);
         if (IsDiameterUnitDisabled)
         {
             prvValve.DiameterUnit = null;
         }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => prvValve!.DiameterValue));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => prvValve!.DiameterUnit));
+        StateHasChanged();
     }
 
     // Metode Penanganan Submit
@@ -343,25 +378,16 @@
     {
         if (prvValve == null) return;
 
-        // Validasi kustom untuk Satuan Tekanan Desain
-        if (prvValve.DesignPressureValue.HasValue && prvValve.DesignPressureValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DesignPressureUnit))
+        //Validasi Diameter
+        string pattern = @"^[0-9,/s]*$";
+        if (!Regex.IsMatch(prvValve.DiameterValue, pattern))
         {
-            await NotificationService.AlertMessage("Jika Tekanan Desain diisi, Satuan Tekanan Desain harus dipilih.");
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Diameter Valve, pastikan format benar dan unit telah dipilih.");
             return;
         }
-
-        // Validasi kustom untuk Satuan Diameter
-        if (prvValve.DiameterValue.HasValue && prvValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DiameterUnit))
-        {
-            await NotificationService.AlertMessage("Jika Diameter diisi, Satuan Diameter harus dipilih.");
-            return;
-        }
-
-        // Sinkronisasi path file sebelum update
-        prvValve.Image = fileStatus ? filePath : null;
 
         // Jika ada perubahan file, hapus file lama
-        if (filePath != originalFilePath)
+        if (prvValve.Image != originalFilePath)
         {
             await DeleteOldFileAsync(originalFilePath);
         }
@@ -375,7 +401,6 @@
                 NotificationService.LogMessage($"Gagal menyimpan data. Detail: {CRUDService.CRUDErrorMessage}");
                 return;
             }
-
             NavigationManager.NavigateTo("./PRVValveList?status=EditSuccess");
         }
         catch (Exception ex)
@@ -394,12 +419,12 @@
     // Metode Navigasi
     private async Task CancelAsync()
     {
-        // Bersihkan file temporer jika ada
-        if (filePath != originalFilePath)
+        // Bersihkan file temporer jika ada dan tidak jadi disimpan
+        if (prvValve != null && prvValve.Image != originalFilePath)
         {
-            await DeleteOldFileAsync(filePath);
+            await DeleteOldFileAsync(prvValve.Image);
         }
-
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
         NavigationManager.NavigateTo("./PRVValveList");
     }
 

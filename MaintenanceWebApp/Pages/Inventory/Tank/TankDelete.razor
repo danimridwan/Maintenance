@@ -1,0 +1,165 @@
+﻿@page "/TankDelete/{Id:int}"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+
+@* Services *@
+@inject UploadFilesService UploadService
+@inject CRUDService CRUDService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance, Maintenance Supervisor")]
+
+<div class="card p-4 shadow-sm border-0">
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p class="mt-2 text-muted">Memuat data tangki...</p>
+            </div>
+        }
+        else if (tank == null)
+        {
+            <div class="text-center py-5">
+                <p class="text-danger lead">Data tangki tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
+            </div>
+        }
+        else
+        {
+            <h3 class="card-title text-danger mb-3">Hapus Tangki</h3>
+            <hr />
+            <p class="text-muted">Anda yakin ingin menghapus Tangki dengan nomor: <b>@tank.TankNo</b>?</p>
+
+            <div class="mt-4">
+                <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
+                <button type="button" class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // Parameter Rute
+    [Parameter]
+    public int Id { get; set; }
+
+    // State Halaman
+    private Tank? tank;
+    private bool isLoading = true;
+
+    // Konstanta
+    private const string SUBFOLDER_NAME = "Inventories";
+
+    // Metode Siklus Hidup
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTankAsync();
+        isLoading = false;
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadTankAsync()
+    {
+        try
+        {
+            // Memuat data Tank berdasarkan ID dari service
+            tank = await CRUDService.ReadSingleAsync<Tank, int>(Id);
+            if (tank == null)
+            {
+                await NotificationService.AlertMessage("Data tank tidak ditemukan. Silakan periksa kembali.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat data tank. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data tank dengan ID {Id}. Detail: {ex.Message}");
+            tank = null;
+        }
+    }
+
+    private async Task HandleDeleteAsync()
+    {
+        if (tank == null)
+        {
+            await NotificationService.AlertMessage("Data tank tidak valid. Operasi penghapusan dibatalkan.");
+            return;
+        }
+
+        try
+        {
+            await DeleteAssociatedFileAsync();
+
+            await DeleteMaintenanceHistoryPhotosAsync();
+
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == tank.TankID);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                NotificationService.AlertMessage($"Gagal menghapus data riwayat pemeliharaan. Detail: {CRUDService.CRUDErrorMessage}");
+                // Lanjutkan proses meskipun gagal menghapus history, atau return sesuai kebijakan bisnis
+            }
+
+            await CRUDService.DeleteAsync(tank);
+            if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus data tank dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data tank. Detail: {CRUDService.CRUDErrorMessage}");
+                return;
+            }
+
+            NavigationManager.NavigateTo("./TankList?status=DeleteSuccess");
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus tank. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus tank dengan ID {tank.TankID}. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteMaintenanceHistoryPhotosAsync()
+    {
+        if (tank == null) return;
+
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == tank.TankID);
+        var historyList = historyQuery.ToList();
+
+        if (historyList.Any())
+        {
+            foreach (var history in historyList)
+            {
+                if (!string.IsNullOrWhiteSpace(history.Photo))
+                {
+                    await UploadService.FileChange(history.Photo, SUBFOLDER_NAME);
+                    if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+                    {
+                        // Log kegagalan tapi jangan hentikan proses utama
+                        NotificationService.LogMessage($"Gagal menghapus foto riwayat pemeliharaan '{history.Photo}'. Detail: {UploadService.UploadErrorMessage}");
+                    }
+                }
+            }
+        }
+    }
+
+    private async Task DeleteAssociatedFileAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(tank?.Image))
+        {
+            await UploadService.FileChange(tank.Image, SUBFOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                // Log kegagalan tapi jangan hentikan proses utama
+                NotificationService.LogMessage($"Gagal menghapus file '{tank.Image}'. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("./TankList");
+    }
+}

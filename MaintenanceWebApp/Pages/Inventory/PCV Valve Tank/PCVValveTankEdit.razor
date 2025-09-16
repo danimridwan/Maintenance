@@ -3,6 +3,7 @@
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
 @using Microsoft.EntityFrameworkCore
+@using System.Text.RegularExpressions
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -54,6 +55,7 @@
                         </InputSelect>
                         <ValidationMessage For="@(() => pcvValveTank.Brand)" />
                     </div>
+
                     <div class="col-sm-6 mb-3">
                         <label for="Tipe" class="col-form-label">Tipe</label>
                         <InputSelect id="Tipe" @bind-Value="pcvValveTank.Type" class="form-control">
@@ -79,63 +81,34 @@
                     <ValidationMessage For="@(() => pcvValveTank.Material)" />
                 </div>
 
-                <div class="col-sm-12 mb-3">
-                    <div class="row">
-                        <div style="align-content: end;" class="col-sm-3">
-                            <label for="Tekanan Desain" class="col-form-label">Tekanan Desain</label>
-                            <InputNumber class="form-control" id="TekananDesain" @bind-Value="pcvValveTank.DesignPressureValue1" @oninput="OnDesignPressureInputChanged" />
-                            <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue1)" />
-                        </div>
-                        <div style="align-content:end; font-size: xx-large;" class="col-sm-1">
-                            <center>/</center>
-                        </div>
-                        <div style="align-content: end;" class="col-sm-3">
-                            <InputCheckbox class="form-check-input" @bind-Value="IsDesignPressureValueSecondDisabled"></InputCheckbox>
-                            <InputNumber class="form-control" id="DessignPressureValueSecond" @bind-Value="pcvValveTank.DesignPressureValue2" disabled="@IsDesignPressureValueSecondDisabled" />
-                            @if (!IsDesignPressureValueSecondDisabled)
-                            {
-                                pcvValveTank.DesignPressureValue2 = null;
-                            }
-                        </div>
-                        <div class="col-sm-5">
-                            <label for="SatuanTekananDesain" class="col-form-label">Unit</label>
-                            <InputSelect id="SatuanTekananDesain" @bind-Value="pcvValveTank.DesignPressureUnit" class="form-control" disabled="@IsDesignPressureUnitDisabled">
-                                <option value="">...</option>
-                                @foreach (var unit in designPressureUnits)
-                                {
-                                    <option value="@unit">@unit</option>
-                                }
-                            </InputSelect>
-                            @* Custom validation message for Design Unit *@
-                            @if (pcvValveTank.DesignPressureValue1.HasValue && pcvValveTank.DesignPressureValue1.Value > 0 && string.IsNullOrWhiteSpace(pcvValveTank.DesignPressureUnit))
-                            {
-                                <div class="text-danger">Satuan Tekanan Desain harus dipilih.</div>
-                            }
-                        </div>
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <label for="TekananDesain" class="col-form-label">Tekanan Desain (mmH20)</label>
+                        <InputText class="form-control" id="TekananDesain" @bind-Value="pcvValveTank.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
+                        <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue)" />
                     </div>
-                </div>
 
-                <div class="col-sm-12 mb-3">
-                    <div class="row">
-                        <div class="col-sm-8">
-                            <label for="DiameterValve" class="col-form-label">Diameter Valve</label>
-                            <InputNumber class="form-control" id="DiameterValve" @bind-Value="pcvValveTank.DiameterValue" @oninput="OnDiameterValveInputChanged" />
-                            <ValidationMessage For="@(() => pcvValveTank.DiameterValue)" />
-                        </div>
-                        <div class="col-sm-4">
-                            <label for="SatuanDiameter" class="col-form-label">Unit</label>
-                            <InputSelect id="SatuanDiameter" @bind-Value="pcvValveTank.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
-                                <option value="">...</option>
-                                @foreach (var unit in diameterUnits)
+                    <div class="col-sm-6 mb-3">
+                        <div class="row">
+                            <div class="col-sm-8">
+                                <label for="DiameterValve" class="col-form-label">Diameter Valve</label>
+                                <InputNumber class="form-control" id="DiameterValve" @bind-Value="pcvValveTank.DiameterValue" @oninput="OnDiameterValveInputChanged" />
+                                <ValidationMessage For="@(() => pcvValveTank.DiameterValue)" />
+                            </div>
+                            <div class="col-sm-4">
+                                <label for="SatuanDiameter" class="col-form-label">Unit</label>
+                                <InputSelect id="SatuanDiameter" @bind-Value="pcvValveTank.DiameterUnit" class="form-control" disabled="@IsDiameterUnitDisabled">
+                                    <option value="">...</option>
+                                    @foreach (var unit in diameterUnits)
+                                    {
+                                        <option value="@unit">@unit</option>
+                                    }
+                                </InputSelect>
+                                @if (pcvValveTank.DiameterValue.HasValue && pcvValveTank.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(pcvValveTank.DiameterUnit))
                                 {
-                                    <option value="@unit">@unit</option>
+                                    <div class="text-danger">Satuan Diameter harus dipilih.</div>
                                 }
-                            </InputSelect>
-                            @* Custom validation message for Diameter Unit *@
-                            @if (pcvValveTank.DiameterValue.HasValue && pcvValveTank.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(pcvValveTank.DiameterUnit))
-                            {
-                                <div class="text-danger">Satuan Diameter harus dipilih.</div>
-                            }
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -152,14 +125,15 @@
                     {
                         <InputFile id="Foto" class="form-control"
                                    accept=".jpg,.jpeg,.png"
-                                   OnChange="HandleFileUploadAsync" />
+                                   OnChange="HandleFileUpload" />
+                        <small class="form-text text-muted">Opsional: Unggah foto PCV Valve Tank (JPG, JPEG, PNG).</small>
                         <ValidationMessage For="@(() => filePath)" />
                     }
                     else
                     {
                         <div class="d-flex align-items-center">
                             <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="PCV Valve Tank Image">
-                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            <button @onclick="HandleFileChange" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
                     }
                 </div>
@@ -190,15 +164,13 @@
     private string _webStorageRoot = string.Empty;
 
     // State Formulir
-    private bool IsDesignPressureUnitDisabled = true;
-    private bool IsDesignPressureValueSecondDisabled;
     private bool IsDiameterUnitDisabled = true;
 
-    private List<string> pcvValveTankBrand = new() { "GOYAL", "ARTEC" };
-    private List<string> pcvValveTankType = new() { "GOYAL", "ARTEC" };
-    private List<string> pcvValveTankMaterial = new() { "GOYAL", "ARTEC" };
-    private List<string> designPressureUnits = new() { "MMH20", "PSIG", "BAR", "MMHG" };
-    private List<string> diameterUnits = new() { "Inch", "MM" };
+    // Konstanta untuk dropdown
+    private static readonly List<string> pcvValveTankBrand = new() { "KSPC / Blanketing Device", "SHAND & JURS" };
+    private static readonly List<string> pcvValveTankType = new() { "Blanketing DST-100", "Blanketing DST-101", "Blanketing Valve 94270" };
+    private static readonly List<string> pcvValveTankMaterial = new() { "Stainless Steel", "Alumunium" };
+    private static readonly List<string> diameterUnits = new() { "inch", "mm" };
 
     // State File
     private string? originalFilePath;
@@ -258,8 +230,6 @@
             InitializeFileStatus(pcvValveTank.Image);
 
             // Inisialisasi status validasi
-            IsDesignPressureUnitDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
-            IsDesignPressureValueSecondDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
             IsDiameterUnitDisabled = !pcvValveTank.DiameterValue.HasValue || pcvValveTank.DiameterValue.Value <= 0;
         }
     }
@@ -272,7 +242,7 @@
     }
 
     // Metode Unggah File
-    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
         try
         {
@@ -296,7 +266,7 @@
         }
     }
 
-    private async Task HandleFileChangeAsync()
+    private async Task HandleFileChange()
     {
         if (fileStatus)
         {
@@ -338,30 +308,17 @@
     // Metode Validasi Input
     private void OnDesignPressureInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentDesignPressureInputValue))
+        var inputValue = args.Value?.ToString() ?? string.Empty;
+        string pattern = @"^[0-9,/\s]*$";
+
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            pcvValveTank!.DesignPressureValue1 = currentDesignPressureInputValue;
+            pcvValveTank.DesignPressureValue = inputValue;
         }
         else
         {
-            pcvValveTank!.DesignPressureValue1 = null;
+            pcvValveTank!.DesignPressureValue = string.Empty;
         }
-
-        IsDesignPressureUnitDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
-        IsDesignPressureValueSecondDisabled = !pcvValveTank.DesignPressureValue1.HasValue || pcvValveTank.DesignPressureValue1.Value <= 0;
-
-        if (IsDesignPressureUnitDisabled)
-        {
-            pcvValveTank.DesignPressureUnit = null;
-        }
-        if (IsDesignPressureValueSecondDisabled)
-        {
-            pcvValveTank.DesignPressureValue2 = null;
-        }
-
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureValue1));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureValue2));
-        editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => pcvValveTank!.DesignPressureUnit));
     }
 
     private void OnDiameterValveInputChanged(ChangeEventArgs args)
@@ -390,6 +347,17 @@
     private async Task HandleUpdatePCVValveTank()
     {
         if (pcvValveTank == null) return;
+
+        // Validasi untuk Tekanan Desain
+        if (!string.IsNullOrWhiteSpace(pcvValveTank.DesignPressureValue))
+        {
+            string pattern = @"^[0-9,/\s]*$";
+            if (!Regex.IsMatch(pcvValveTank.DesignPressureValue, pattern))
+            {
+                await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Tekanan Desain, pastikan format benar dan unit telah dipilih.");
+                return;
+            }
+        }
 
         // Sinkronisasi path file sebelum update
         pcvValveTank.Image = fileStatus ? filePath : null;

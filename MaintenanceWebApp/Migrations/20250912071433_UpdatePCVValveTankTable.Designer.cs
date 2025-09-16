@@ -4,6 +4,7 @@ using MaintenanceWebApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MaintenanceWebApp.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250912071433_UpdatePCVValveTankTable")]
+    partial class UpdatePCVValveTankTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -397,9 +400,6 @@ namespace MaintenanceWebApp.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("Priority")
-                        .HasColumnType("int");
-
                     b.Property<string>("RejectionNote")
                         .HasColumnType("nvarchar(max)");
 
@@ -470,15 +470,11 @@ namespace MaintenanceWebApp.Migrations
                     b.Property<string>("DiameterUnit")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("DiameterValue")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<double?>("DiameterValue")
+                        .HasColumnType("float");
 
                     b.Property<string>("Image")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Material")
-                        .HasMaxLength(25)
-                        .HasColumnType("nvarchar(25)");
 
                     b.Property<int?>("Quantity")
                         .HasColumnType("int");

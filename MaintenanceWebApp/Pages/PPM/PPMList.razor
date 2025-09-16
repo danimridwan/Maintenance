@@ -122,7 +122,7 @@
 
             @* Tabel Data PPM *@
             <QuickGrid Items="@(CurrentPpmData)" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">
-                <TemplateColumn Title="ID" Sortable="true">
+                <TemplateColumn Title="ID" SortBy="SortById">
                     <a class="text-decoration-none fw-semibold text-primary" style="cursor:pointer;"
                     @onclick="() => NavigateToPPM(context, PpmPage.Info)">
                         @context.PPMID
@@ -130,9 +130,19 @@
                 </TemplateColumn>
 
                 <PropertyColumn Property="@(ppm => ppm.JobCategory)" Title="Jenis Pekerjaan" Sortable="true" />
+
+                @if (tableChoice == TableChoice.Approval && (userPermissions.IsMaintenanceSupervisor || userPermissions.IsMaintenance))
+                {
+                    <TemplateColumn Title="Tingkat Prioritas" SortBy="SortByPriority">
+                        <span class="badge rounded-pill @GetPriorityBadgeClass(context)">
+                            @GetPriorityBadgeText(context)
+                        </span>
+                    </TemplateColumn>
+                }
+
                 <PropertyColumn Property="@(ppm => ppm.DateCreated.ToString("dd-MM-yyyy"))" Title="Tanggal" Sortable="true" />
 
-                <TemplateColumn Title="Status" Sortable="true">
+                <TemplateColumn Title="Status" SortBy="SortByStatus">
                     <span class="badge @GetBadgeClass(context)">
                         @GetBadgeText(context)
                     </span>
@@ -152,6 +162,9 @@
 
     // Properti State
     private IQueryable<PPMTask>? _allPpm;
+    private GridSort<PPMTask> SortById = GridSort<PPMTask>.ByAscending(p => p.PPMID);
+    private GridSort<PPMTask> SortByStatus = GridSort<PPMTask>.ByAscending(p => p.Level);
+    private GridSort<PPMTask> SortByPriority = GridSort<PPMTask>.ByAscending(p => p.Priority);
     private User? userInfo;
     private bool isLoading = true;
     private string statusMessage = string.Empty;
@@ -422,6 +435,18 @@
         };
     }
 
+    private string GetPriorityBadgeText(PPMTask ppm)
+    {
+        // Mengembalikan teks berdasarkan nilai integer Priority
+        return ppm.Priority switch
+        {
+            1 => "Tinggi",    // 1 = High
+            2 => "Sedang",    // 2 = Medium
+            3 => "Normal",    // 3 = Normal
+            _ => "N/A"      // Teks default jika nilainya tidak dikenali
+        };
+    }
+
     private string GetBadgeClass(PPMTask ppm)
     {
         // Kondisi khusus untuk status "Request"
@@ -440,6 +465,18 @@
             PPMStatusLevel.Completed => "bg-success",
             PPMStatusLevel.Rejected => "bg-danger",
             _ => "bg-light text-dark"
+        };
+    }
+
+    private string GetPriorityBadgeClass(PPMTask ppm)
+    {
+        // Mengembalikan kelas warna CSS berdasarkan nilai integer Priority
+        return ppm.Priority switch
+        {
+            1 => "bg-danger",             // 1 = High
+            2 => "bg-warning text-dark",  // 2 = Medium
+            3 => "bg-primary",            // 3 = Normal
+            _ => "bg-secondary"         // Warna default jika tidak dikenali
         };
     }
 

@@ -1,0 +1,315 @@
+﻿@page "/TankEdit/{TankId:int}"
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using System.IO
+@implements IDisposable
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<div class="card">
+    <div class="card-header bg-light border-primary">
+        @* Header Halaman *@
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a style="cursor: pointer;" @onclick="CancelAsync" class="nav-link" aria-label="Kembali ke Daftar Tangki">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Informasi Tangki</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        @if (tank != null)
+        {
+            @* Formulir Edit Data *@
+            <EditForm Model="tank" OnValidSubmit="HandleUpdateTankAsync" OnInvalidSubmit="HandleInvalidSubmitAsync">
+                <DataAnnotationsValidator />
+
+                <div class="col-sm-12 mb-3">
+                    <label for="TankNo" class="col-form-label">Nomor Tangki <span class="required">*</span></label>
+                    <InputText id="TankNo" @bind-Value="tank.TankNo" class="form-control" />
+                    <ValidationMessage For="@(() => tank.TankNo)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Capacity" class="col-form-label">Kapasitas (KL) <span class="required">*</span></label>
+                    <InputNumber id="Capacity" @bind-Value="tank.Capacity" class="form-control" />
+                    <ValidationMessage For="@(() => tank.Capacity)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Material" class="col-form-label">Material <span class="required">*</span></label>
+                    <InputSelect id="Material" @bind-Value="tank.Material" class="form-select">
+                        <option value="">Pilih Material...</option>
+                        @foreach (var material in materialOptions)
+                        {
+                            <option value="@material">@material</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => tank.Material)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="InternalCoating" class="col-form-label">Internal Coating</label>
+                    <InputSelect id="InternalCoating" @bind-Value="tank.InternalCoating" class="form-select">
+                        <option value="">Pilih Tipe Coating...</option>
+                        @foreach (var coating in internalCoatingOptions)
+                        {
+                            <option value="@coating">@coating</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => tank.InternalCoating)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
+                    <label for="Foto" class="col-form-label">Foto</label>
+                    @if (!fileStatus)
+                    {
+                        <InputFile id="Foto" class="form-control"
+                                   accept=".jpg,.jpeg,.png"
+                                   OnChange="HandleFileUploadAsync" />
+                        <small class="form-text text-muted">Opsional: Unggah foto Tangki (JPG, JPEG, PNG).</small>
+                        <ValidationMessage For="@(() => filePath)" />
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center">
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="Tank Image">
+                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                        </div>
+                    }
+                </div>
+
+                @* Tombol Aksi *@
+                <div class="float-end mt-3">
+                    <button type="button" class="btn btn-secondary me-2" @onclick="CancelAsync">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Simpan</button>
+                </div>
+            </EditForm>
+        }
+        else
+        {
+            <p>Memuat Data Tangki...</p>
+        }
+    </div>
+</div>
+
+@code {
+    // Parameter Halaman
+    [Parameter]
+    public int TankId { get; set; }
+
+    // Properti Halaman
+    private Tank? tank;
+    private EditContext? editContext;
+    private DotNetObjectReference<TankEdit>? dotNetHelper;
+    private string _webStorageRoot = string.Empty;
+
+    // State File
+    private string? originalFilePath;
+    private string? filePath;
+    private bool fileStatus;
+
+    // Form Properties
+    private static readonly List<string> internalCoatingOptions = new()
+    {
+        "Interline 850",
+        "Phenolic - Interline 944",
+        "Sigma Phen Guard",
+        "Zinc-Interzinc 22",
+        "Sigma Guard 750"
+    };
+    private static readonly List<string> materialOptions = new()
+    {
+        "Abs-Grade A (Carbon Steel)",
+        "SS - 400 (Carbon Steel)",
+        "SS - 41 (Carbon Steel)",
+        "Stainless Steel SUS 316",
+        "Stainless Steel SUS 304",
+        "A 283-Grade C (Carbon Steel)",
+        "ASTM A-36 (Carbon Steel)",
+        "ASTM 283 Gr. C (Carbon Steel)"
+    };
+
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string IMAGE_FILE_CATEGORY = "img";
+    private const string IMAGE_FOLDER_NAME = "Tank";
+
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationAsync();
+        await LoadTankDataAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task LoadTankDataAsync()
+    {
+        tank = await CRUDService.ReadSingleAsync<Tank, int>(TankId);
+        if (tank == null)
+        {
+            await NotificationService.AlertMessage("Data Tank tidak ditemukan.");
+            NavigationManager.NavigateTo("./TankList", forceLoad: true);
+        }
+        else
+        {
+            // Inisialisasi EditContext dan status file
+            editContext = new EditContext(tank);
+            InitializeFileStatus(tank.Image);
+        }
+    }
+
+    private void InitializeFileStatus(string? imagePath)
+    {
+        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
+        originalFilePath = imagePath;
+        filePath = imagePath;
+    }
+
+    // Metode Unggah File
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, IMAGE_FOLDER_NAME, SUB_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+            if (!string.IsNullOrEmpty(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
+                filePath = null; // Reset path jika gagal
+                return;
+            }
+
+            filePath = UploadService.FilePath;
+            fileStatus = true;
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
+        }
+    }
+
+    private async Task HandleFileChangeAsync()
+    {
+        if (fileStatus && filePath != originalFilePath)
+        {
+            // Jika pengguna berubah pikiran dan ingin menghapus file yang baru diunggah
+            await DeleteOldFileAsync(filePath);
+            filePath = originalFilePath; // Kembalikan ke path original
+        }
+        fileStatus = !fileStatus;
+    }
+
+    private async Task DeleteOldFileAsync(string? path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            await UploadService.FileChange(path, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage("Gagal menghapus file lama. Silakan coba lagi.");
+                NotificationService.LogMessage($"Gagal menghapus file lama. Detail: {UploadService.UploadErrorMessage}");
+            }
+        }
+    }
+
+    private string CreateFilePath(string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return "/noimg.png";
+        }
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    // Metode Penanganan Submit
+    private async Task HandleUpdateTankAsync()
+    {
+        if (tank == null) return;
+
+        // Sinkronisasi path file sebelum update
+        tank.Image = fileStatus ? filePath : null;
+
+        // Jika ada perubahan file, hapus file lama
+        if (filePath != originalFilePath)
+        {
+            await DeleteOldFileAsync(originalFilePath);
+        }
+
+        await CRUDService.UpdateAsync(tank);
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data. Silakan coba lagi.");
+            NotificationService.LogMessage($"Gagal menyimpan data tank. Detail: {CRUDService.CRUDErrorMessage}");
+            return;
+        }
+
+        NavigationManager.NavigateTo("./TankList?status=EditSuccess");
+    }
+
+
+
+    private async Task HandleInvalidSubmitAsync()
+    {
+        await NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
+
+    // Metode Navigasi
+    private async Task CancelAsync()
+    {
+        // Bersihkan file temporer jika ada (file baru yang diunggah tapi dibatalkan)
+        if (filePath != originalFilePath)
+        {
+            await DeleteOldFileAsync(filePath);
+        }
+
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+        NavigationManager.NavigateTo("./TankList");
+    }
+
+    // Metode untuk JavaScript Interop
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Implementasi IDisposable untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+}

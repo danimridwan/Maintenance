@@ -44,6 +44,19 @@
                                         <ValidationMessage For="@(() => PpmTask.TargetDate)" />
                                     </div>
                                 </div>
+
+                                <div class="col-12">
+                                    <div class="form-floating mb-3">
+                                        <InputSelect id="TingkatPrioritas" @bind-Value="PpmTask.Priority" class="form-select" required>
+                                            <option value="" disabled selected>Pilih Tingkat Prioritas</option>
+                                            <option value="1">Tinggi (High)</option>
+                                            <option value="2">Sedang (Medium)</option>
+                                            <option value="3">Normal (Normal)</option>
+                                        </InputSelect>
+                                        <label for="TingkatPrioritas">Tingkat Prioritas<span class="required">*</span></label>
+                                        <ValidationMessage For="@(() => PpmTask.Priority)" />
+                                    </div>
+                                </div>
                             }
                             else if (CanApproveWithMaintenancePIC())
                             {

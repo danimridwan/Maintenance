@@ -7,6 +7,9 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using MailKit.Net.Smtp
+@using MailKit.Security
+@using MimeKit
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
@@ -117,6 +120,11 @@
     private User? userInfo;
     private DotNetObjectReference<PPMAdd> dotNetHelper = default!;
     private Dictionary<string, string> validationMessages = new();
+    private IMailerService _mailer;
+    public PPMAdd(IMailerService mailer)
+    {
+        _mailer = mailer;
+    }
 
     // Konstanta
     private const string SUB_FOLDER_NAME = "PPM";
@@ -127,7 +135,7 @@
     private string _webPpmRoot = string.Empty;
 
     // Form Properties
-    private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
+    private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing", "Lainnya" };
 
     // Metode Lifecycle Blazor
     protected override async Task OnInitializedAsync()
@@ -251,8 +259,93 @@
         };
         await CRUDService.CreateAsync(ppmTaskHistory);
 
+        // Panggil fungsi terpisah untuk mengirim email notifikasi.
+        await SendPpmNotificationAsync(ppmTask);
+
         NavigationManager.NavigateTo("./PPMList?status=CreateSuccess");
     }
+
+    private async Task SendPpmNotificationAsync(PPMTask task)
+    {
+        User? targetPetugas = null;
+
+        // Tentukan penerima email berdasarkan seksi pemohon.
+        if (task.PPMSection == "Operation" || task.PPMSection == "HSE")
+        {
+            // Cari Manager di seksi yang sama.
+            var managerUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Manager" && u.Section == task.PPMSection);
+            targetPetugas = managerUsers.FirstOrDefault();
+        }
+        else
+        {
+            // Cari Terminal Manager untuk seksi lainnya.
+            var tmUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Terminal Manager");
+            targetPetugas = tmUsers.FirstOrDefault();
+        }
+
+        // Tampilkan alert jika target petugas ditemukan.
+        if (targetPetugas != null)
+        {
+            string subject = $"[PERSETUJUAN DIPERLUKAN] PPM Baru: {task.PPMID}";
+            string pesanAksi = "Laporan PPM baru telah dibuat dan membutuhkan persetujuan Anda. Mohon untuk segera ditindaklanjuti.";
+
+            string body = $@"
+{pesanAksi}
+    ID PPM: {task.PPMID}
+    Kategori Pekerjaan: {task.JobCategory}
+    Deskripsi Pekerjaan: {task.JobDescription}";
+
+            // --- PERUBAHAN QA/QC ---
+            // var emailTemplate = $"<p>Salam,</p>{body.Replace("\n", "<br/>")}";
+            // await _mailer.SendEmailAsync(targetPetugas.Email, subject, emailTemplate);
+            await NotificationService.AlertMessage(
+                $"--- QA EMAIL (PETUGAS BARU) ---\n" +
+                $"Penerima: {targetPetugas.Email}\n" +
+                $"Subjek: {subject}\n" +
+                $"Isi: {body}"
+            );
+        }
+    }
+
+    /*
+     * FUNGSI PENGIRIMAN EMAIL VERSI (PRODUKSI)
+        private async Task SendPpmNotificationAsync(PPMTask task)
+    {
+        User? targetPetugas = null;
+
+        // Tentukan penerima email berdasarkan seksi pemohon.
+        if (task.PPMSection == "Operation" || task.PPMSection == "HSE")
+        {
+            // Cari Manager di seksi yang sama.
+            var managerUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Manager" && u.Section == task.PPMSection);
+            targetPetugas = managerUsers.FirstOrDefault();
+            }
+        else
+        {
+            // Cari Terminal Manager untuk seksi lainnya.
+            var tmUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Terminal Manager");
+            targetPetugas = tmUsers.FirstOrDefault();
+            }
+
+        // Kirim email jika target petugas ditemukan.
+        if (targetPetugas != null)
+        {
+            string subject = $"[PERSETUJUAN DIPERLUKAN] PPM Baru: {task.PPMID}";
+            string pesanAksi = "Laporan PPM baru telah dibuat dan membutuhkan persetujuan Anda. Mohon untuk segera ditindaklanjuti.";
+
+            string body = $@"
+    <p>{pesanAksi}</p>
+    <ul>
+    <li><strong>ID PPM:</strong> {task.PPMID}</li>
+    <li><strong>Kategori Pekerjaan:</strong> {task.JobCategory}</li>
+    <li><strong>Deskripsi Pekerjaan:</strong> {task.JobDescription}</li>
+    </ul>
+    <p>Terima kasih.</p>";
+
+            var emailTemplate = $"<p>Salam,</p>{body}";
+            await _mailer.SendEmailAsync(targetPetugas.Email, subject, emailTemplate);
+            }
+        }*/
 
     private Task HandleInvalidSubmitAsync()
     {

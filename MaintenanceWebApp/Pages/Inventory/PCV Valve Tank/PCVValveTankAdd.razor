@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using System.Text.RegularExpressions
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
@@ -83,18 +84,9 @@
 
             <div class="row">
                 <div class="col-sm-6 mb-3">
-                    <div class="row">
-                        <div class="col-sm-6">
-                            <label for="TekananDesain" class="col-form-label">Tekanan Desain (+Bar)</label>
-                            <InputNumber class="form-control" id="TekananDesainPositif" @bind-Value="pcvValveTank.DesignPressureValue1" @oninput="OnDesignPressureInputChanged" />
-                            <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue1)" />
-                        </div>
-                        <div class="col-sm-6">
-                            <label for="TekananDesainNegatif" class="col-form-label">Tekanan Desain (-Bar)</label>
-                            <InputNumber class="form-control" id="TekananDesainNegatif" @bind-Value="pcvValveTank.DesignPressureValue2" />
-                            <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue2)" />
-                        </div>
-                    </div>
+                    <label for="TekananDesain" class="col-form-label">Tekanan Desain (mmH20)</label>
+                    <InputText class="form-control" id="TekananDesain" @bind-Value="pcvValveTank.DesignPressureValue" @oninput="OnDesignPressureInputChanged" />
+                    <ValidationMessage For="@(() => pcvValveTank.DesignPressureValue)" />
                 </div>
 
                 <div class="col-sm-6 mb-3">
@@ -133,9 +125,9 @@
                 @if (string.IsNullOrWhiteSpace(pcvValveTank.Image))
                 {
                     <InputFile id="Foto" class="form-control"
-                               accept=".jpg,.jpeg,.png"
-                               OnChange="HandleFileUpload" />
-                    <small class="form-text text-muted">Opsional: Unggah foto Breather Valve (JPG, JPEG, PNG).</small>
+                    accept=".jpg,.jpeg,.png"
+                    OnChange="HandleFileUpload" />
+                    <small class="form-text text-muted">Opsional: Unggah foto PCV Valve Tank (JPG, JPEG, PNG).</small>
                     <ValidationMessage For="@(() => pcvValveTank.Image)" />
                 }
                 else
@@ -174,7 +166,7 @@
 
     // Konstanta untuk dropdown
     private static readonly List<string> pcvValveTankBrand = new() { "KSPC / Blanketing Device", "SHAND & JURS" };
-    private static readonly List<string> pcvValveTankType = new() { "Blanketing DST-100", "Blanketing Valve 94270" };
+    private static readonly List<string> pcvValveTankType = new() { "Blanketing DST-100", "Blanketing DST-101", "Blanketing Valve 94270" };
     private static readonly List<string> pcvValveTankMaterial = new() { "Stainless Steel", "Alumunium" };
     private static readonly List<string> diameterUnits = new() { "inch", "mm" };
 
@@ -259,6 +251,17 @@
 
     private async Task HandleCreatePCVValveTank()
     {
+        // Validasi untuk Tekanan Desain
+        if (!string.IsNullOrWhiteSpace(pcvValveTank.DesignPressureValue))
+        {
+            string pattern = @"^[0-9,/\s]*$";
+            if (!Regex.IsMatch(pcvValveTank.DesignPressureValue, pattern))
+            {
+                await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Tekanan Desain, pastikan format benar dan unit telah dipilih.");
+                return;
+            }
+        }
+
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
@@ -363,17 +366,17 @@
 
     private void OnDesignPressureInputChanged(ChangeEventArgs args)
     {
-        // Logika validasi khusus dari kode sumber
-        if (pcvValveTank.DesignPressureValue1.HasValue && pcvValveTank.DesignPressureValue1.Value > 0)
+        var inputValue = args.Value?.ToString() ?? string.Empty;
+        string pattern = @"^[0-9,/\s]*$";
+
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            pcvValveTank.DesignPressureUnit = "Bar";
+            pcvValveTank.DesignPressureValue = inputValue;
         }
         else
         {
-            pcvValveTank.DesignPressureUnit = null;
+            pcvValveTank!.DesignPressureValue = string.Empty;
         }
-
-        StateHasChanged();
     }
 
     private void OnDiameterValveInputChanged(ChangeEventArgs args)

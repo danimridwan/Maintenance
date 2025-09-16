@@ -21,6 +21,8 @@ namespace MaintenanceWebApp.Data
         // Status PPM, menggunakan enum yang baru
         public PPMStatusLevel Level { get; set; } = PPMStatusLevel.Request; // Defaultnya adalah Request (0)
 
+        public int? Priority { get; set; }
+
         // Detail Pelaksanaan (diisi oleh peran selanjutnya)
         public DateOnly? TargetDate { get; set; } // Tanggal target penyelesaian
         public DateTime? MaintenanceCompletionDate { get; set; }

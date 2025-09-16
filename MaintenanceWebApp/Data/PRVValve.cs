@@ -23,11 +23,13 @@ namespace MaintenanceWebApp.Data
         [StringLength(25, ErrorMessage = "Input Merk melebihi batas karakter (maks 25 karakter).")]
         public string? Brand { get; set; }
 
+        [StringLength(25, ErrorMessage = "Input Material melebihi batas karakter (maks 25 karakter).")]
+        public string? Material { get; set; }
+
         [StringLength(25, ErrorMessage = "Input Tipe melebihi batas karakter (maks 25 karakter).")]
         public string? Type { get; set; }
 
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Diameter Valve dengan benar!")]
-        public double? DiameterValue { get; set; }
+        public string? DiameterValue { get; set; }
 
         public string? DiameterUnit { get; set; }
 

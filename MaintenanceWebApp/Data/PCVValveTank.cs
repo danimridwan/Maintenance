@@ -31,11 +31,7 @@ namespace MaintenanceWebApp.Data
 
         public string? DiameterUnit { get; set; }
 
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Tekanan Desain dengan benar!")]
-        public double? DesignPressureValue1 { get; set; }
-
-        [Range(0.01, double.MaxValue, ErrorMessage = "Isi nilai Tekanan Desain dengan benar!")]
-        public double? DesignPressureValue2 { get; set; }
+        public string? DesignPressureValue { get; set; }
 
         public string? DesignPressureUnit { get; set; }
 

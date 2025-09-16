@@ -7,6 +7,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
 @using System.IO
+@using System.Text.RegularExpressions
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
 @inject IJSRuntime JSRuntime
@@ -52,6 +53,21 @@
                 <InputText id="NomorTangki" @bind-Value="prvValve.TankNumber" class="form-control" />
                 <ValidationMessage For="@(() => prvValve.TankNumber)" />
             </div>
+
+            @if (prvValve.Category == "PRV Valve Tank")
+            {
+                <div class="col-sm-12 mb-3">
+                    <label for="Material" class="col-form-label">Material</label>
+                    <InputSelect id="Material" @bind-Value="prvValve.Material" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var material in prvValveMaterial)
+                        {
+                            <option value="@material">@material</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => prvValve.Material)" />
+                </div>
+            }
 
             <div class="row">
                 <div class="col-sm-6 mb-3">
@@ -108,7 +124,7 @@
                     <div class="row">
                         <div class="col-sm-8">
                             <label for="DiameterValve" class="col-form-label">Diameter Valve</label>
-                            <InputNumber class="form-control" id="DiameterValve" @bind-Value="prvValve.DiameterValue" @oninput="OnDiameterValveInputChanged" />
+                            <InputText class="form-control" id="DiameterValve" @bind-Value="prvValve.DiameterValue" @oninput="OnDiameterValveInputChanged" />
                             <ValidationMessage For="@(() => prvValve.DiameterValue)" />
                         </div>
                         <div class="col-sm-4">
@@ -120,7 +136,7 @@
                                     <option value="@unit">@unit</option>
                                 }
                             </InputSelect>
-                            @if (prvValve.DiameterValue.HasValue && prvValve.DiameterValue.Value > 0 && string.IsNullOrWhiteSpace(prvValve.DiameterUnit))
+                            @if (!string.IsNullOrWhiteSpace(prvValve.DiameterValue) && string.IsNullOrWhiteSpace(prvValve.DiameterUnit))
                             {
                                 <div class="text-danger">Satuan Diameter harus dipilih.</div>
                             }
@@ -181,8 +197,9 @@
     private string _webStorageRoot = string.Empty;
 
     // Form Properties
-    private List<string> prvValveBrand = new() { "AMEC", "TOYO JUC", "PST", "KUMALA", "LESIN" };
-    private List<string> prvValveType = new() { "Pilot Operated", "Weight Loaded", "Spring Loaded" };
+    private List<string> prvValveBrand = new() { "S3W-A", "T-ONE 317 Safety Valve", "317 Safety Valve", "HISEC" };
+    private List<string> prvValveType = new() { "Safety Valve", "317 Safety Valve", "SV-B27", "MFW-A", "317 Hisec" };
+    private List<string> prvValveMaterial = new() { "Carbon Steel", "Stainless Steel 316", "Kuningan" };
     private List<string> designPressureUnits = new() { "Bar", "MMH2O" };
     private List<string> diameterUnits = new() { "inch", "mm" };
 
@@ -267,6 +284,14 @@
 
     private async Task HandleCreatePRVValve()
     {
+        //Validasi Diameter
+        string pattern = @"^[0-9,/s]*$";
+        if (!Regex.IsMatch(prvValve.DiameterValue, pattern))
+        {
+            await NotificationService.AlertMessage("Input tidak valid. Mohon periksa kembali input Diameter Valve, pastikan format benar dan unit telah dipilih.");
+            return;
+        }
+
         if (uploadErrorStatus)
         {
             await NotificationService.AlertMessage($"Gagal upload gambar.\n{UploadService.UploadErrorMessage}");
@@ -381,7 +406,6 @@
         }
 
         IsDesignPressureUnitDisabled = !prvValve.DesignPressureValue.HasValue || prvValve.DesignPressureValue.Value <= 0;
-
         if (IsDesignPressureUnitDisabled)
         {
             prvValve.DesignPressureUnit = null;
@@ -391,17 +415,19 @@
 
     private void OnDiameterValveInputChanged(ChangeEventArgs args)
     {
-        if (double.TryParse(args.Value?.ToString(), out double currentPRVValveInputValue))
+        string? inputValue = args.Value?.ToString();
+        string pattern = @"^[0-9,/s]*$";
+
+        if (Regex.IsMatch(inputValue, pattern))
         {
-            prvValve.DiameterValue = currentPRVValveInputValue;
+            prvValve.DiameterValue = inputValue;
         }
         else
         {
-            prvValve.DiameterValue = null;
+            prvValve.DiameterValue = string.Empty;
         }
 
-        IsDiameterUnitDisabled = !prvValve.DiameterValue.HasValue || prvValve.DiameterValue.Value <= 0;
-
+        IsDiameterUnitDisabled = string.IsNullOrWhiteSpace(inputValue);
         if (IsDiameterUnitDisabled)
         {
             prvValve.DiameterUnit = null;
