@@ -610,6 +610,12 @@ else
         if (selectedHistory == null) return;
         try
         {
+            //Hapus Foto
+            if (!string.IsNullOrEmpty(selectedHistory.Photo))
+            {
+                await UploadService.FileChange(selectedHistory.Photo, SUB_FOLDER_NAME);
+            }
+
             await CRUDService.DeleteAsync<InventoryMaintenanceHistory>(selectedHistory);
             await NotificationService.AlertMessage("Riwayat berhasil dihapus.");
             NavigationManager.Refresh();

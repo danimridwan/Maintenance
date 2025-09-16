@@ -150,19 +150,18 @@
 
                 <div class="col-sm-12 mb-3">
                     <label for="Foto" class="col-form-label">Foto</label>
-                    @if (string.IsNullOrWhiteSpace(prvValve.Image))
+                    @if (!fileStatus)
                     {
                         <InputFile id="Foto" class="form-control"
                                    accept=".jpg,.jpeg,.png"
                                    OnChange="HandleFileUploadAsync" />
-                        <small class="form-text text-muted">Opsional: Unggah foto PRV Valve (JPG, JPEG, PNG).</small>
-                        <ValidationMessage For="@(() => prvValve.Image)" />
+                        <ValidationMessage For="@(() => filePath)" />
                     }
                     else
                     {
                         <div class="d-flex align-items-center">
-                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(prvValve.Image)" alt="PRV Valve Image">
-                            <button @onclick="() => HandleFileChangeAsync(prvValve.Image, FILE_CATEGORY)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                            <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(filePath!)" alt="Breather Valve Image">
+                            <button @onclick="HandleFileChangeAsync" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
                         </div>
                     }
                 </div>
@@ -188,6 +187,7 @@
 
     // Properti Halaman
     private PRVValve? prvValve;
+    private EditContext? editContext;
     private DotNetObjectReference<PRVValveEdit>? dotNetHelper;
     private string _webStorageRoot = string.Empty;
 
@@ -197,6 +197,8 @@
 
     // State File
     private string? originalFilePath;
+    private string? filePath;
+    private bool fileStatus;
 
     // Konstanta
     private const string SUB_FOLDER_NAME = "Inventories";
@@ -249,7 +251,12 @@
         }
         else
         {
-            originalFilePath = prvValve.Image;
+            // Inisialisasi EditContext dan status file
+            editContext = new EditContext(prvValve);
+            editContext.OnValidationStateChanged += (sender, e) => StateHasChanged();
+            editContext.OnFieldChanged += (sender, e) => StateHasChanged();
+
+            InitializeFileStatus(prvValve.Image);
 
             // Inisialisasi status unit
             IsDesignPressureUnitDisabled = !prvValve.DesignPressureValue.HasValue || prvValve.DesignPressureValue.Value <= 0;
@@ -257,11 +264,16 @@
         }
     }
 
+    private void InitializeFileStatus(string? imagePath)
+    {
+        fileStatus = !string.IsNullOrWhiteSpace(imagePath);
+        originalFilePath = imagePath;
+        filePath = imagePath;
+    }
+
     // Metode Unggah File
     private async Task HandleFileUploadAsync(InputFileChangeEventArgs e)
     {
-        if (prvValve == null) return;
-
         try
         {
             await UploadService.FilesUpload(e.File, FOLDER_NAME, SUB_FOLDER_NAME, FILE_CATEGORY);
@@ -269,42 +281,36 @@
             {
                 await NotificationService.AlertMessage($"Gagal mengunggah gambar. Detail: {UploadService.UploadErrorMessage}");
                 NotificationService.LogMessage($"Pengunggahan gambar gagal. Detail: {UploadService.UploadErrorMessage}");
+                filePath = null;
                 return;
             }
-            prvValve.Image = UploadService.FilePath;
+
+            filePath = UploadService.FilePath;
+            fileStatus = true;
+            editContext?.NotifyFieldChanged(FieldIdentifier.Create(() => filePath));
         }
         catch (Exception ex)
         {
             await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
             NotificationService.LogMessage($"Pengecualian saat mengunggah file. Detail: {ex.Message}");
         }
-        StateHasChanged();
     }
 
-    private async Task HandleFileChangeAsync(string? filePath, string fileType)
+    private async Task HandleFileChangeAsync()
     {
-        if (prvValve == null || string.IsNullOrWhiteSpace(filePath)) return;
-        try
+        if (fileStatus)
         {
-            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
-            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            // Hapus file lama jika filePath berubah
+            if (filePath != originalFilePath)
             {
-                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
-                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
-                return;
+                await DeleteOldFileAsync(filePath);
             }
-
-            if (fileType == FILE_CATEGORY)
-            {
-                prvValve.Image = null;
-            }
+            fileStatus = false;
         }
-        catch (Exception ex)
+        else
         {
-            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
-            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
+            fileStatus = true;
         }
-        StateHasChanged();
     }
 
     private async Task DeleteOldFileAsync(string? path)
@@ -386,8 +392,11 @@
             return;
         }
 
+        // Sinkronisasi path file sebelum update
+        prvValve.Image = fileStatus ? filePath : null;
+
         // Jika ada perubahan file, hapus file lama
-        if (prvValve.Image != originalFilePath)
+        if (filePath != originalFilePath)
         {
             await DeleteOldFileAsync(originalFilePath);
         }
@@ -419,12 +428,12 @@
     // Metode Navigasi
     private async Task CancelAsync()
     {
-        // Bersihkan file temporer jika ada dan tidak jadi disimpan
-        if (prvValve != null && prvValve.Image != originalFilePath)
+        // Bersihkan file temporer jika ada
+        if (filePath != originalFilePath)
         {
-            await DeleteOldFileAsync(prvValve.Image);
+            await DeleteOldFileAsync(filePath);
         }
-        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+
         NavigationManager.NavigateTo("./PRVValveList");
     }
 

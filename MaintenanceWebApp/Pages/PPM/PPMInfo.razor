@@ -346,7 +346,6 @@ else
         // Logika notifikasi untuk aksi "Approve".
         if (actionType == "Approve")
         {
-            // Tentukan konten dinamis untuk email pemohon.
             string jenisAksi = "";
             string tambahanKeterangan = "";
             switch (task.Level)
@@ -363,14 +362,6 @@ else
                     jenisAksi = "ditugaskan";
                     tambahanKeterangan = $"dikerjakan oleh {task.MaintenancePIC} sebagai Maintenance PIC";
                     break;
-                case PPMStatusLevel.OnProgress:
-                    jenisAksi = "diselesaikan pengerjaannya";
-                    tambahanKeterangan = "dicek oleh Anda sebagai Pemohon";
-                    break;
-                case PPMStatusLevel.Checking:
-                    jenisAksi = "diverifikasi";
-                    tambahanKeterangan = "ditutup";
-                    break;
             }
 
             // Tampilkan alert notifikasi untuk pemohon.
@@ -378,12 +369,16 @@ else
             {
                 string subjectToRequestor = $"Update Laporan PPM ({task.PPMID})";
                 string bodyToRequestor = $"Laporan PPM Anda telah {jenisAksi} oleh {currentUser.FullName} dan akan {tambahanKeterangan}.";
+
+                //Hapus Jika sudah ingin produksi
                 await NotificationService.AlertMessage(
                     $"--- QA EMAIL (REQUESTOR) ---\n" +
                     $"Penerima: {requestor.Email}\n" +
                     $"Subjek: {subjectToRequestor}\n" +
                     $"Isi: {bodyToRequestor}"
                 );
+
+                //await _mailer.SendEmailAsync(requestor.Email, subjectToRequestor, bodyToRequestor);
             }
 
             // Tentukan petugas berikutnya dalam alur kerja.
@@ -421,134 +416,6 @@ else
             if (nextPetugas != null && !string.IsNullOrEmpty(subjectForPetugas))
             {
                 string bodyForPetugas = $@"
-{pesanAksi}
-    ID PPM: {task.PPMID}
-    Kategori Pekerjaan: {task.JobCategory}
-    Deskripsi Pekerjaan: {task.JobDescription}";
-                await NotificationService.AlertMessage(
-                    $"--- QA EMAIL (PETUGAS) ---\n" +
-                    $"Penerima: {nextPetugas.Email}\n" +
-                    $"Subjek: {subjectForPetugas}\n" +
-                    $"Isi: {bodyForPetugas}"
-                );
-            }
-        }
-        // Logika notifikasi untuk aksi "Reject".
-        else if (actionType == "Reject")
-        {
-            // Tentukan peran petugas yang menolak.
-            string petugasPPM = "";
-            switch (task.Level)
-            {
-                case PPMStatusLevel.Request:
-                    petugasPPM = "Manager";
-                    break;
-                case PPMStatusLevel.ApprovedByManager:
-                    petugasPPM = "Terminal Manager";
-                    break;
-                case PPMStatusLevel.ApprovedByTerminalManager:
-                    petugasPPM = "Tim Maintenance";
-                    break;
-            }
-
-            // Tampilkan alert notifikasi penolakan.
-            string subjectToRequestor = $"Update Laporan PPM ({task.PPMID})";
-            string bodyToRequestor = $"Laporan PPM Anda telah ditolak oleh {currentUser.FullName} sebagai {petugasPPM}.";
-            await NotificationService.AlertMessage(
-                $"--- QA EMAIL (REQUESTOR) ---\n" +
-                $"Penerima: {requestor.Email}\n" +
-                $"Subjek: {subjectToRequestor}\n" +
-                $"Isi: {bodyToRequestor}"
-            );
-        }
-    }
-
-    /*
-     * FUNGSI PENGIRIMAN EMAIL VERSI (PRODUKSI)
-    private async Task SendPpmNotificationAsync(PPMTask task, User currentUser, string actionType)
-    {
-        // Ambil data pemohon untuk semua notifikasi.
-        var requestor = await CRUDService.ReadSingleAsync<User, string>(task.CreatedBy);
-        if (requestor == null)
-        {
-            NotificationService.LogMessage($"Gagal mengirim email: data pemohon PPM {task.PPMID} tidak ditemukan.");
-            return;
-        }
-
-        // Logika notifikasi untuk aksi "Approve".
-        if (actionType == "Approve")
-        {
-            // Tentukan konten dinamis untuk email pemohon.
-            string jenisAksi = "";
-            string tambahanKeterangan = "";
-            switch (task.Level)
-            {
-                case PPMStatusLevel.Request:
-                    jenisAksi = "disetujui";
-                    tambahanKeterangan = "diproses oleh Terminal Manager";
-                    break;
-                case PPMStatusLevel.ApprovedByManager:
-                    jenisAksi = "disetujui";
-                    tambahanKeterangan = "ditugaskan kepada tim Maintenance";
-                    break;
-                case PPMStatusLevel.ApprovedByTerminalManager:
-                    jenisAksi = "ditugaskan";
-                    tambahanKeterangan = $"dikerjakan oleh {task.MaintenancePIC} sebagai Maintenance PIC";
-                    break;
-                case PPMStatusLevel.OnProgress:
-                    jenisAksi = "diselesaikan pengerjaannya";
-                    tambahanKeterangan = "dicek oleh Anda sebagai Pemohon";
-                    break;
-                case PPMStatusLevel.Checking:
-                    jenisAksi = "diverifikasi";
-                    tambahanKeterangan = "ditutup";
-                    break;
-            }
-
-            // Kirim email notifikasi untuk pemohon.
-            if (!string.IsNullOrEmpty(jenisAksi))
-            {
-                string subjectToRequestor = $"Update Laporan PPM ({task.PPMID})";
-                string bodyToRequestor = $"Laporan PPM Anda telah {jenisAksi} oleh {currentUser.FullName} dan akan {tambahanKeterangan}.";
-                var emailTemplate = $"<p>Salam,</p><p>{bodyToRequestor}</p><p>Terima kasih.</p>";
-                await _mailer.SendEmailAsync(requestor.Email, subjectToRequestor, emailTemplate);
-            }
-
-            // Tentukan petugas berikutnya dalam alur kerja.
-            User? nextPetugas = null;
-            string subjectForPetugas = "";
-            string pesanAksi = "";
-            switch (task.Level)
-            {
-                case PPMStatusLevel.Request: // Kirim ke Terminal Manager.
-                    subjectForPetugas = $"[PERSETUJUAN DIPERLUKAN] PPM {task.PPMID}";
-                    pesanAksi = "Mohon untuk segera melakukan persetujuan untuk PPM berikut:";
-                    var tmUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Terminal Manager");
-                    nextPetugas = tmUsers.FirstOrDefault();
-                    break;
-                case PPMStatusLevel.ApprovedByManager: // Kirim ke Maintenance Supervisor.
-                    subjectForPetugas = $"[PENUGASAN DIPERLUKAN] PPM {task.PPMID}";
-                    pesanAksi = "Mohon untuk segera melakukan persetujuan untuk PPM berikut:";
-                    var msUsers = await CRUDService.ReadAllAsync<User>(u => u.Role == "Maintenance Supervisor");
-                    nextPetugas = msUsers.FirstOrDefault();
-                    break;
-                case PPMStatusLevel.ApprovedByTerminalManager: // Kirim ke PIC Maintenance.
-                    subjectForPetugas = $"[PENGERJAAN DIPERLUKAN] PPM {task.PPMID}";
-                    pesanAksi = "Mohon untuk segera melakukan proses pengerjaan pada PPM berikut:";
-                    var mtUsers = await CRUDService.ReadAllAsync<User>(u => u.FullName == task.MaintenancePIC);
-                    nextPetugas = mtUsers.FirstOrDefault();
-                    break;
-                case PPMStatusLevel.OnProgress: // Kirim kembali ke pemohon untuk pengecekan.
-                    subjectForPetugas = $"[PENGECEKAN DIPERLUKAN] PPM {task.PPMID}";
-                    pesanAksi = $"Pekerjaan untuk PPM berikut telah selesai. Mohon untuk segera melakukan pengecekan dan penyelesaian (completion):";
-                    nextPetugas = requestor;
-                    break;
-            }
-
-            // Kirim email notifikasi untuk petugas.
-            if (nextPetugas != null && !string.IsNullOrEmpty(subjectForPetugas))
-            {
-                string bodyForPetugas = $@"
                 <p>{pesanAksi}</p>
                 <ul>
                     <li><strong>ID PPM:</strong> {task.PPMID}</li>
@@ -557,8 +424,15 @@ else
                 </ul>
                 <p>Mohon untuk segera ditindaklanjuti. Terima kasih.</p>";
 
-                var emailTemplate = $"<p>Salam,</p>{bodyForPetugas}";
-                await _mailer.SendEmailAsync(nextPetugas.Email, subjectForPetugas, emailTemplate);
+                //Hapus Jika sudah ingin produksi
+                await NotificationService.AlertMessage(
+                    $"--- QA EMAIL (PETUGAS) ---\n" +
+                    $"Penerima: {nextPetugas.Email}\n" +
+                    $"Subjek: {subjectForPetugas}\n" +
+                    $"Isi: {bodyForPetugas}"
+                );
+
+                //await _mailer.SendEmailAsync(nextPetugas.Email, subjectForPetugas, bodyForPetugas);
             }
         }
         // Logika notifikasi untuk aksi "Reject".
@@ -577,15 +451,44 @@ else
                 case PPMStatusLevel.ApprovedByTerminalManager:
                     petugasPPM = "Tim Maintenance";
                     break;
+                case PPMStatusLevel.Checking:
+                    petugasPPM = "Pemohon";
+                    break;
             }
 
-            // Kirim email notifikasi penolakan.
-            string subjectToRequestor = $"Update Laporan PPM ({task.PPMID})";
-            string bodyToRequestor = $"Laporan PPM Anda telah ditolak oleh {currentUser.FullName} sebagai {petugasPPM}.";
-            var emailTemplate = $"<p>Salam,</p><p>{bodyToRequestor}</p><p>Terima kasih.</p>";
-            await _mailer.SendEmailAsync(requestor.Email, subjectToRequestor, emailTemplate);
+            // Tampilkan alert notifikasi penolakan.
+            string subjectReject = $"Update Laporan PPM ({task.PPMID})";
+            string bodyReject = $"Laporan PPM Anda telah ditolak oleh {currentUser.FullName} sebagai {petugasPPM}.";
+
+            if (task.Level == PPMStatusLevel.Checking)
+            {
+                var mtUsers = await CRUDService.ReadAllAsync<User>(u => u.FullName == task.MaintenancePIC);
+                var mtPIC = mtUsers.FirstOrDefault();
+
+                //Hapus Jika sudah ingin produksi
+                await NotificationService.AlertMessage(
+                    $"--- QA EMAIL (PIC Maintenance) ---\n" +
+                    $"Penerima: {mtPIC.Email}\n" +
+                    $"Subjek: {subjectReject}\n" +
+                    $"Isi: {bodyReject}"
+                );
+
+                //await _mailer.SendEmailAsync(mtPIC.Email, subjectReject, bodyReject);
+            }
+            else
+            {
+                //Hapus Jika sudah ingin produksi
+                await NotificationService.AlertMessage(
+                    $"--- QA EMAIL (REQUESTOR) ---\n" +
+                    $"Penerima: {requestor.Email}\n" +
+                    $"Subjek: {subjectReject}\n" +
+                    $"Isi: {bodyReject}"
+                );
+
+                //await _mailer.SendEmailAsync(requestor.Email, subjectReject, bodyReject);
+            }
         }
-    }*/
+    }
 
     private async Task HandleCancel()
     {

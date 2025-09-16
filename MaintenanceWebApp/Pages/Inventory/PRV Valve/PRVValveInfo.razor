@@ -108,6 +108,13 @@ else
                                         <label class="form-label text-muted">Merk</label>
                                         <p class="info-text">@prvValve.Brand</p>
                                     </div>
+                                    @if (prvValve.Category == "PRV Valve Tank")
+                                    {
+                                        <div class="col-md-12">
+                                            <label class="form-label text-muted">Material</label>
+                                            <p class="info-text">@prvValve.Material</p>
+                                        </div>
+                                    }
                                     <div class="col-md-6">
                                         <label class="form-label text-muted">Tipe</label>
                                         <p class="info-text">@prvValve.Type</p>
@@ -269,7 +276,7 @@ else
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
-                                    <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" min="@todayDate" required/>
+                                    <InputDate id="MaintenanceDate" @bind-Value="newMaintenanceHistory.MaintenanceDate" class="form-control" placeholder="Tanggal Maintenance" required />
                                     <label for="MaintenanceDate">Tanggal Maintenance<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.MaintenanceDate)" />
                                 </div>
@@ -289,14 +296,14 @@ else
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
-                                    <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" required/>
+                                    <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" required />
                                     <label for="Description">Deskripsi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Description)" />
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
-                                    <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" required/>
+                                    <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" required />
                                     <label for="Technician">Teknisi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Technician)" />
                                 </div>
@@ -380,7 +387,6 @@ else
     private bool canEditData;
     private int? previousId;
     private PaginationState pagination = new() { ItemsPerPage = 10 };
-    private string todayDate = string.Empty;
 
     // Konstanta
     private string _webStorageRoot = string.Empty;
@@ -405,7 +411,7 @@ else
         if (PRVValveID != previousId)
         {
             isLoading = true;
-            todayDate = DateTime.Now.ToString("yyyy-MM-dd");
+            newMaintenanceHistory.MaintenanceDate = DateTime.Today;
             previousId = PRVValveID;
             await LoadPRVValveAsync();
             await LoadPRVValveMaintenanceHistoryAsync();
@@ -588,13 +594,16 @@ else
     private async Task HandleValidSubmitHistoryAsync()
     {
         if (prvValve is null || user is null) return;
+
         //Inisialisasi Data
         newMaintenanceHistory.InventoryId = prvValve.PRVValveID;
         newMaintenanceHistory.InventoryName = "PRV Valve";
         newMaintenanceHistory.CreatedBy = user.FullName;
         newMaintenanceHistory.CreatedDate = DateTime.Now;
+
         // Menyimpan data menggunakan CRUDService
         await CRUDService.CreateAsync(newMaintenanceHistory);
+
         // Memeriksa hasil operasi CRUD
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
@@ -628,6 +637,12 @@ else
         if (selectedHistory == null) return;
         try
         {
+            //Hapus Foto
+            if (!string.IsNullOrEmpty(selectedHistory.Photo))
+            {
+                await UploadService.FileChange(selectedHistory.Photo, SUB_FOLDER_NAME);
+            }
+
             await CRUDService.DeleteAsync<InventoryMaintenanceHistory>(selectedHistory);
             await NotificationService.AlertMessage("Riwayat berhasil dihapus.");
             NavigationManager.Refresh();
