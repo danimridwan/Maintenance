@@ -29,16 +29,20 @@ namespace MaintenanceWebApp.Data
 
         public string? DiameterUnit { get; set; }
 
-        [StringLength(25, ErrorMessage = "Input Jalur Valve melebihi batas karakter (maks 25 karakter).")]
-        public string? ValveTrack { get; set; }
+        [Required(ErrorMessage = "Jalur Valve harus diisi.")]
+        [StringLength(50, ErrorMessage = "Input Jalur Valve melebihi batas karakter (maks 50 karakter).")]
+        public string ValveTrack { get; set; }
 
-        [StringLength(25, ErrorMessage = "Input Jalur Awal Valve melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(50, ErrorMessage = "Input Jalur Awal Valve melebihi batas karakter (maks 50 karakter).")]
         public string? ValveEntry { get; set; }
 
-        [StringLength(25, ErrorMessage = "Input Jalur Akhir Valve melebihi batas karakter (maks 25 karakter).")]
+        [StringLength(50, ErrorMessage = "Input Jalur Akhir Valve melebihi batas karakter (maks 50 karakter).")]
         public string? ValveExit { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "Isi nilai Kuantitas Valve dengan benar!")]
+        [StringLength(50, ErrorMessage = "Input Jalur Valve CFS melebihi batas karakter (maks 50 karakter).")]
+        public string? CFSValveTrack { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "Isi nilai Jumlah Valve dengan benar!")]
         public int? Quantity { get; set; }
 
         public string? Image { get; set; }

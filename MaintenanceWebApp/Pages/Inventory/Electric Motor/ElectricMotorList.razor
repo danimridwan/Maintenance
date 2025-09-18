@@ -1,0 +1,221 @@
+﻿@page "/ElectricMotorList"
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager NavigationManager
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UrlStatusService UrlStatusService
+@inject TableService TableService
+@inject NotificationService NotificationService
+
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
+
+<div class="card p-3">
+    @* Notifikasi Status *@
+    @if (!string.IsNullOrEmpty(statusMessage))
+    {
+        <div class="container px-0">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @statusMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+            </div>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-sm-5 form-group">
+            <h5 class="display-6">Electric Motor</h5>
+            @if (HasElectricMotors)
+            {
+                <div class="d-flex align-items-center mt-3">
+                    Jumlah per Halaman:
+                    <select class="form-select form-select-sm w-auto ms-2" @bind="pagination.ItemsPerPage">
+                        <option value="5">5</option>
+                        @if (ElectricMotorCount > 5)
+                        {
+                            <option value="10">10</option>
+                        }
+                        @if (ElectricMotorCount > 10)
+                        {
+                            <option value="20">20</option>
+                        }
+                        @if (ElectricMotorCount > 20)
+                        {
+                            <option value="50">50</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
+
+        @if (canEditData)
+        {
+            <div class="col-sm-7 d-flex justify-content-end align-items-center">
+                <button class="btn btn-primary" @onclick="NavigateToAddElectricMotor">
+                    + Tambah
+                </button>
+            </div>
+        }
+    </div>
+
+    <div>
+        @if (isLoading)
+        {
+            <div class="text-center py-3">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Memuat...</span>
+                </div>
+                <p>Memuat Data Electric Motor...</p>
+            </div>
+        }
+        else if (!HasElectricMotors)
+        {
+            <hr />
+            <div class="text-center py-3">
+                <p>Tidak ada data electric motor ditemukan.</p>
+                @if (!string.IsNullOrEmpty(searchFilter))
+                {
+                    <button class="btn btn-link" @onclick="ClearFilter">Hapus Filter</button>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="search-box mb-3 mt-3">
+                <input class="form-control" type="search" autofocus @bind="searchFilter" @bind:event="oninput" placeholder="Cari Merk atau Tipe..." />
+            </div>
+
+            <QuickGrid Items="FilteredElectricMotors" Virtualize="false" Pagination="pagination" Class="table table-striped table-hover table-bordered">
+                <TemplateColumn Title="Merk" Sortable="true">
+                    <a style="cursor:pointer; color: royalblue;" @onclick="@(() => NavigateToElectricMotorInfo(context))">
+                        @context.Brand
+                    </a>
+                </TemplateColumn>
+                <PropertyColumn Property="@(motor => motor.Type)" Title="Tipe" Sortable="true" />
+                <PropertyColumn Property="@(motor => motor.Power)" Title="Daya" Sortable="true" />
+                <PropertyColumn Property="@(motor => motor.PowerUnit)" Title="Unit" Sortable="true" />
+
+                @if (canEditData)
+                {
+                    <TemplateColumn Title="Aksi" Class="td-action">
+                        <button @onclick="@(() => NavigateToEditElectricMotor(context))" class="btn btn-warning btn-sm">
+                            <span class="oi oi-pencil"></span>
+                        </button>
+                        <button @onclick="@(() => NavigateToDeleteElectricMotor(context))" class="btn btn-danger btn-sm">
+                            <span class="oi oi-trash"></span>
+                        </button>
+                    </TemplateColumn>
+                }
+            </QuickGrid>
+
+            <Paginator State="pagination" />
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+
+    // Properti State
+    private bool canEditData;
+    private IQueryable<ElectricMotor>? _allElectricMotors;
+    private bool isLoading = true;
+    private string statusMessage = string.Empty;
+
+    // Konstanta
+    private const string ADD_PATH = "./ElectricMotorAdd";
+    private const string INFO_PATH = "./ElectricMotorInfo/{0}";
+    private const string EDIT_PATH = "./ElectricMotorEdit/{0}";
+    private const string DELETE_PATH = "./ElectricMotorDelete/{0}";
+
+    // Pagination
+    private PaginationState pagination = new() { ItemsPerPage = 5 };
+
+    // Properti Terkomputasi
+    private bool HasElectricMotors => !isLoading && (_allElectricMotors?.Any() ?? false);
+    private int ElectricMotorCount => _allElectricMotors?.Count() ?? 0;
+
+    // Filter
+    private string searchFilter
+    {
+        get => TableService.NoFilter ?? string.Empty;
+        set { if (TableService.NoFilter != value) { TableService.NoFilter = value; } }
+    }
+
+    private IQueryable<ElectricMotor> FilteredElectricMotors
+    {
+        get
+        {
+            var data = _allElectricMotors ?? Enumerable.Empty<ElectricMotor>().AsQueryable();
+            if (string.IsNullOrWhiteSpace(searchFilter))
+            {
+                return data;
+            }
+            return data.Where(motor =>
+                (!string.IsNullOrEmpty(motor.Brand) && motor.Brand.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(motor.Type) && motor.Type.Contains(searchFilter, StringComparison.OrdinalIgnoreCase)));
+        }
+    }
+
+    // Metode Lifecycle
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        await CheckUserAuthorizationAsync();
+        await LoadAllElectricMotorsAsync();
+        LoadUrlStatus();
+    }
+
+    // Metode Bantuan
+    private async Task CheckUserAuthorizationAsync()
+    {
+        if (authenticationStateTask is not null)
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+            canEditData = user.IsInRole("Admin") || user.IsInRole("Maintenance") || user.IsInRole("Maintenance Supervisor");
+        }
+    }
+
+    private async Task LoadAllElectricMotorsAsync()
+    {
+        try
+        {
+            _allElectricMotors = (await CRUDService.ReadAllAsync<ElectricMotor>(orderBy: q => q.OrderBy(m => m.ElectricMotorID)))
+                .ToList()
+                .AsQueryable();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.AlertMessage("Terjadi kesalahan saat memuat data Electric Motor.");
+            NotificationService.LogMessage($"Kesalahan saat memuat data Electric Motor: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void LoadUrlStatus()
+    {
+        statusMessage = UrlStatusService.GetAndClearUrlStatusMessage();
+        if (!string.IsNullOrEmpty(statusMessage))
+        {
+            NavigationManager.NavigateTo(NavigationManager.Uri.Split('?')[0], replace: true);
+        }
+    }
+
+    // Navigasi & Event Handler
+    private void ClearFilter() => searchFilter = string.Empty;
+    private void NavigateToAddElectricMotor() => NavigationManager.NavigateTo(ADD_PATH);
+    private void NavigateToElectricMotorInfo(ElectricMotor motor) => NavigationManager.NavigateTo(string.Format(INFO_PATH, motor.ElectricMotorID));
+    private void NavigateToEditElectricMotor(ElectricMotor motor) => NavigationManager.NavigateTo(string.Format(EDIT_PATH, motor.ElectricMotorID));
+    private void NavigateToDeleteElectricMotor(ElectricMotor motor) => NavigationManager.NavigateTo(string.Format(DELETE_PATH, motor.ElectricMotorID));
+}

@@ -38,51 +38,144 @@
             <DataAnnotationsValidator />
             <div class="form-group row">
                 <div class="col-sm-12 mb-3">
+                    <label for="Jalur" class="col-form-label">Jalur<span class="required">*</span></label>
+                    <InputSelect id="Jalur" @bind-Value="valve.ValveTrack" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var track in valveTrack)
+                        {
+                            <option value="@track">@track</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => valve.ValveTrack)" />
+                </div>
+
+                <div class="col-sm-12 mb-3">
                     <label for="Lokasi" class="col-form-label">Lokasi<span class="required">*</span></label>
                     <InputSelect id="Lokasi" @bind-Value="valve.Location" class="form-control">
                         <option value="">...</option>
-                        @foreach (var location in valveLocation)
+                        @if (valve.ValveTrack == "Tangki ke Hose Pit")
                         {
-                            <option value="@location">@location</option>
+                            @foreach (var location in valveTankLocation)
+                            {
+                                <option value="@location">@location</option>
+                            }
+                        }
+                        else if (valve.ValveTrack == "Jetty ke Hose Pit")
+                        {
+                            @foreach (var location in valveJettyLocation)
+                            {
+                                <option value="@location">@location</option>
+                            }
+                        }
+                        else if (valve.ValveTrack == "CFS")
+                        {
+                            @foreach (var location in valveCfsLocation)
+                            {
+                                <option value="@location">@location</option>
+                            }
                         }
                     </InputSelect>
                     <ValidationMessage For="@(() => valve.Location)" />
                 </div>
 
-                <div class="col-sm-12 mb-3">
-                    <label for="Jalur" class="col-form-label">Jalur</label>
-                    <InputSelect id="Jalur" @bind-Value="valveTrackId" class="form-control">
-                        <option value="">...</option>
-                        <option value="1">Tangki ke Hose Pit</option>
-                        <option value="2">Jetty ke Hose Pit</option>
-                        <option value="3">CFS</option>
-                    </InputSelect>
-                    <ValidationMessage For="@(() => valveTrackId)" />
-                </div>
-
-                @if (valveTrackId == 1 || valveTrackId == 2)
+                @if (!string.IsNullOrWhiteSpace(valve.Location) && !string.IsNullOrWhiteSpace(valve.ValveTrack))
                 {
-                    <div class="col-sm-6 mb-3">
-                        <label for="Entry" class="col-form-label">Entry</label>
-                        <InputText id="Entry" @bind-Value="valve.ValveEntry" class="form-control" />
-                        <ValidationMessage For="@(() => valve.ValveEntry)" />
-                    </div>
-                    <div class="col-sm-6 mb-3">
-                        <label for="Exit" class="col-form-label">Exit</label>
-                        <InputText id="Exit" @bind-Value="valve.ValveExit" class="form-control" />
-                        <ValidationMessage For="@(() => valve.ValveExit)" />
-                    </div>
+
+                    @if (valve.ValveTrack == "Tangki ke Hose Pit" || valve.ValveTrack == "Jetty ke Hose Pit")
+                    {
+                        <div class="col-sm-6 mb-3">
+                            <label for="Entry" class="col-form-label">Entry</label>
+                            <InputSelect id="Entry" @bind-Value="valve.ValveEntry" class="form-control">
+                                <option value="">...</option>
+                                @if (valve.ValveTrack == "Tangki ke Hose Pit")
+                                {
+                                    @foreach (var entry in tankEntryTrack)
+                                    {
+                                        <option value="@entry">@entry</option>
+                                    }
+                                }
+                                else
+                                {
+                                    @foreach (var entry in jettyEntryTrack)
+                                    {
+                                        <option value="@entry">@entry</option>
+                                    }
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => valve.ValveEntry)" />
+                        </div>
+                        <div class="col-sm-6 mb-3">
+                            <label for="Exit" class="col-form-label">Exit</label>
+                            <InputSelect id="Exit" @bind-Value="valve.ValveExit" class="form-control">
+                                <option value="">...</option>
+                                @if (valve.ValveTrack == "Tangki ke Hose Pit")
+                                {
+                                    @foreach (var exit in tankExitTrack)
+                                    {
+                                        <option value="@exit">@exit</option>
+                                    }
+                                }
+                                else
+                                {
+                                    @foreach (var exit in jettyExitTrack)
+                                    {
+                                        <option value="@exit">@exit</option>
+                                    }
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => valve.ValveExit)" />
+                        </div>
+
+                    }
+                    else
+                    {
+                        <div class="col-sm-12 mb-3">
+                            <label for="JalurCFS" class="col-form-label">Jalur Pipa CFS</label>
+                            <InputSelect id="JalurCFS" @bind-Value="valve.CFSValveTrack" class="form-control">
+                                <option value="">...</option>
+
+                                @if (valve.Location == "TOP LAYER")
+                                {
+                                    @foreach (var track in cfsTopTrack)
+                                    {
+                                        <option value="@track">@track</option>
+                                    }
+                                }
+                                else
+                                {
+                                    @foreach (var track in cfsBottomTrack)
+                                    {
+                                        <option value="@track">@track</option>
+                                    }
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => valve.CFSValveTrack)" />
+                        </div>
+                    }
+
                 }
 
                 <div class="col-sm-12 mb-3">
                     <label for="Tipe" class="col-form-label">Tipe<span class="required">*</span></label>
-                    <InputText id="Tipe" @bind-Value="valve.Type" class="form-control" />
+                    <InputSelect id="Tipe" @bind-Value="valve.Type" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var type in valveType)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => valve.Type)" />
                 </div>
 
                 <div class="col-sm-6 mb-3">
                     <label for="Material" class="col-form-label">Material</label>
-                    <InputText id="Material" @bind-Value="valve.Material" class="form-control" />
+                    <InputSelect id="Material" @bind-Value="valve.Material" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var material in valveMaterial)
+                        {
+                            <option value="@material">@material</option>
+                        }
+                    </InputSelect>
                     <ValidationMessage For="@(() => valve.Material)" />
                 </div>
 
@@ -110,7 +203,7 @@
                     </div>
                 </div>
 
-                <div class="col-sm-6 mb-3">
+                <div class="col-sm-12 mb-3">
                     <label for="Jumlah" class="col-form-label">Jumlah</label>
                     <InputNumber id="Jumlah" @bind-Value="valve.Quantity" class="form-control" />
                     <ValidationMessage For="@(() => valve.Quantity)" />
@@ -150,7 +243,6 @@
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
     private Valve valve = new();
-    private int? valveTrackId { get; set; }
     private User? currentUserInfo;
     private DotNetObjectReference<ValveAdd> dotNetHelper = default!;
     private bool uploadErrorStatus;
@@ -163,8 +255,39 @@
     private const string IMAGE_FOLDER_NAME = "Valve";
 
     // Form Properties
-    private List<string> valveLocation = new() { "Jetty", "CFS" };
+    private List<string> valveTrack = new() { "Tangki ke Hose Pit", "Jetty ke Hose Pit", "CFS" };
+    private List<string> valveTankLocation = new() { "Tank Pit 1", "Tank Pit 2", "Tank Pit 3", "Tank Pit 4", "Tank Pit 5", "Tank Pit 6", "Tank Pit 7" };
+    private List<string> valveJettyLocation = new() { "Jetty 1", "Jetty 2" };
+    private List<string> valveCfsLocation = new() { "TOP LAYER", "BOTTOM LAYER" };
+    private List<string> valveType = new() { "Gate Valve", "Check Valve", "Ball Valve" };
+    private List<string> valveMaterial = new() { "Stainless Steel", "Carbon Steel" };
     private List<string> diameterUnits = new() { "inch", "mm" };
+    private List<string> tankEntryTrack = new() {
+        "T-101", "T-102", "T-103", "T-104", "T-105", "T-106", "T-107", "T-108", "T-109", "T-110", "T-111", "T-112",
+        "T-201", "T-202", "T-203", "T-204", "T-205", "T-206", "T-207", "T-208", "T-209", "T-210", "T-211",
+        "T-301", "T-302", "T-303", "T-304", "T-305", "T-306", "T-307", "T-308", "T-309", "T-310", "T-311",
+        "T-402", "T-403", "T-404", "T-501", "T-502", "T-503", "T-504", "T-505", "T-506", "T-507", "T-508",
+        "T-601", "T-602", "T-603", "T-604", "T-605", "T-606", "T-607", "T-608", "T-609", "T-610", "T-611",
+        "T-612", "T-613", "T-614", "T-615", "T-616", "T-701", "T-702", "T-703", "T-704", "T-705", "T-706",
+        "T-707", "T-708", "T-709", "T-710", "T-711" 
+    };
+    private List<string> tankExitTrack = new() { "Hose Pit 1", "Hose Pit 1 Header", "Hose Pit 2", "Hose Pit 3", "Hose Pit 4", "Hose Pit 5" };
+    private List<string> jettyEntryTrack = new() { "Jetty 1", "Jetty 2" };
+    private List<string> jettyExitTrack = new() { "Hose Pit 1 (Jalur pipa no.1)", "Hose Pit 1 (Jalur pipa no.2)", "Hose Pit 1 (Jalur pipa no.3)", 
+        "Hose Pit 1 (Jalur pipa no.4)", "Hose Pit 1 (Jalur pipa no.5)", "Hose Pit 1 (Jalur pipa no.6)", "Hose Pit 1 (Jalur pipa no.7)", 
+        "Hose Pit 4 (Jalur pipa no.4)", "Hose Pit 4 (Jalur pipa no.5)", "Hose Pit 4 (Jalur pipa no.6)", "Hose Pit 4 (Jalur pipa no.7)"
+    };
+    private List<string> cfsTopTrack = new() {
+        "T-01", "T-02", "T-03", "T-04", "T-05", "T-06", "T-07", "T-08", "T-19", "T-20", "T-21", "T-22",
+        "T-38", "T-39", "T-40" 
+    };
+    private List<string> cfsBottomTrack = new()
+    {
+        "B-01", "B-02", "B-03", "B-04", "B-05", "B-06", "B-07", "B-08", "B-09", "B-10",
+        "B-11", "B-12", "B-13", "B-14", "B-15", "B-16", "B-17", "B-18", "B-19", "B-20",
+        "B-21", "B-22", "B-23", "B-24", "B-25", "B-26", "B-27", "B-28", "B-29", "B-30",
+        "B-31", "B-32", "B-33", "B-34", "B-35", "B-36", "B-37", "B-38", "B-39", "B-40"
+    };
 
     protected override async Task OnInitializedAsync()
     {

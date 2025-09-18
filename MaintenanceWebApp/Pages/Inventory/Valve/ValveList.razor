@@ -25,7 +25,7 @@
             <div style="padding: 10px;" class="alert alert-success alert-dismissible fade show" role="alert">
                 @statusMessage
                 <button style="background-color: transparent; border: transparent; float: right; z-index: 0; padding: 1rem;"
-                        type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
+                type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Tutup"></button>
             </div>
         </div>
     }
@@ -102,10 +102,17 @@
                 <TemplateColumn Title="ID Valve" Sortable="true">
                     <a style="cursor:pointer;
                        color: royalblue;" @onclick="@(() => NavigateToValveInfo(context))">
-                        @context.ValveID
+                        @if (!string.IsNullOrEmpty(context.ValveEntry) && !string.IsNullOrEmpty(context.ValveExit))
+                        {
+                            @context.ValveEntry<span>&nbsp;ke&nbsp;</span>@context.ValveExit
+                        }
+                        else
+                        {
+                            @context.CFSValveTrack
+                        }
                     </a>
                 </TemplateColumn>
-                <PropertyColumn Property="@(valve => valve.ValveTrack)" Title="Track" Sortable="true" />
+                <PropertyColumn Property="@(valve => valve.Location)" Title="Lokasi" Sortable="true" />
                 <PropertyColumn Property="@(valve => valve.Type)" Title="Tipe" Sortable="true" />
 
                 @if (canEditData)

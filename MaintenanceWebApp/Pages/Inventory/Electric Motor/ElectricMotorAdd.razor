@@ -1,0 +1,384 @@
+﻿@page "/ElectricMotorAdd"
+
+@using MaintenanceWebApp.Data
+@using MaintenanceWebApp.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Security.Claims
+@using System.IO
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime
+
+@* Services *@
+@inject CRUDService CRUDService
+@inject UploadFilesService UploadService
+@inject NotificationService NotificationService
+
+@* Otorisasi Berdasarkan Peran *@
+@attribute [Authorize(Roles = "Admin, Maintenance Supervisor, Maintenance")]
+
+<div class="card">
+    @* Header Formulir *@
+    <div class="card-header bg-light border-primary">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a style="cursor: pointer;" @onclick="CancelAsync" class="nav-link" aria-label="Kembali">
+                    <span class="oi oi-chevron-left"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <span class="nav-link active" aria-current="page">Tambah Electric Motor</span>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <EditForm Model="newElectricMotor" OnValidSubmit="HandleCreateElectricMotor" OnInvalidSubmit="HandleInvalidSubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <label for="Merk" class="col-form-label">Merk<span class="required">*</span></label>
+                    <InputSelect id="Merk" @bind-Value="newElectricMotor.Brand" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var brand in electricMotorBrands)
+                        {
+                            <option value="@brand">@brand</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newElectricMotor.Brand)" />
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="Tipe" class="col-form-label">Tipe</label>
+                    <InputSelect id="Tipe" @bind-Value="newElectricMotor.Type" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var type in electricMotorTypes)
+                        {
+                            <option value="@type">@type</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newElectricMotor.Type)" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <label for="Daya" class="col-form-label">Daya</label>
+                            <InputNumber class="form-control" id="Daya" @bind-Value="newElectricMotor.Power" @oninput="OnPowerInputChanged" />
+                            <ValidationMessage For="@(() => newElectricMotor.Power)" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label for="UnitDaya" class="col-form-label">Unit Daya</label>
+                            <InputSelect id="UnitDaya" @bind-Value="newElectricMotor.PowerUnit" class="form-control" disabled="@isPowerUnitDisabled">
+                                <option value="">...</option>
+                                @foreach (var unit in powerUnits)
+                                {
+                                    <option value="@unit">@unit</option>
+                                }
+                            </InputSelect>
+                            @if (newElectricMotor.Power.HasValue && newElectricMotor.Power.Value > 0 && string.IsNullOrWhiteSpace(newElectricMotor.PowerUnit))
+                            {
+                                <div class="text-danger">Unit Daya harus dipilih.</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="InsulationClass" class="col-form-label">Insulation Class</label>
+                    <InputSelect id="InsulationClass" @bind-Value="newElectricMotor.InsulationClass" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var insClass in insulationClasses)
+                        {
+                            <option value="@insClass">@insClass</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newElectricMotor.InsulationClass)" />
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-sm-6 mb-3">
+                    <label for="ProtectionClass" class="col-form-label">Protection Class</label>
+                    <InputSelect id="ProtectionClass" @bind-Value="newElectricMotor.ProtectionClass" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var protClass in protectionClasses)
+                        {
+                            <option value="@protClass">@protClass</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newElectricMotor.ProtectionClass)" />
+                </div>
+
+                <div class="col-sm-6 mb-3">
+                    <label for="Bearing" class="col-form-label">Bearing</label>
+                    <InputSelect id="Bearing" @bind-Value="newElectricMotor.Bearing" class="form-control">
+                        <option value="">...</option>
+                        @foreach (var bearing in bearings)
+                        {
+                            <option value="@bearing">@bearing</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => newElectricMotor.Bearing)" />
+                </div>
+            </div>
+
+            <div class="col-sm-12 mb-3">
+                <label for="Foto" class="col-form-label">Foto</label>
+                @if (string.IsNullOrWhiteSpace(newElectricMotor.Image))
+                {
+                    <InputFile id="Foto" class="form-control"
+                               accept=".jpg,.jpeg,.png"
+                               OnChange="HandleFileUpload" />
+                    <small class="form-text text-muted">Opsional: Unggah foto Electric Motor (JPG, JPEG, PNG).</small>
+                    <ValidationMessage For="@(() => newElectricMotor.Image)" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center">
+                        <img style="border: #e9ecef solid; padding: 10px; border-radius: 5px; max-height: 150px;" src="@CreateFilePath(newElectricMotor.Image)" alt="Electric Motor Image">
+                        <button @onclick="() => HandleFileChangeAsync(newElectricMotor.Image, IMAGE_FILE_CATEGORY)" type="button" class="btn btn-danger btn-sm ms-3">Ubah Foto</button>
+                    </div>
+                }
+            </div>
+
+            @* Tombol Aksi Formulir *@
+            <div class="float-end mt-3">
+                <button type="button" class="btn btn-secondary me-2" @onclick="CancelAsync">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan</button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    // State Halaman
+    [CascadingParameter]
+    private Task<AuthenticationState>? authenticationStateTask { get; set; }
+    private ElectricMotor newElectricMotor = new();
+    private User? currentUserInfo;
+    private DotNetObjectReference<ElectricMotorAdd> dotNetHelper = default!;
+
+    // Konstanta
+    private const string SUB_FOLDER_NAME = "Inventories";
+    private const string IMAGE_FILE_CATEGORY = "img";
+    private const string IMAGE_FOLDER_NAME = "Electric Motor";
+    private string _webStorageRoot = string.Empty;
+
+    // Form Properties (Dropdown Options)
+    private static readonly List<string> electricMotorBrands = new() { "Baldor", "Boockwoldt", "Crompton", "CMG", "Hansen", "Hi.Seal", "Reliance", "Rotor", "Shangbao", "Teco" };
+    private static readonly List<string> electricMotorTypes = new() { "AE 180M", "AE 180L", "AE 250M", "AEEDXU", "AEEDX4", "MHE 200 L", "MAF2001", "09E270Y204", "09E270Y202", "09E270Y129", "09E270Y204G", "09E 70Y 204G2", "4mac 39940my", "9700K-76-33", "369Y328 G1", "5-160", "PPD 280 MT 4", "YBX3-180M-2" };
+    private static readonly List<string> powerUnits = new() { "KW", "HP" };
+    private static readonly List<string> insulationClasses = new() { "B", "F", "I", "IP 65" };
+    private static readonly List<string> protectionClasses = new() { "IIB", "IIB-4", "IIB T-4", "IID" };
+    private static readonly List<string> bearings = new() { "6211 2EA", "6211 C3", "6305 C3", "6311 C3", "6317/ C3", "641203", "6208-6309", "6310-6312", "6309-6307 ZZ", "6308-6306 ZZ", "6309 ZZ / 6307 ZZ", "ExdbIIBT4Gb" };
+    private bool isPowerUnitDisabled = true;
+    
+    // Metode Lifecycle Blazor
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserInfoAsync();
+        await LoadConfigurationAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    // Metode Dispose untuk membersihkan sumber daya
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await CancelAsync();
+    }
+
+    // Metode Bantuan (Helper Methods)
+    private async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat konfigurasi: {ex.Message}");
+            NavigationManager.NavigateTo("./");
+        }
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        if (authenticationStateTask == null) return;
+        var authenticationState = await authenticationStateTask;
+        var user = authenticationState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("Id")?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                await NotificationService.AlertMessage("ID pengguna tidak ditemukan. Harap login kembali.");
+                NavigationManager.NavigateTo("./");
+                return;
+            }
+
+            try
+            {
+                currentUserInfo = await CRUDService.ReadSingleAsync<User, string>(userId);
+                if (currentUserInfo == null)
+                {
+                    await NotificationService.AlertMessage("Data pengguna tidak ditemukan. Harap login kembali.");
+                    NavigationManager.NavigateTo("./");
+                }
+            }
+            catch (Exception ex)
+            {
+                await NotificationService.AlertMessage("Gagal memuat data pengguna. Silakan hubungi Administrator.");
+                NotificationService.LogMessage($"Pengecualian saat memuat data pengguna: {ex.Message}");
+                NavigationManager.NavigateTo("./");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("./");
+        }
+    }
+
+    // Penanganan Submit Formulir
+    private async Task HandleCreateElectricMotor()
+    {
+        await CRUDService.CreateAsync(newElectricMotor);
+
+        if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
+        {
+            await NotificationService.AlertMessage("Gagal menyimpan data. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal menyimpan data. Kesalahan: {CRUDService.CRUDErrorMessage}");
+            return;
+        }
+
+        NavigationManager.NavigateTo("./ElectricMotorList?status=CreateSuccess");
+    }
+
+    private Task HandleInvalidSubmitAsync()
+    {
+        return NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
+
+    // Penanganan Unggahan & Perubahan File
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+    }
+
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                newElectricMotor.Image = UploadService.FilePath;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleFileChangeAsync(string? filePath, string fileType)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return;
+        try
+        {
+            await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
+                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                newElectricMotor.Image = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
+        }
+        StateHasChanged();
+    }
+
+    private string CreateFilePath(string? relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return "/noimg.png";
+        }
+        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+    }
+
+    // Penanganan Interaksi Input
+    private void OnPowerInputChanged(ChangeEventArgs args)
+    {
+        if (double.TryParse(args.Value?.ToString(), out double powerValue))
+        {
+            newElectricMotor.Power = powerValue;
+        }
+        else
+        {
+            newElectricMotor.Power = null;
+        }
+
+        // Aktifkan atau nonaktifkan InputSelect 'Satuan Diameter'
+        isPowerUnitDisabled = !newElectricMotor.Power.HasValue || newElectricMotor.Power.Value <= 0;
+        if (isPowerUnitDisabled)
+        {
+            newElectricMotor.PowerUnit = null;
+        }
+
+        StateHasChanged();
+    }
+
+    // Penanganan Tombol Batal
+    private async Task CancelAsync()
+    {
+        // Hapus file yang sudah diunggah jika pengguna membatalkan
+        if (!string.IsNullOrWhiteSpace(newElectricMotor.Image))
+        {
+            await HandleFileChangeAsync(newElectricMotor.Image, IMAGE_FILE_CATEGORY);
+        }
+
+        // Kembali ke halaman daftar
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+        NavigationManager.NavigateTo("./ElectricMotorList");
+    }
+}

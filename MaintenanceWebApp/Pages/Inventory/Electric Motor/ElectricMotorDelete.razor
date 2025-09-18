@@ -1,4 +1,4 @@
-﻿@page "/ValveDelete/{Id:int}"
+﻿@page "/ElectricMotorDelete/{Id:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -21,32 +21,21 @@
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Memuat...</span>
                 </div>
-                <p class="mt-2 text-muted">Memuat data valve...</p>
+                <p class="mt-2 text-muted">Memuat data electric motor...</p>
             </div>
         }
-        else if (valve == null)
+        else if (electricMotor == null)
         {
             <div class="text-center py-5">
-                <p class="text-danger lead">Data valve tidak ditemukan atau terjadi kesalahan saat memuat.</p>
+                <p class="text-danger lead">Data electric motor tidak ditemukan atau terjadi kesalahan saat memuat.</p>
                 <button type="button" class="btn btn-secondary mt-3" @onclick="GoBack">Kembali</button>
             </div>
         }
         else
         {
-            <h3 class="card-title text-danger mb-3">Hapus Valve</h3>
+            <h3 class="card-title text-danger mb-3">Hapus Electric Motor</h3>
             <hr />
-            <p class="text-muted">
-                Anda yakin ingin menghapus Valve di Lokasi @valve.Location melalui Jalur:
-                @if (!string.IsNullOrWhiteSpace(valve.ValveEntry) && !string.IsNullOrWhiteSpace(valve.ValveExit))
-                {
-                    <b>@valve.ValveEntry ke @valve.ValveExit</b>
-                }
-                else
-                {
-                    <b>@valve.CFSValveTrack</b>
-                }
-                ?
-            </p>
+            <p class="text-muted">Anda yakin ingin menghapus Electric Motor: <b>@electricMotor.Brand @electricMotor.Type</b>?</p>
 
             <div class="mt-4">
                 <button type="button" class="btn btn-danger me-2" @onclick="HandleDeleteAsync">Hapus</button>
@@ -62,45 +51,43 @@
     public int Id { get; set; }
 
     // State
-    private Valve? valve;
+    private ElectricMotor? electricMotor;
     private bool isLoading = true;
 
     // Konstanta
     private const string SUBFOLDER_NAME = "Inventories";
-    private const string FOLDER_NAME = "Valve";
 
     // Metode Siklus Hidup
     protected override async Task OnInitializedAsync()
     {
-        await LoadValveAsync();
+        await LoadElectricMotorAsync();
         isLoading = false;
     }
 
     // Metode Bantuan (Helper Methods)
-    private async Task LoadValveAsync()
+    private async Task LoadElectricMotorAsync()
     {
         try
         {
-            // Memuat data Valve berdasarkan ID
-            valve = await CRUDService.ReadSingleAsync<Valve, int>(Id);
-            if (valve == null)
+            electricMotor = await CRUDService.ReadSingleAsync<ElectricMotor, int>(Id);
+            if (electricMotor == null)
             {
-                await NotificationService.AlertMessage("Data valve tidak ditemukan. Silakan periksa kembali tautan yang Anda gunakan.");
+                await NotificationService.AlertMessage("Data electric motor tidak ditemukan.");
             }
         }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Gagal memuat data valve. Silakan hubungi administrator.");
-            NotificationService.LogMessage($"Kesalahan saat memuat data valve dengan ID {Id}. Detail: {ex.Message}");
-            valve = null;
+            await NotificationService.AlertMessage("Gagal memuat data electric motor. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat memuat electric motor ID {Id}. Detail: {ex.Message}");
+            electricMotor = null;
         }
     }
 
     private async Task HandleDeleteAsync()
     {
-        if (valve == null)
+        if (electricMotor == null)
         {
-            await NotificationService.AlertMessage("Data valve tidak valid. Operasi penghapusan dibatalkan.");
+            await NotificationService.AlertMessage("Data electric motor tidak valid. Operasi penghapusan dibatalkan.");
             return;
         }
 
@@ -110,17 +97,18 @@
             await DeleteAssociatedFileAsync();
 
             // Lakukan penghapusan record dari database
-            await CRUDService.DeleteAsync(valve);
+            await CRUDService.DeleteAsync(electricMotor);
+
             if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
             {
-                await NotificationService.AlertMessage("Gagal menghapus data valve dari database. Silakan hubungi administrator.");
-                NotificationService.LogMessage($"Gagal menghapus data valve dari database. Detail: {CRUDService.CRUDErrorMessage}");
+                await NotificationService.AlertMessage("Gagal menghapus data breather valve dari database. Silakan hubungi administrator.");
+                NotificationService.LogMessage($"Gagal menghapus data breather valve dari database. Detail: {CRUDService.CRUDErrorMessage}");
                 return;
             }
 
             await DeleteMaintenanceHistoryPhotosAsync();
 
-            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == valve.ValveID);
+            await CRUDService.DeleteByConditionAsync<InventoryMaintenanceHistory>(history => history.InventoryId == electricMotor.ElectricMotorID);
 
             if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
             {
@@ -128,18 +116,18 @@
             }
 
             // Navigasi kembali ke halaman daftar dengan status sukses
-            NavigationManager.NavigateTo("./ValveList?status=DeleteSuccess");
+            NavigationManager.NavigateTo("./ElectricMotorList?status=DeleteSuccess");
         }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus valve. Silakan hubungi administrator.");
-            NotificationService.LogMessage($"Kesalahan saat menghapus valve dengan ID {Id}. Detail: {ex.Message}");
+            await NotificationService.AlertMessage("Terjadi kesalahan sistem saat menghapus electric motor. Silakan hubungi administrator.");
+            NotificationService.LogMessage($"Kesalahan saat menghapus electric motor dengan ID {electricMotor.ElectricMotorID}. Detail: {ex.Message}");
         }
     }
 
     private async Task DeleteMaintenanceHistoryPhotosAsync()
     {
-        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == valve.ValveID);
+        var historyQuery = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(filter: h => h.InventoryId == electricMotor.ElectricMotorID);
 
         var historyList = historyQuery.ToList();
 
@@ -159,25 +147,24 @@
         }
         else
         {
-            NavigationManager.NavigateTo("./ValveList?status=DeleteSuccess");
+            NavigationManager.NavigateTo("./ElectricMotorList?status=DeleteSuccess");
         }
     }
 
     private async Task DeleteAssociatedFileAsync()
     {
-        if (!string.IsNullOrWhiteSpace(valve?.Image))
+        if (!string.IsNullOrWhiteSpace(electricMotor?.Image))
         {
-            await UploadService.FileChange(valve.Image, SUBFOLDER_NAME);
+            await UploadService.FileChange(electricMotor.Image, SUBFOLDER_NAME);
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
-                // Log kesalahan tetapi lanjutkan proses. Kegagalan menghapus file tidak boleh menghentikan penghapusan data.
-                NotificationService.LogMessage($"Gagal menghapus file '{valve.Image}'. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Gagal menghapus file '{electricMotor.Image}'. Detail: {UploadService.UploadErrorMessage}");
             }
         }
     }
 
     private void GoBack()
     {
-        NavigationManager.NavigateTo("./ValveList");
+        NavigationManager.NavigateTo("./ElectricMotorList");
     }
 }

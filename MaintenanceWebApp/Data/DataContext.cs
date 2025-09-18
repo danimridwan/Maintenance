@@ -21,6 +21,7 @@ namespace MaintenanceWebApp.Data
         public DbSet<PRVValve> PRVValves { get; set; }
         public DbSet<PCVValveTank> PCVValveTanks { get; set; }
         public DbSet<BreatherValve> BreatherValves { get; set; }
+        public DbSet<ElectricMotor> ElectricMotors { get; set; }
 
 
         //Define View

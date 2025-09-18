@@ -1,4 +1,4 @@
-﻿@page "/ITInfo/{DeviceID:int}"
+﻿@page "/ElectricMotorInfo/{ElectricMotorId:int}"
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
@@ -25,18 +25,18 @@
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Memuat...</span>
         </div>
-        <p class="mt-2">Memuat informasi Inventory IT...</p>
+        <p class="mt-2">Memuat informasi Electric Motor...</p>
     </div>
 }
-@* Status Data IT Tidak Ditemukan *@
-else if (it is null)
+@* Status Data Electric Motor Tidak Ditemukan *@
+else if (electricMotor is null)
 {
     <div class="text-center py-5">
         <div class="alert alert-warning" role="alert">
             <h4 class="alert-heading">Data Tidak Ditemukan!</h4>
-            <p>Inventory IT dengan ID yang diberikan tidak ada atau terjadi kesalahan saat memuat data.</p>
+            <p>Electric Motor dengan ID yang diberikan tidak ada atau terjadi kesalahan saat memuat data.</p>
             <hr>
-            <p class="mb-0">Mohon cek kembali ID Inventory IT atau hubungi administrator.</p>
+            <p class="mb-0">Mohon cek kembali ID Electric Motor atau hubungi administrator.</p>
         </div>
     </div>
 }
@@ -52,7 +52,7 @@ else if (user is null)
         </div>
     </div>
 }
-@* Detail IT *@
+@* Detail Electric Motor *@
 else
 {
     <div class="card">
@@ -60,7 +60,7 @@ else
         <div class="card-header bg-light border-primary">
             <ul class="nav nav-tabs card-header-tabs" id="nav-tab" role="tablist">
                 <li class="nav-item">
-                    <a style="cursor: pointer;" @onclick="NavigateToITList" class="nav-link" aria-label="Kembali ke Daftar Inventory IT">
+                    <a style="cursor: pointer;" @onclick="NavigateToElectricMotorList" class="nav-link" aria-label="Kembali ke Daftar Electric Motor">
                         <span class="oi oi-chevron-left"></span>
                     </a>
                 </li>
@@ -80,38 +80,48 @@ else
         <div class="card-body">
 
             @* Tab Informasi *@
-            <div class="tab-content" id="ITTabContent">
+            <div class="tab-content" id="ElectricMotorTabContent">
                 <div class="tab-pane fade show active" id="information" role="tabpanel" aria-labelledby="information-tab">
                     <div class="container">
                         <div class="row align-items-center mt-3 mb-3">
 
-                            @* Bagian Foto IT *@
+                            @* Bagian Foto Electric Motor *@
                             <div class="col-md-4 d-flex justify-content-center">
                                 <div class="border rounded-lg overflow-hidden" style="max-width: 250px; height: auto;">
-                                    <img class="img-fluid" src="@CreateFilePath(it.Image)" alt="Foto Inventory IT" />
+                                    <img class="img-fluid" src="@CreateFilePath(electricMotor.Image)" alt="Foto Electric Motor" />
                                 </div>
                             </div>
-
 
                             @* Bagian Informasi Detail *@
                             <div class="col-md-8">
-                                <h5 class="display-6 mb-2">Inventory IT</h5><hr />
+                                <h5 class="display-6 mb-2">Electric Motor</h5><hr />
                                 <div class="row g-3">
-                                    <div class="col-12">
-                                        <label class="form-label text-muted">Tag</label>
-                                        <p class="info-text">@it.Device</p>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Merk</label>
+                                        <p class="info-text">@electricMotor.Brand</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label text-muted">Merek</label>
-                                        <p class="info-text">@it.Brand</p>
+                                        <label class="form-label text-muted">Tipe</label>
+                                        <p class="info-text">@electricMotor.Type</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label text-muted">Model</label>
-                                        <p class="info-text">@it.Model</p>
+                                        <label class="form-label text-muted">Daya</label>
+                                        <p class="info-text">@electricMotor.Power @electricMotor.PowerUnit</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Insulation Class</label>
+                                        <p class="info-text">@electricMotor.InsulationClass</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Protection Class</label>
+                                        <p class="info-text">@electricMotor.ProtectionClass</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted">Bearing</label>
+                                        <p class="info-text">@electricMotor.Bearing</p>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
@@ -134,25 +144,19 @@ else
                                 }
                             </div>
                             <hr />
-                            @if (itHistoryList != null && itHistoryList.Any())
+                            @if (electricMotorHistoryList != null && electricMotorHistoryList.Any())
                             {
-                                <QuickGrid Items="@(itHistoryList.AsQueryable())" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">
-
+                                <QuickGrid Items="@(electricMotorHistoryList.AsQueryable())" Virtualize="false" Pagination="@pagination" Class="table table-striped table-hover table-bordered">
                                     <TemplateColumn Title="No">
-                                        @(itHistoryList.IndexOf(context) + 1)
+                                        @(electricMotorHistoryList.IndexOf(context) + 1)
                                     </TemplateColumn>
-
                                     <PropertyColumn Property="@(history => history.MaintenanceDate.ToString("dd-MM-yyyy"))" Title="Tanggal" Sortable="true" />
-
                                     <PropertyColumn Property="@(history => history.Technician)" Title="Teknisi" />
-
                                     <PropertyColumn Property="@(history => history.MaintenanceCategory)" Title="Kategori" />
-
                                     <TemplateColumn Title="Deskripsi">
                                         @{
                                             string descriptionText = context.Description;
                                             const int maxLength = 35;
-
                                             if (descriptionText.Length > maxLength)
                                             {
                                                 @($"{descriptionText.Substring(0, maxLength)}...")
@@ -163,7 +167,6 @@ else
                                             }
                                         }
                                     </TemplateColumn>
-
                                     <TemplateColumn Title="Aksi">
                                         <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#viewHistoryModal" @onclick="@(() => OpenDetailHistoryModal(@context))">
                                             <span class="oi oi-eye"></span>
@@ -173,18 +176,15 @@ else
                                         </button>
                                     </TemplateColumn>
                                 </QuickGrid>
-
                                 <Paginator State="@pagination" />
                             }
                             else
                             {
-                                <p>Belum ada riwayat untuk Inventory IT ini.</p>
+                                <p>Belum ada riwayat untuk Electric Motor ini.</p>
                             }
-
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -214,7 +214,7 @@ else
                                 <p class="form-control-plaintext">@selectedHistory.Technician</p>
                             </div>
                             <div class="col-md-6">
-                                @if (!string.IsNullOrWhiteSpace(@selectedHistory.PPMId))
+                                @if(!string.IsNullOrWhiteSpace(@selectedHistory.PPMId))
                                 {
                                     <p class="form-label"><b>PPM ID</b></p>
                                     <p class="form-control-plaintext">@selectedHistory.PPMId</p>
@@ -224,7 +224,6 @@ else
                                 <p class="form-label"><b>Deskripsi</b></p>
                                 <p class="form-control-plaintext">@selectedHistory.Description</p>
                             </div>
-
                             <div class="col-md-6">
                                 <p class="form-label"><b>Foto</b></p>
                                 <img style="max-height: 150px;" src="@CreateFilePath(selectedHistory.Photo)" class="img-fluid" alt="Foto Maintenance">
@@ -250,7 +249,6 @@ else
                 <div class="modal-body">
                     <EditForm Model="newMaintenanceHistory" OnValidSubmit="HandleValidSubmitHistoryAsync" OnInvalidSubmit="HandleInvalidSubmitHistoryAsync">
                         <DataAnnotationsValidator />
-
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="form-floating mb-3">
@@ -274,27 +272,26 @@ else
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
-                                    <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" required/>
+                                    <InputTextArea id="Description" @bind-Value="newMaintenanceHistory.Description" class="form-control" placeholder="Deskripsi" style="height: 100px;" required />
                                     <label for="Description">Deskripsi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Description)" />
                                 </div>
                             </div>
                             <div class="col-12">
                                 <div class="form-floating mb-3">
-                                    <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" required/>
+                                    <InputText id="Technician" @bind-Value="newMaintenanceHistory.Technician" class="form-control" placeholder="Teknisi" required />
                                     <label for="Technician">Teknisi<span class="required">*</span></label>
                                     <ValidationMessage For="@(() => newMaintenanceHistory.Technician)" />
                                 </div>
                             </div>
-
                             <div class="col-12">
                                 <div class="mb-3">
                                     <label for="Foto" class="form-label">Foto</label>
                                     @if (string.IsNullOrWhiteSpace(newMaintenanceHistory.Photo))
                                     {
                                         <InputFile id="Foto" class="form-control"
-                                        accept=".jpg,.jpeg,.png"
-                                        OnChange="HandleFileUpload" />
+                                                   accept=".jpg,.jpeg,.png"
+                                                   OnChange="HandleFileUpload" />
                                         <small class="form-text text-muted">Opsional: Unggah foto (JPG, JPEG, PNG).</small>
                                     }
                                     else
@@ -312,7 +309,6 @@ else
                                 </div>
                             </div>
                         </div>
-
                         <div class="modal-footer mt-4">
                             <button @onclick="DeleteHistoryPhoto" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                             <button type="submit" class="btn btn-success">Simpan</button>
@@ -346,21 +342,19 @@ else
 @code {
     // Parameter dari URL
     [Parameter]
-    public int DeviceID { get; set; }
+    public int ElectricMotorId { get; set; }
 
     // Properti Halaman
-    private DotNetObjectReference<ITInfo> dotNetHelper = default!;
+    private DotNetObjectReference<ElectricMotorInfo> dotNetHelper = default!;
     private User? user;
     private InventoryMaintenanceHistory newMaintenanceHistory = new();
-    private List<InventoryMaintenanceHistory>? itHistoryList;
-    private IQueryable<InventoryMaintenanceHistory>? _itHistories;
+    private List<InventoryMaintenanceHistory>? electricMotorHistoryList;
     private InventoryMaintenanceHistory? selectedHistory;
-    private int selectedHistoryId;
 
     // Properti State
     [CascadingParameter]
     private Task<AuthenticationState>? authenticationStateTask { get; set; }
-    private IT? it;
+    private ElectricMotor? electricMotor;
     private bool isLoading = true;
     private bool canEditData;
     private int? previousId;
@@ -370,11 +364,9 @@ else
     private string _webStorageRoot = string.Empty;
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string IMAGE_FILE_CATEGORY = "img";
-    private const string IMAGE_FOLDER_NAME = "IT";
+    private const string IMAGE_FOLDER_NAME = "Electric Motor";
     private const string NO_IMAGE_PATH = "/noimg.png";
-    private const string IT_LIST_PATH = "./ITList";
-
-    // Konstanta untuk dropdown
+    private const string ELECTRIC_MOTOR_LIST_PATH = "./ElectricMotorList";
     private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing", "Lainnya" };
 
     // Metode Lifecycle
@@ -382,17 +374,16 @@ else
     {
         await LoadConfigurationAsync();
     }
-
+    
     protected override async Task OnParametersSetAsync()
     {
-        // Pemuatan data hanya terjadi jika parameter ID berubah
-        if (DeviceID != previousId)
+        if (ElectricMotorId != previousId)
         {
             isLoading = true;
-            previousId = DeviceID;
+            previousId = ElectricMotorId;
             newMaintenanceHistory.MaintenanceDate = DateTime.Today;
-            await LoadITAsync();
-            await LoadITMaintenanceHistoryAsync();
+            await LoadElectricMotorAsync();
+            await LoadElectricMotorMaintenanceHistoryAsync();
             await LoadUserAsync();
             isLoading = false;
         }
@@ -418,7 +409,6 @@ else
     {
         await DeleteHistoryPhoto();
         await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
-
         await JSRuntime.InvokeVoidAsync("hideModal", "addHistoryModal");
         await JSRuntime.InvokeVoidAsync("hideModal", "viewHistoryModal");
         await JSRuntime.InvokeVoidAsync("hideModal", "deleteHistoryModal");
@@ -429,12 +419,11 @@ else
     {
         try
         {
-            // Mengambil path root dari konfigurasi
             _webStorageRoot = Configuration.GetValue<string>("WebStorageRoot") ?? "/";
         }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Gagal memuat konfigurasi `WebStorageRoot`. Silakan hubungi Administrator.");
+            await NotificationService.AlertMessage("Gagal memuat konfigurasi. Silakan hubungi Administrator.");
             NotificationService.LogMessage($"Gagal memuat konfigurasi `WebStorageRoot`: {ex}");
         }
     }
@@ -452,64 +441,55 @@ else
         {
             try
             {
-                // Memuat informasi pengguna dari database
                 user = await CRUDService.ReadSingleAsync<User, string>(userId);
             }
             catch (Exception ex)
             {
-                NotificationService.LogMessage($"Terjadi kesalahan saat memuat info pengguna yang sedang masuk: {ex.Message}");
-                await NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda. Silakan coba lagi atau hubungi administrator.");
+                NotificationService.LogMessage($"Terjadi kesalahan saat memuat info pengguna: {ex.Message}");
+                await NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda.");
             }
         }
     }
 
-    private async Task LoadITAsync()
+    private async Task LoadElectricMotorAsync()
     {
         try
         {
-            // Membaca data tunggal dari database berdasarkan ID
-            it = await CRUDService.ReadSingleAsync<IT, int>(DeviceID);
+            electricMotor = await CRUDService.ReadSingleAsync<ElectricMotor, int>(ElectricMotorId);
         }
         catch (Exception ex)
         {
-            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
-            await NotificationService.AlertMessage("Gagal memuat data Inventory IT. Silakan hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal memuat data Inventory IT dengan ID {DeviceID}: {ex}");
-            it = null;
+            await NotificationService.AlertMessage("Gagal memuat data Electric Motor. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat data Electric Motor dengan ID {ElectricMotorId}: {ex}");
+            electricMotor = null;
         }
     }
 
-    private async Task LoadITMaintenanceHistoryAsync()
+    private async Task LoadElectricMotorMaintenanceHistoryAsync()
     {
+        if (electricMotor == null) return;
         try
         {
-            // Membaca data riwayat dari database berdasarkan ID IT
-            itHistoryList = (await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(
-                filter: h => h.InventoryId == it.DeviceID && h.InventoryName == "IT",
+            electricMotorHistoryList = (await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(
+                filter: h => h.InventoryId == electricMotor.ElectricMotorID && h.InventoryName == "Electric Motor",
                 orderBy: q => q.OrderByDescending(h => h.MaintenanceDate)
             )).ToList();
-            _itHistories = itHistoryList.AsQueryable();
         }
         catch (Exception ex)
         {
-            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
-            await NotificationService.AlertMessage("Gagal memuat data Maintenance History Inventory IT. Silakan hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal memuat data Maintenance History Inventory IT dengan ID {DeviceID}: {ex}");
-            itHistoryList = null;
-            _itHistories = null;
+            await NotificationService.AlertMessage("Gagal memuat riwayat maintenance. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat riwayat maintenance untuk Electric Motor ID {ElectricMotorId}: {ex}");
+            electricMotorHistoryList = new List<InventoryMaintenanceHistory>();
         }
     }
 
     private string CreateFilePath(string? relativePath)
     {
-        // Memastikan relativePath tidak null atau kosong
         if (string.IsNullOrWhiteSpace(relativePath))
         {
             return NO_IMAGE_PATH;
         }
-        // Menggabungkan path root dengan relative path
         string fullPath = Path.Combine(_webStorageRoot, relativePath);
-        // Mengganti backslash dengan slash untuk URL
         return fullPath.Replace("\\", "/");
     }
 
@@ -527,10 +507,8 @@ else
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
                 await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
-                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
                 return;
             }
-
             if (fileType == IMAGE_FILE_CATEGORY)
             {
                 newMaintenanceHistory.Photo = UploadService.FilePath;
@@ -553,10 +531,8 @@ else
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
                 await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
-                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
                 return;
             }
-
             newMaintenanceHistory.Photo = null;
         }
         catch (Exception ex)
@@ -571,13 +547,14 @@ else
     private async Task HandleValidSubmitHistoryAsync()
     {
         //Inisialisasi Data
-        newMaintenanceHistory.InventoryId = it.DeviceID;
-        newMaintenanceHistory.InventoryName = "IT";
+        newMaintenanceHistory.InventoryId = electricMotor.ElectricMotorID;
+        newMaintenanceHistory.InventoryName = "Electric Motor";
         newMaintenanceHistory.CreatedBy = user.FullName;
         newMaintenanceHistory.CreatedDate = DateTime.Now;
 
         // Menyimpan data menggunakan CRUDService
         await CRUDService.CreateAsync(newMaintenanceHistory);
+
         // Memeriksa hasil operasi CRUD
         if (!string.IsNullOrWhiteSpace(CRUDService.CRUDErrorMessage))
         {
@@ -595,12 +572,12 @@ else
         return NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
     }
 
-    private async Task OpenDetailHistoryModal(InventoryMaintenanceHistory history)
+    private void OpenDetailHistoryModal(InventoryMaintenanceHistory history)
     {
         selectedHistory = history;
     }
 
-    private async Task OpenDeleteHistoryModal(InventoryMaintenanceHistory history)
+    private void OpenDeleteHistoryModal(InventoryMaintenanceHistory history)
     {
         selectedHistory = history;
     }
@@ -611,20 +588,19 @@ else
         if (selectedHistory == null) return;
         try
         {
-            //Hapus Foto
             if (!string.IsNullOrEmpty(selectedHistory.Photo))
             {
                 await UploadService.FileChange(selectedHistory.Photo, SUB_FOLDER_NAME);
             }
-
             await CRUDService.DeleteAsync<InventoryMaintenanceHistory>(selectedHistory);
+            electricMotorHistoryList?.Remove(selectedHistory);
+            StateHasChanged();
             await NotificationService.AlertMessage("Riwayat berhasil dihapus.");
-            NavigationManager.Refresh();
         }
         catch (Exception ex)
         {
             await NotificationService.AlertMessage("Gagal menghapus riwayat. Silakan hubungi Administrator.");
-            NotificationService.LogMessage($"Gagal menghapus riwayat dengan ID {selectedHistoryId}: {ex.Message}");
+            NotificationService.LogMessage($"Gagal menghapus riwayat ID {selectedHistory.Id}: {ex.Message}");
         }
     }
 
@@ -640,9 +616,16 @@ else
     }
 
     // Navigasi
-    private void NavigateToITList()
+    private void GoToElectricMotorEdit()
     {
-        // Navigasi kembali ke halaman daftar
-        NavigationManager.NavigateTo(IT_LIST_PATH);
+        if (electricMotor != null)
+        {
+            NavigationManager.NavigateTo($"./ElectricMotorEdit/{electricMotor.ElectricMotorID}");
+        }
+    }
+
+    private void NavigateToElectricMotorList()
+    {
+        NavigationManager.NavigateTo(ELECTRIC_MOTOR_LIST_PATH);
     }
 }

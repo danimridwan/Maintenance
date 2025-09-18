@@ -2,8 +2,10 @@
 
 @using MaintenanceWebApp.Data
 @using MaintenanceWebApp.Services
-@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.QuickGrid
+@using System.Security.Claims
 @inject IConfiguration Configuration
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -13,7 +15,7 @@
 @inject UploadFilesService UploadService
 @inject NotificationService NotificationService
 
-@* Otorisasi Berdasarkan Peran *@
+@* Roles Authorize *@
 @attribute [Authorize(Roles = "Admin, Terminal Manager, Maintenance Supervisor, Maintenance")]
 
 @* Status Pemuatan *@
@@ -220,7 +222,7 @@ else
                     <button type="button" @onclick="DeleteHistoryPhoto" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <EditForm Model="newMaintenanceHistory" OnValidSubmit="HandleValidSubmitHistoryAsync">
+                    <EditForm Model="newMaintenanceHistory" OnValidSubmit="HandleValidSubmitHistoryAsync" OnInvalidSubmit="HandleInvalidSubmitHistoryAsync">
                         <DataAnnotationsValidator />
 
                         <div class="row g-3">
@@ -321,10 +323,12 @@ else
     public int TankId { get; set; }
 
     // Properti Halaman
+    private DotNetObjectReference<TankInfo> dotNetHelper = default!;
     private User? user;
     private InventoryMaintenanceHistory newMaintenanceHistory = new();
     private List<InventoryMaintenanceHistory>? tankHistoryList;
     private InventoryMaintenanceHistory? selectedHistory;
+    private int selectedHistoryId;
 
     // Properti State
     [CascadingParameter]
@@ -340,8 +344,9 @@ else
     private const string SUB_FOLDER_NAME = "Inventories";
     private const string IMAGE_FILE_CATEGORY = "img";
     private const string IMAGE_FOLDER_NAME = "Tank";
+    private const string NO_IMAGE_PATH = "/noimg.png";
     private const string TANK_LIST_PATH = "./TankList";
-    private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing" };
+    private static readonly List<string> JOB_CATEGORIES = new() { "Perbaikan", "Modifikasi", "Pemasangan Baru", "Verifikasi/Testing", "Lainnya" };
 
     // Metode Lifecycle
     protected override async Task OnInitializedAsync()
@@ -363,6 +368,32 @@ else
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetHelper = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("blazorInterop.promptOnBack", dotNetHelper);
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetHelper?.Dispose();
+        JSRuntime.InvokeVoidAsync("blazorInterop.removeOnPopState");
+    }
+
+    [JSInvokable]
+    public async Task HandleBackNavigation()
+    {
+        await DeleteHistoryPhoto();
+        await JSRuntime.InvokeVoidAsync("blazorInterop.replaceHistoryState");
+
+        await JSRuntime.InvokeVoidAsync("hideModal", "addHistoryModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "viewHistoryModal");
+        await JSRuntime.InvokeVoidAsync("hideModal", "deleteHistoryModal");
+    }
+
     // Metode Bantuan (Helper Methods)
     private async Task LoadConfigurationAsync()
     {
@@ -373,31 +404,44 @@ else
     private async Task LoadUserAsync()
     {
         if (authenticationStateTask == null) return;
-        var userPrincipal = (await authenticationStateTask).User;
-        var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        canEditData = userPrincipal.IsInRole("Admin") || userPrincipal.IsInRole("Maintenance");
+        var authenticationState = await authenticationStateTask;
+        var userPrincipal = authenticationState.User;
+        var userId = userPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? userPrincipal.FindFirst("Id")?.Value;
+        canEditData = userPrincipal.IsInRole("Admin") || userPrincipal.IsInRole("Maintenance") || userPrincipal.IsInRole("Maintenance Supervisor");
 
         if (userPrincipal.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(userId))
         {
-            try { user = await CRUDService.ReadSingleAsync<User, string>(userId); }
-            catch (Exception ex) { NotificationService.LogMessage($"Gagal memuat info pengguna: {ex.Message}"); }
+            try
+            {
+                // Memuat informasi pengguna dari database
+                user = await CRUDService.ReadSingleAsync<User, string>(userId);
+            }
+            catch (Exception ex)
+            {
+                NotificationService.LogMessage($"Terjadi kesalahan saat memuat info pengguna yang sedang masuk: {ex.Message}");
+                NotificationService.AlertMessage("Terjadi masalah saat memuat profil pengguna Anda. Silakan coba lagi atau hubungi administrator.");
+            }
         }
     }
 
     private async Task LoadTankAsync()
     {
-        try { tank = await CRUDService.ReadSingleAsync<Tank, int>(TankId); }
+        try
+        {
+            // Membaca data tunggal dari database berdasarkan ID
+            tank = await CRUDService.ReadSingleAsync<Tank, int>(TankId);
+        }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Gagal memuat data Tangki.");
-            NotificationService.LogMessage($"Gagal memuat data Tangki dengan ID {TankId}: {ex.Message}");
+            // Menampilkan notifikasi jika terjadi kegagalan saat memuat data
+            await NotificationService.AlertMessage("Gagal memuat data Breather Valve. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal memuat data Breather Valve dengan ID {TankId}: {ex}");
             tank = null;
         }
     }
 
     private async Task LoadTankMaintenanceHistoryAsync()
     {
-        if (tank is null) return;
         try
         {
             var histories = await CRUDService.ReadAllAsync<InventoryMaintenanceHistory>(
@@ -416,14 +460,46 @@ else
 
     private string CreateFilePath(string? relativePath)
     {
-        if (string.IsNullOrWhiteSpace(relativePath)) { return "/noimg.png"; }
-        return Path.Combine(_webStorageRoot, relativePath).Replace("\\", "/");
+        // Memastikan relativePath tidak null atau kosong
+        if (string.IsNullOrWhiteSpace(relativePath))
+        {
+            return NO_IMAGE_PATH;
+        }
+        // Menggabungkan path root dengan relative path
+        string fullPath = Path.Combine(_webStorageRoot, relativePath);
+        // Mengganti backslash dengan slash untuk URL
+        return fullPath.Replace("\\", "/");
     }
 
-    // Penanganan File
+    // Penanganan Unggahan & Perubahan File
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
-        await UploadAndSetPhoto(e);
+        await HandleFileUploadAsync(e, IMAGE_FOLDER_NAME, IMAGE_FILE_CATEGORY);
+    }
+
+    private async Task HandleFileUploadAsync(InputFileChangeEventArgs e, string folderName, string fileType)
+    {
+        try
+        {
+            await UploadService.FilesUpload(e.File, folderName, SUB_FOLDER_NAME, fileType);
+            if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
+            {
+                await NotificationService.AlertMessage($"Gagal mengunggah berkas. Detail: {UploadService.UploadErrorMessage}");
+                NotificationService.LogMessage($"Pengunggahan berkas gagal: {UploadService.UploadErrorMessage}");
+                return;
+            }
+
+            if (fileType == IMAGE_FILE_CATEGORY)
+            {
+                newMaintenanceHistory.Photo = UploadService.FilePath;
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengunggah file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengunggah file: {ex.Message}");
+        }
+        StateHasChanged();
     }
 
     private async Task HandleFileChangeAsync(string? filePath)
@@ -432,25 +508,21 @@ else
         try
         {
             await UploadService.FileChange(filePath, SUB_FOLDER_NAME);
-            newMaintenanceHistory.Photo = null;
-        }
-        catch (Exception ex) { NotificationService.LogMessage($"Gagal mengganti file: {ex.Message}"); }
-        StateHasChanged();
-    }
-
-    private async Task UploadAndSetPhoto(InputFileChangeEventArgs e)
-    {
-        try
-        {
-            await UploadService.FilesUpload(e.File, IMAGE_FOLDER_NAME, SUB_FOLDER_NAME, IMAGE_FILE_CATEGORY);
             if (!string.IsNullOrWhiteSpace(UploadService.UploadErrorMessage))
             {
-                await NotificationService.AlertMessage($"Gagal mengunggah: {UploadService.UploadErrorMessage}");
+                await NotificationService.AlertMessage($"Gagal mengganti berkas. Silakan coba lagi.");
+                NotificationService.LogMessage($"Penggantian berkas gagal: {UploadService.UploadErrorMessage}");
                 return;
             }
-            newMaintenanceHistory.Photo = UploadService.FilePath;
+
+            newMaintenanceHistory.Photo = null;
         }
-        catch (Exception ex) { NotificationService.LogMessage($"Gagal mengunggah file: {ex.Message}"); }
+        catch (Exception ex)
+        {
+            await NotificationService.AlertMessage("Terjadi kesalahan saat mengganti file. Silakan coba lagi.");
+            NotificationService.LogMessage($"Pengecualian saat mengganti file: {ex.Message}");
+        }
+        StateHasChanged();
     }
 
     // Penanganan Form Riwayat
@@ -475,13 +547,26 @@ else
         NavigationManager.Refresh();
     }
 
-    // Penanganan Aksi Modal
-    private void OpenDetailHistoryModal(InventoryMaintenanceHistory history) => selectedHistory = history;
-    private void OpenDeleteHistoryModal(InventoryMaintenanceHistory history) => selectedHistory = history;
+    private Task HandleInvalidSubmitHistoryAsync()
+    {
+        return NotificationService.AlertMessage("Mohon periksa kembali formulir. Beberapa isian tidak valid.");
+    }
 
+    private async Task OpenDetailHistoryModal(InventoryMaintenanceHistory history)
+    {
+        selectedHistory = history;
+    }
+
+    private async Task OpenDeleteHistoryModal(InventoryMaintenanceHistory history)
+    {
+        selectedHistory = history;
+    }
+
+    // Metode untuk menghapus riwayat dari database
     private async Task DeleteHistoryAsync()
     {
         if (selectedHistory == null) return;
+
         try
         {
             //Hapus Foto
@@ -490,25 +575,42 @@ else
                 await UploadService.FileChange(selectedHistory.Photo, SUB_FOLDER_NAME);
             }
 
-            await CRUDService.DeleteAsync(selectedHistory);
+            await CRUDService.DeleteAsync<InventoryMaintenanceHistory>(selectedHistory);
             await NotificationService.AlertMessage("Riwayat berhasil dihapus.");
             NavigationManager.Refresh();
         }
         catch (Exception ex)
         {
-            await NotificationService.AlertMessage("Gagal menghapus riwayat.");
-            NotificationService.LogMessage($"Gagal menghapus riwayat ID {selectedHistory.Id}: {ex.Message}");
+            await NotificationService.AlertMessage("Gagal menghapus riwayat. Silakan hubungi Administrator.");
+            NotificationService.LogMessage($"Gagal menghapus riwayat dengan ID {selectedHistoryId}: {ex.Message}");
         }
     }
 
     private async Task DeleteHistoryPhoto()
     {
-        if (string.IsNullOrEmpty(newMaintenanceHistory.Photo)) return;
-        await UploadService.FileChange(newMaintenanceHistory.Photo, SUB_FOLDER_NAME);
-        newMaintenanceHistory.Photo = null;
+        if (newMaintenanceHistory == null) return;
+
+        if (!string.IsNullOrEmpty(newMaintenanceHistory.Photo))
+        {
+            await UploadService.FileChange(newMaintenanceHistory.Photo, SUB_FOLDER_NAME);
+            newMaintenanceHistory.Photo = null;
+        }
         StateHasChanged();
     }
 
     // Navigasi
-    private void NavigateToTankList() => NavigationManager.NavigateTo(TANK_LIST_PATH);
+    private void GoToTankEdit()
+    {
+        // Navigasi ke halaman edit jika data tidak null
+        if (tank != null)
+        {
+            NavigationManager.NavigateTo($"./TankEdit/{tank.TankID}");
+        }
+    }
+
+    private void NavigateToTankList()
+    {
+        // Navigasi kembali ke halaman daftar
+        NavigationManager.NavigateTo(TANK_LIST_PATH);
+    }
 }
