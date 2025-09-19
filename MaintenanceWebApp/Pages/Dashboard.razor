@@ -87,41 +87,45 @@
                                 </div>
                             </div>
 
-                            <div style="align-content: center;" class="col-lg-4">
+                            <div class="col-lg-4 d-flex align-items-center">
                                 <div class="row">
                                     <div class="col-12 col-sm-6 mb-4">
-                                        <div class="card text-center h-100">
+                                        <div class="card text-center h-100 kpi-tooltip-container">
                                             <div class="card-body">
                                                 <h6 class="kpi-title text-muted">Selesai</h6>
                                                 <p class="kpi-value display-6 text-success">@kpiPpmCompleted</p>
                                             </div>
+                                            <div class="kpi-tooltip-text">@tooltipCompleted</div>
                                         </div>
                                     </div>
 
                                     <div class="col-12 col-sm-6 mb-4">
-                                        <div class="card text-center h-100">
+                                        <div class="card text-center h-100 kpi-tooltip-container">
                                             <div class="card-body">
                                                 <h6 class="kpi-title text-muted">Ditolak</h6>
                                                 <p class="kpi-value display-6 text-danger">@kpiPpmRejected</p>
                                             </div>
+                                            <div class="kpi-tooltip-text">@tooltipRejected</div>
                                         </div>
                                     </div>
 
                                     <div class="col-12 col-sm-6 mb-4">
-                                        <div class="card text-center h-100">
+                                        <div class="card text-center h-100 kpi-tooltip-container">
                                             <div class="card-body">
                                                 <h6 class="kpi-title text-muted">Sesuai Target</h6>
                                                 <p class="kpi-value display-6 text-primary">@kpiPpmOnTime</p>
                                             </div>
+                                            <div class="kpi-tooltip-text">@tooltipOnTime</div>
                                         </div>
                                     </div>
 
                                     <div class="col-12 col-sm-6 mb-4">
-                                        <div class="card text-center h-100">
+                                        <div class="card text-center h-100 kpi-tooltip-container">
                                             <div class="card-body">
                                                 <h6 class="kpi-title text-muted">Tidak Sesuai Target</h6>
                                                 <p class="kpi-value display-6 text-warning">@kpiPpmLate</p>
                                             </div>
+                                            <div class="kpi-tooltip-text">@tooltipLate</div>
                                         </div>
                                     </div>
                                 </div>
@@ -171,6 +175,10 @@ else
     private int selectedYear;
     private List<int> availableYears = new();
     private string selectedCategory = "All";
+    private string tooltipCompleted = "";
+    private string tooltipRejected = "";
+    private string tooltipOnTime = "";
+    private string tooltipLate = "";
     private List<string> categoryOptions = new();
     private BarConfig _ppmBarConfig;
     private BarConfig _inventoryBarConfig;
@@ -266,6 +274,19 @@ else
         kpiPpmRejected = tasks.Count(t => t.Level == PPMStatusLevel.Rejected);
         kpiPpmOnTime = tasks.Count(t => t.Level == PPMStatusLevel.Completed && t.CompletionDate.HasValue && DateOnly.FromDateTime(t.CompletionDate.Value) <= t.TargetDate);
         kpiPpmLate = tasks.Count(t => t.Level == PPMStatusLevel.Completed && t.CompletionDate.HasValue && DateOnly.FromDateTime(t.CompletionDate.Value) > t.TargetDate);
+
+        int totalPpmInFilter = tasks.Count();
+        int totalCompletedInFilter = kpiPpmCompleted;
+
+        double percCompleted = totalPpmInFilter > 0 ? (double)kpiPpmCompleted / totalPpmInFilter * 100 : 0;
+        double percRejected = totalPpmInFilter > 0 ? (double)kpiPpmRejected / totalPpmInFilter * 100 : 0;
+        double percOnTime = totalCompletedInFilter > 0 ? (double)kpiPpmOnTime / totalCompletedInFilter * 100 : 0;
+        double percLate = totalCompletedInFilter > 0 ? (double)kpiPpmLate / totalCompletedInFilter * 100 : 0;
+
+        tooltipCompleted = $"Total Laporan: {totalPpmInFilter}\nPersentase Selesai: {percCompleted:F0}%";
+        tooltipRejected = $"Total Laporan: {totalPpmInFilter}\nPersentase Ditolak: {percRejected:F0}%";
+        tooltipOnTime = $"Total Laporan Selesai: {totalCompletedInFilter}\nPersentase Sesuai: {percOnTime:F0}%";
+        tooltipLate = $"Total Laporan Selesai: {totalCompletedInFilter}\nPersentase Tidak Sesuai: {percLate:F0}%";
 
         var monthLabels = GetMonthLabelsForYear(selectedYear);
         _ppmBarConfig.Data.Labels.Clear();

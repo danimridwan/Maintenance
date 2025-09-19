@@ -28,3 +28,49 @@
 .kpi-value {
     font-weight: 700;
 }
+
+/* Styling untuk Tooltip KPI */
+.kpi-tooltip-container {
+    position: relative;
+}
+
+.kpi-tooltip-text {
+    visibility: hidden;
+    width: max-content; /* Lebar tooltip menyesuaikan konten */
+    max-width: 250px;
+    background-color: #212529; /* Warna hitam gelap */
+    color: #fff;
+    text-align: left;
+    border-radius: .25rem;
+    padding: 0.5rem 0.75rem;
+    position: absolute;
+    z-index: 1080; /* Z-index tinggi agar tampil di atas elemen lain */
+    /* Posisi tooltip di atas kartu */
+    bottom: 105%;
+    left: 50%;
+    transform: translateX(-50%); /* Trik untuk sentering horizontal */
+
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    white-space: pre-wrap; /* Membuat karakter \n (baris baru) berfungsi */
+    font-size: 0.8rem;
+    font-weight: 400; /* Mengatur ulang ketebalan font */
+}
+
+    /* Panah kecil di bawah tooltip untuk estetika */
+    .kpi-tooltip-text::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #212529 transparent transparent transparent;
+    }
+
+/* Menampilkan tooltip saat container di-hover */
+.kpi-tooltip-container:hover .kpi-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
